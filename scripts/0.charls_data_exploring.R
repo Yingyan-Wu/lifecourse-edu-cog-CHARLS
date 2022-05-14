@@ -11,7 +11,7 @@ if (!require("pacman")){
 }
 
 p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "glue", 
-       "survey")
+       "survey", "lme4")
 
 #---- function ----
 source(here::here("scripts", "functions.R"))
@@ -66,17 +66,25 @@ harmonized_long <- harmonized_selected %>%
                names_pattern = "r(\\d+)(.*)") %>%
   print()
 
-random_id <- sample(harmonized_selected$ID, size = 25)
+random_id <- sample(harmonized_selected$ID, size = 50)
 
 harmonized_long %>%
   filter(ID %in% random_id) %>%
-  ggplot(aes(x = agey, y = imrc, group = ID, color = factor(ID))) +
+  ggplot(aes(x = wave, y = imrc, group = ID, color = factor(ID))) +
   geom_line() +
-  theme(legend.position = "none") +
-  theme_classic() +
-  theme(x = "Age(years)",
-        y = "Immediate word recall")
-
+  theme_minimal() +
+  labs(x = "Wave",
+       y = "Immediate word recall") +
+  theme(legend.position = "none")
+  
+harmonized_long %>%
+  filter(ID %in% random_id) %>%
+  ggplot(aes(x = wave, y = dlrc, group = ID, color = factor(ID))) +
+  geom_line() +
+  theme_minimal() +
+  labs(x = "Wave",
+       y = "Delayed word recall") +
+  theme(legend.position = "none")
 
 harmonized_empirical <- harmonized_long %>%
   filter(!is.na(imrc)) %>%
@@ -104,6 +112,10 @@ harmonized_empirical %>%
        y = "Word recall",
        title = "Average word recall score +/- 2 SE at different wave")
 
+
+
+harmonized_inference <- 
+
 #---- Check wave 4 delay word recall ----
 with(harmonized %>%
   mutate(r4rc_flag = case_when(r4imrc < r4dlrc ~ "immediate < delay",
@@ -127,7 +139,8 @@ with(harmonized,
 # https://stats.idre.ucla.edu/r/codefragments/read_multiple/
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
-datasets <- c("demographic_background", "health_status_and_functioning")
+datasets <- c("demographic_background", "health_status_and_functioning", 
+              "work_retirement_and_pension")
 folder_index <- c(1:length(folders))[-c(1, 3, 5, 8)] # main waves only
 
 # Read in function
@@ -206,6 +219,49 @@ charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4)),
                    type = "left") %>% 
   as_tibble() %>% print(n = 10)
 
-#---- check age that finished schooling ----
-charls %>%
-  filter(w1_bd006 > w1)
+#---- education variables ----
+summarytools::freq(charls$w1_bd001)
+
+# 1. No formal education: illiterate
+with(charls %>%
+  filter(w1_bd001 == 1), summarytools::freq(w1_bd007s1))
+# 4538 people never got any education
+# check w2, w3, w4 education status
+with(charls %>%
+       filter(w1_bd001 == 1), summarytools::freq(w2_bd001_w2_2))
+
+  # check hukou
+with(charls %>%
+       filter(w1_bd001 == 1 & w1_bd007s1 == 1), summarytools::freq(w1_bc001))
+# most of them have agricutural hukou
+# check occupation status
+with(charls %>%
+       filter(w1_bd001 == 1 & w1_bd007s1 == 1), summarytools::freq(w1_fb002))
+# most of them are farmers
+
+# institution
+with(charls %>%
+       filter(w1_bd001 == 1 & w1_bd007s1 == 1 & w1_fd002 == 1), 
+     summarytools::freq(w1_fd006))
+# none of them are civil servant
+with(charls %>%
+       filter(w1_bd001 == 1 & w1_bd007s1 == 1 & w1_fd002 == 1), 
+     summarytools::freq(w1_fd007))
+# none of them are formal employee of an establishment 
+with(charls %>%
+       filter(w1_bd001 == 1 & w1_bd007s1 == 1 & w1_fd002 == 2), 
+     summarytools::freq(w1_fd009))
+# 3 of them are formal employee of an establishment
+
+with(charls %>%
+       filter(w1_bd001 == 1 & w1_bd007s1 == 1 & w1_fd002 == 4), 
+     summarytools::freq(w1_fd010))
+# unfinished
+
+# 2. Primary school
+with(charls %>%
+       filter(w1_bd001 == 2), summarytools::freq(w1_bd002))
+with(charls %>%
+       filter(w1_bd001 == 2), summarytools::freq(w1_bd005))
+with(charls %>%
+       filter(w1_bd001 == 2), summarytools::freq(w1_bd006))
