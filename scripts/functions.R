@@ -3,6 +3,9 @@
 # May.8.2022
 # Some of the functions are from Dr. Roch Nianogo's EPI 200C course scripts
 
+#---- Required packages ----
+require("ggpubr")
+
 #---- proc sum descriptive ----
 # modified from Dr. Nianogo's code
 proc_sum <- function(variable, more = F){
@@ -53,4 +56,59 @@ proc_freq_wt <- function(dataset, variable, weight){
     dplyr::count({{variable}}, wt = {{weight}}) %>% 
     mutate("weighted prop(%)" = prop.table(n) * 100,
            "cumulative prop(%)" = cumsum(n)*100/sum(n))
+}
+
+#---- proc univariate ----
+proc_univariate <- function(variable){
+  output_list <- vector(mode = "list")
+  var_naomit <- na.omit(variable) # remove missing values
+  
+  output_list$Stats <- tibble(
+    N = length(var_naomit),
+    Mean = mean(var_naomit),
+    Std = sd(var_naomit),
+    Min = min(var_naomit),
+    P10 = unname(quantile(var_naomit, probs = 0.1)),
+    P25 = unname(quantile(var_naomit, probs = 0.25)),
+    Median = median(var_naomit),
+    P75 = unname(quantile(var_naomit, probs = 0.75)),
+    P90 = unname(quantile(var_naomit, probs = 0.90)),
+    Max = max(var_naomit),
+    N_missing = sum(is.na(variable))) %>%
+    as.data.frame()
+  
+  output_list$Quantiles <- tibble(
+    perc = c(0, 1, 5, 10, 25, 50, 75, 90, 95, 99, 100),
+    Quantile = quantile(var_naomit, perc/100),
+    Level = case_when(perc == 0 ~ paste0(perc, "% Min"),
+                      perc == 50 ~ paste0(perc, "% Median"),
+                      perc == 100 ~ paste0(perc, "% Max"),
+                      TRUE ~ paste0(perc, "%"))) %>%
+    select(Level, Quantile) %>%
+    as.data.frame()
+  
+  output_list$`Extreme Observations` <- tibble(
+    Lowest = head(sort(var_naomit), 5),
+    Highest = tail(sort(var_naomit), 5)) %>%
+    as.data.frame()
+  
+  # Pending on passing the variable name to the axis label
+  hist <- ggplot() +
+    geom_histogram(aes(x = var_naomit)) +
+    labs(x = "Variable") +
+    coord_flip() +
+    theme_minimal()
+  
+  boxplot <- ggplot() +
+    geom_boxplot(aes(x = var_naomit)) + labs(x = "Variable") +
+    coord_flip() + theme_minimal()
+  
+  output_list$`Distribution Plot` <-
+    ggpubr::ggarrange(hist, boxplot,
+                      ncol = 2, nrow = 1, align = c("hv"), widths = c(2, 1))
+  # 
+  # output_list$hist <- hist
+  # output_list$boxplot <- boxplot
+  
+  return(output_list)
 }
