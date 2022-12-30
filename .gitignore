@@ -5,3 +5,7 @@
 
 # folders
 data/
+output/
+
+# files
+CHARLS_Dataset_construction_codebook.xlsx
