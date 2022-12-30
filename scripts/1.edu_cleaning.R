@@ -299,17 +299,17 @@ charls %<>%
     raeduc_c %in% c(8, 9, 10) & adult_edu == 1 & adult_edu_dplm == 1 ~ 11)) %>%
   labelled::set_value_labels(
     edu_cat = c("No Formal Education (Illiterate)" = 0,
-                "No formal education + adult education without diploma" = 1,
-                "No formal education + adult education with diploma" = 2,
-                "Elementary school or less + no adult edu" = 3,
-                "Elementary school or less + adult edu without diploma" = 4,
-                "Elementary school or less + adult edu with diploma" = 5,
-                "vocational school/middle school/high school + no adult edu" = 6,
-                "vocational school/middle school/high school + adult edu without diploma" = 7,
-                "vocational school/middle school/high school + adult edu with diploma" = 8,
-                "college & above + no adult edu" = 9,
-                "college & above + adult edu without diploma" = 10,
-                "college & above + adult edu with diploma" = 11))
+                "No formal education + continuing education without a diploma" = 1,
+                "No formal education + continuing education with diploma" = 2,
+                "Elementary school or less + no continuing education" = 3,
+                "Elementary school or less + continuing education without a diploma" = 4,
+                "Elementary school or less + continuing education with a diploma" = 5,
+                "vocational school/middle school/high school + no continuing education" = 6,
+                "vocational school/middle school/high school + continuing education without a diploma" = 7,
+                "vocational school/middle school/high school + continuing education with a diploma" = 8,
+                "college & above + no continuing education" = 9,
+                "college & above + continuing education without a diploma" = 10,
+                "college & above + continuing education with a diploma" = 11))
 
 proc_freq(charls, edu_cat)
 with(charls, table(edu_cat, raeduc_c, useNA = "ifany"))

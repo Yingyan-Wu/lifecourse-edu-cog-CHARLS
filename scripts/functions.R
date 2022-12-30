@@ -112,3 +112,36 @@ proc_univariate <- function(variable){
   
   return(output_list)
 }
+
+#---- impute ages -----
+# adpated from Crystal Shaw's code
+# https://github.com/Mayeda-Research-Group/exposure-trajectories/blob/master/RScripts/functions/impute_ages.R
+
+impute_ages <- function(vector){
+  #For complete vectors or vectors missing every value, do nothing
+  if(sum(is.na(vector)) == 0 | sum(is.na(vector)) == length(vector)){
+    return(vector)
+  } else{
+    last_age <- max(which(!is.na(vector)))
+    missing_age <- which(is.na(vector))
+    
+    for(slot in missing_age){
+      if(slot < last_age){
+        vector[slot] <- vector[last_age] - 2*(last_age - slot)
+        # vector[slot] <- vector[last_age] - 24*(last_age - slot)
+      } else{
+        vector[slot] <- vector[last_age] + 2*(slot - last_age)
+        # vector[slot] <- vector[last_age] + 24*(slot - last_age)
+      }
+    }
+    return(vector)
+  }
+}
+
+# Test
+# vector <- c(NA, 75, 77, 79, 81)
+# impute_ages(vector)
+# vector <- c(75, 77, 79, 81, NA)
+# impute_ages(vector)
+# vector <- c(75, NA, NA, 81, 83)
+# impute_ages(vector)
