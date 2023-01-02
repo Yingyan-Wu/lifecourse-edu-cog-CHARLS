@@ -46,6 +46,20 @@ harmonized <- haven::read_dta(here::here("data", "raw_data", "harmonized",
 #        filter(ID_w1 == ""))
 
 # harmonized_selected <- harmonized %>% filter(ID_w1 != "")
+#---- **psu ----
+psuw1 <- haven::read_dta(here::here("data", "raw_data", "2011", 
+                                    "chinese_characters_clean", "psu.dta"))
+colnames(psuw1)
+
+p_load("deeplr")
+psuw1 %<>%
+  mutate(province_eng = toEnglish2(
+    province, get_detect = T, 
+    auth_key = "a152826f-19ff-78ea-32a5-1b8a9b13a291:fx")$translation)
+
+harmonized %<>% left_join(psuw1 %>% select(communityID, province_eng), 
+                          by = "communityID")
+table(harmonized$province_eng,useNA = "ifany")
 
 #---- pending reading core data ----
 #---- **main datasets ----
@@ -105,7 +119,7 @@ rm(list)
 #---- **life history datasets ----
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
-datasets <- c("demographic_background", "education_history", 
+datasets <- c("residence", "demographic_background", "education_history", 
               "family_information")
 folder_index <- c(1:length(folders))[5] # life history only
 
@@ -118,21 +132,6 @@ names(list) <- gsub(".*/(.*)\\..*", "\\1", files)
 # Assign names for each wave's list
 assign("life_history", list)
 rm(list)
-
-#---- psu ----
-psuw1 <- haven::read_dta(here::here("data", "raw_data", "2011", 
-                                    "chinese_characters_clean", "psu.dta"))
-colnames(psuw1)
-
-p_load("deeplr")
-psuw1 %<>%
-  mutate(province_eng = toEnglish2(
-    province, get_detect = T, 
-    auth_key = "a152826f-19ff-78ea-32a5-1b8a9b13a291:fx")$translation)
-
-harmonized %<>% left_join(psuw1 %>% select(communityID, province_eng), 
-                          by = "communityID")
-table(harmonized$province_eng,useNA = "ifany")
 
 # ---- **join the datasets ----
 # Waves
@@ -437,11 +436,13 @@ length(charls %>% filter(rabyear <= 1962 & rabyear >= 1946))
 
 # Pending
 
-#---- Region of residence ----
+#---- Region of residence Childhood ----
+proc_freq(charls, lh_t002_psu_1_) %>% print(n = Inf)
+# These code corresponds to the 2011 NBS area code
 
 
 
-#---- Rural/urban residence ----
+#---- Rural/urban residence Childhood ----
 
 
 #---- Parental socioeconomic status (latent variable to be built) ----
@@ -516,12 +517,59 @@ proc_freq(charls, r1mstat_c)
 proc_freq(charls, r1mstat_c_v2)
 
 #---- Residence in adulthood ----
+#---- **Rural v.s.urban ----
 proc_freq(charls, h1rural)
 with(charls, table(h1rural, h2rural, useNA = "ifany"))
 with(charls, table(h1rural, h3rural, useNA = "ifany"))
 
+# Sanity check
 with(charls %>% filter(is.na(h1rural) & !is.na(h2rural)), 
-     table(w1_iyear, w2_iyear, useNA = "ifany"))
+     table(inw1, inw2, useNA = "ifany"))
+with(charls %>% filter(is.na(h1rural) & !is.na(h3rural)), 
+     table(inw1, inw3, useNA = "ifany"))
+with(charls %>% filter(is.na(h1rural) & !is.na(h4rural)), 
+     table(inw1, inw4, useNA = "ifany"))
+
+#---- **Province、region ----
+proc_freq(charls, province_eng) %>% print(n = Inf)
+charls %<>% mutate(
+  region_eng = case_when(
+    str_detect(province_eng, "Beijing|Tianjin|Hebei|Shanghai|Jiangsu|Zhejiang|
+               Fujian|Shandong|Guangdong|Hainan") ~ 1,
+    str_detect(province_eng, "Shanxi|Anhui|Jiangxi|Henan|Hubei|Hunan") ~ 2,
+    str_detect(province_eng, "Mongolia|Guangxi|Chongqing|Sichuan|Guizhou|Yunnan|
+               Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3,
+    str_detect(province_eng,"Liaoning|Jilin|Heilongjiang") ~ 4))
+
+# Sanity check
+proc_freq(charls, region_eng)
+with(charls, table(region_eng, province_eng, useNA = "ifany"))
+
+#---- Hukou status in adulthood ----
+proc_freq(charls, r1hukou)
+with(charls, table(r1hukou, r2hukou, useNA = "ifany"))
+with(charls %>% filter(is.na(r1hukou) & !is.na(r2hukou)), 
+     table(inw1, inw2, useNA = "ifany"))
+with(charls %>% filter(is.na(r1hukou) & !is.na(r3hukou)), 
+     table(inw1, inw3, useNA = "ifany"))
+with(charls %>% filter(is.na(r1hukou) & !is.na(r4hukou)), 
+     table(inw1, inw4, useNA = "ifany"))
+
+charls %<>%
+  mutate(hukou_flag = case_when(
+    r1hukou == r2hukou & r1hukou == r3hukou &
+      r1hukou == r4hukou ~ 0,
+    is.na(r1hukou) & is.na(r2hukou) & is.na(r3hukou) &
+      is.na(r4hukou) & is.na(lh_hukoutype) ~ NA_real_,
+    TRUE ~ 1))
+
+
+
+proc_freq(charls, hukou_flag)
+hukou_mat <- charls %>% select(contains("hukou")) %>% select(-hukou_flag)
+colSums(is.na(hukou_mat))
+
+#---- 
 
 #---- Save the data ----
 save(charls, file = here::here("data", "analysis_data", "charls_proposal.RData"))
