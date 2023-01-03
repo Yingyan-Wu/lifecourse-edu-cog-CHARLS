@@ -61,7 +61,7 @@ harmonized %<>% left_join(psuw1 %>% select(communityID, province_eng),
                           by = "communityID")
 table(harmonized$province_eng,useNA = "ifany")
 
-#---- pending reading core data ----
+#---- Reading core data ----
 #---- **main datasets ----
 # Adapted from Mingfei Dong's data reading script, 
 # Crystal's reading result snippet from make_figures.R in exposure_trajectories
@@ -70,6 +70,7 @@ table(harmonized$province_eng,useNA = "ifany")
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("demographic_background", "health_status_and_functioning", 
+              "work_retirement_and_pension",
               "family_information")
 folder_index <- c(1:length(folders))[-c(1, 3, 5, 8)] # main waves only
 
@@ -143,7 +144,7 @@ charls_w1 <- join_all(wave1,
 # colnames(charls_w1)
 
 charls_w2 <- join_all(wave2, 
-                      # by = c("ID", "householdID", "communityID", "versionID"),
+                      by = c("ID", "householdID", "communityID"),
                       type = "left", match = "all") %>%
   rename_with(.cols = !c("ID", "householdID", "communityID"), 
               function(x){paste0("w2_", x)})
@@ -205,8 +206,8 @@ charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4,
                    type = "full") %>% 
   as_tibble()
 
+colnames(charls %>% contains(".x"))
 rm(list = paste0("charls_", c(paste0("w", 1:4), "lh")))
-
 
 charls %<>%
   left_join(harmonized, by = "ID")
@@ -332,7 +333,7 @@ charls %<>%
 
 with(charls, table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 
-#---- Edu + adult edu ----
+#---- **Edu + adult edu ----
 charls %<>%
   mutate(edu_cat =  case_when(
     # No formal education at all
@@ -378,7 +379,7 @@ with(charls, table(edu_cat, raeduc_c, useNA = "ifany"))
 with(charls %>% filter(is.na(edu_cat) & raeduc_c == 1), 
      table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 
-#---- Adult edu time ----
+#---- **Adult edu time ----
 proc_univariate(charls$w1_bd010)
 with(charls %>% filter(adult_edu == 1), 
      table(w1_bd011, adult_edu_dplm,useNA = "ifany"))
@@ -426,7 +427,7 @@ with(charls, table(adult_edu_dplm, (!is.na(w1_bd010)|!is.na(w2_bd010)|
 #          contains(c("bd011", "bd010", "bd009"))) %>%
 #   filter(adult_edu_dplm == 1 & adult_edu_dplm_year > 2011))
 
-#---- Education interruption 1967 - 1977 ----
+#---- **Education interruption 1967 - 1977 ----
 proc_freq(charls, lh_e002)
 with(charls, table(rabyear, lh_e002, useNA = "ifany"))
 with(charls, table(lh_e003a, lh_e002, useNA = "ifany"))
@@ -439,11 +440,24 @@ length(charls %>% filter(rabyear <= 1962 & rabyear >= 1946))
 #---- Region of residence Childhood ----
 proc_freq(charls, lh_t002_psu_1_) %>% print(n = Inf)
 # These code corresponds to the 2011 NBS area code
-
-
+charls %>% select(contains("lh_t002_psu_")) %>%
+  apply(., 2, function(x) table(x, useNA = "ifany"))
+# Pending
 
 #---- Rural/urban residence Childhood ----
+colnames(charls %>% select(contains("bb006")))
+proc_freq(charls, w1_bb006)
+proc_freq(charls, w2_bb006)
+with(charls, table(w1_bb006, w2_bb006, useNA = "ifany"))
+with(charls %>% filter(is.na(w1_bb006) & !is.na(w2_bb006)),
+     table(inw1, inw2, useNA = "ifany"))
 
+charls %<>%
+  mutate(rarural_child = case_when(!is.na(w1_bb006) ~ w1_bb006,
+                                   !is.na(w2_bb006) ~ w2_bb006)) %>%
+  mutate(rarural_child = case_when(rarural_child == 2 ~ 0,
+                                   TRUE ~ rarural_child))
+proc_freq(charls, rarural_child)
 
 #---- Parental socioeconomic status (latent variable to be built) ----
 charls %<>% mutate(rameduc_c = case_when(rameduc_c == 1 ~ 0,
@@ -462,20 +476,31 @@ with(charls, table(rafoccup_c, radadoccup_c, useNA = "ifany"))
 with(charls, table(rameduc_c, useNA = "ifany"))
 
 #---- birth order ----
-proc_freq(charls, w3_cc003_w3_1)
+# Pending
+proc_freq(charls, w3_cc003_w3_1_)
+proc_freq(charls, w4_cc000_w4_1)
+with(charls, table(lh_b2_1_1_, lh_b2_1_5_, useNA = "ifany"))
+
+charls %>% select(contains("lh_b4_2_")) %>%
+  apply(., 2, table, useNA = "ifany")
 
 charls %<>%
   mutate(
     first_child = case_when(
       w1_cc002_1 > 0 |w1_cc002_3 > 0|w1_cc004_1 > 0|w1_cc004_3 > 0|
-        w2_cc002_1_1_ > 0|w2_cc002_3_1_ > 0|w2_cc004_1_1_ > 0|w2_cc004_3_1_ > 0 ~ 0,
-      lh_b2_1_1_ %in% c(2, 4) ~ 1,
-      
+        w2_cc002_1_1_ > 0|w2_cc002_3_1_ > 0|w2_cc004_1_1_ > 0|
+        w2_cc004_3_1_ > 0 ~ 0,
+      ((w1_cc002_1 == 0 & w1_cc002_3 == 0 & w1_cc004_1 == 0 & w1_cc004_3 == 0)|
+        (w2_cc002_1_1_ == 0 & w2_cc002_3_1_ == 0 & w2_cc004_1_1_ == 0 & 
+           w2_cc004_3_1_ == 0)) ~ 1,
+      # lh_b2_1_1_ %in% c(2, 4) ~ 1,
       w3_xsiblingnum == 0 ~ 1,
-      is.na(w1_cc002_1) & is.na(w1_cc002_3) & is.na(w1_cc004_1) & is.na(w1_cc004_3) &
-        is.na(w2_cc002_1_1_) & is.na(w2_cc002_3_1_) & is.na(w2_cc004_1_1_) & 
-        is.na(w2_cc004_3_1_) ~ NA_real_,
-      TRUE ~ 1))
+      w4_cc000_w4_1 == 0 ~ 1,
+      is.na(w1_cc002_1) & is.na(w1_cc002_3) & is.na(w1_cc004_1) & 
+        is.na(w1_cc004_3) & is.na(w2_cc002_1_1_) & is.na(w2_cc002_3_1_) & 
+        is.na(w2_cc004_1_1_) & is.na(w2_cc004_3_1_) ~ NA_real_
+      # TRUE ~ 1
+    ))
 
 # Sanity check
 proc_freq(charls, first_child)
@@ -500,8 +525,17 @@ view(charls %>% filter(ID == "056346102001") %>%
        select(ID, female, rabyear, edu_cat, contains("lh_b4_3_")))
 
 #---- First occupation type ----
+proc_freq(charls, w1_fb002)
+proc_freq(charls, w2_fb002)
+with(charls, table(w2_fb002, w1_fb002, useNA = "ifany"))
+with(charls %>% filter(is.na(w1_fb002) & !is.na(w2_fb002)), 
+     table(inw1, inw2, useNA = "ifany"))
 
-
+charls %<>%
+  mutate(first_occupation = case_when(!is.na(w1_fb002) ~ w1_fb002,
+                                      !is.na(w2_fb002) ~ w2_fb002))
+proc_freq(charls, first_occupation)
+colnames(charls %>% select(contains("fb002")))
 
 #---- Marital status ----
 charls %<>%
@@ -545,7 +579,7 @@ charls %<>% mutate(
 proc_freq(charls, region_eng)
 with(charls, table(region_eng, province_eng, useNA = "ifany"))
 
-#---- Hukou status in adulthood ----
+#---- Hukou status ----
 proc_freq(charls, r1hukou)
 with(charls, table(r1hukou, r2hukou, useNA = "ifany"))
 with(charls %>% filter(is.na(r1hukou) & !is.na(r2hukou)), 
@@ -563,7 +597,7 @@ charls %<>%
       is.na(r4hukou) & is.na(lh_hukoutype) ~ NA_real_,
     TRUE ~ 1))
 
-
+# Pending
 
 proc_freq(charls, hukou_flag)
 hukou_mat <- charls %>% select(contains("hukou")) %>% select(-hukou_flag)
@@ -572,7 +606,7 @@ colSums(is.na(hukou_mat))
 #---- 
 
 #---- Save the data ----
-save(charls, file = here::here("data", "analysis_data", "charls_proposal.RData"))
+save(charls, file = here::here("data", "analysis_data", "charls_ser_abstract.RData"))
 
 #---- OLD ----
 #---- ** Edu level cleaning ----
