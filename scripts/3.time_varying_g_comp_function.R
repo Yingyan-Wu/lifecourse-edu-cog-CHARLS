@@ -82,7 +82,7 @@ joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
                          dplyr::rename(!!sym(x0) := doX0,
                                        !!sym(c1[[1]])),
                        type = "response"))
-      
+      # Pending
       Y_doX_mdox0_PDE = predict(pYxmc_model, newdata = data_boot %>%
                                   mutate(x = doX,
                                          m = m_doX), type = "response"),
