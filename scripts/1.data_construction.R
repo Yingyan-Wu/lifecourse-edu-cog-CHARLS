@@ -23,11 +23,14 @@ harmonized_variables <- c("ID", "householdID", "pnc", "communityID",
                           "ID_w1", "householdID_w1", 
                           paste0("inw", 1:4),
                           paste0("r", 1:4, "iwstat"),
+                          # Weights
+                          paste0("r", 1:4, "wtrespb"),
                           "hacohort_c",
                           "rabyear", "rabmonth", "rabday", 
                           paste0("r", 1:4, "agey"),
                           "radyear", "radmonth",
                           "ragender",
+                          "rabplace_c",
                           paste0("h", 1:4, "rural"),
                           paste0("r", 1:4, "hukou"),
                           "raeduc_c",
@@ -335,31 +338,27 @@ with(charls, table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 
 #---- **Edu + adult edu ----
 charls %<>%
-  mutate(edu_cat =  case_when(
-    # No formal education at all
-    raeduc_c == 1 & adult_edu == 0 ~ 0,
-    # No formal education + adult education without diploma
-    raeduc_c == 1 & adult_edu == 1 & adult_edu_dplm == 0 ~ 1,
-    # No formal education + adult education with diploma
-    raeduc_c == 1 & adult_edu == 1 & adult_edu_dplm == 1 ~ 2,
-    # less than vocational school (finished elementary school) + no adult edu
-    raeduc_c %in% c(2, 3, 4) & adult_edu == 0 ~ 3,
-    # less than vocational school (finished elementary school) + adult edu without diploma
-    raeduc_c %in% c(2, 3, 4) & adult_edu == 1 & adult_edu_dplm == 0 ~ 4,
-    # less than vocational school (finished elementary school) + adult edu with diploma
-    raeduc_c %in% c(2, 3, 4) & adult_edu == 1 & adult_edu_dplm == 1 ~ 5,
-    # vocational school/middle school/high school + no adult edu
-    raeduc_c %in% c(5, 6, 7) & adult_edu == 0 ~ 6,
-    # vocational school/middle school/high school + adult edu without diploma
-    raeduc_c %in% c(5, 6, 7) & adult_edu == 1 & adult_edu_dplm == 0 ~ 7,
-    # vocational school/middle school/high school + adult edu with diploma
-    raeduc_c %in% c(5, 6, 7) & adult_edu == 1 & adult_edu_dplm == 1 ~ 8,
-    # college & above + no adult edu
-    raeduc_c %in% c(8, 9, 10) & adult_edu == 0 ~ 9,
-    # college & above + adult edu without diploma
-    raeduc_c %in% c(8, 9, 10) & adult_edu == 1 & adult_edu_dplm == 0 ~ 10,
-    # college & above + adult edu with diploma
-    raeduc_c %in% c(8, 9, 10) & adult_edu == 1 & adult_edu_dplm == 1 ~ 11)) %>%
+  mutate(
+    childhood_edu = case_when(raeduc_c == 1 ~ 0,
+                               raeduc_c %in% c(2, 3, 4) ~ 1,
+                               raeduc_c %in% c(5, 6, 7) ~ 2,
+                               raeduc_c %in% c(8, 9, 10) ~ 3),
+    continuing_edu = case_when(adult_edu == 0 ~ 0,
+                               adult_edu == 1 & adult_edu_dplm == 0 ~ 1,
+                               adult_edu == 1 & adult_edu_dplm == 1 ~ 2),
+    edu_cat =  case_when(
+      childhood_edu == 0 & continuing_edu == 0 ~ 0,
+      childhood_edu == 0 & continuing_edu == 1 ~ 1,
+      childhood_edu == 0 & continuing_edu == 2 ~ 2,
+      childhood_edu == 1 & continuing_edu == 0 ~ 3,
+      childhood_edu == 1 & continuing_edu == 1 ~ 4,
+      childhood_edu == 1 & continuing_edu == 2 ~ 5,
+      childhood_edu == 2 & continuing_edu == 0 ~ 6,
+      childhood_edu == 2 & continuing_edu == 1 ~ 7,
+      childhood_edu == 2 & continuing_edu == 2 ~ 8,
+      childhood_edu == 3 & continuing_edu == 0 ~ 9,
+      childhood_edu == 3 & continuing_edu == 1 ~ 10,
+      childhood_edu == 3 & continuing_edu == 2 ~ 11)) %>%
   labelled::set_value_labels(
     edu_cat = c("No Formal Education (Illiterate)" = 0,
                 "No formal education + continuing education without a diploma" = 1,
@@ -475,67 +474,72 @@ with(charls, table(ramoccup_c, ramomoccup_c, useNA = "ifany"))
 with(charls, table(rafoccup_c, radadoccup_c, useNA = "ifany"))
 with(charls, table(rameduc_c, useNA = "ifany"))
 
-#---- birth order ----
-# Pending
-proc_freq(charls, w3_cc003_w3_1_)
-proc_freq(charls, w4_cc000_w4_1)
-with(charls, table(lh_b2_1_1_, lh_b2_1_5_, useNA = "ifany"))
-
-charls %>% select(contains("lh_b4_2_")) %>%
-  apply(., 2, table, useNA = "ifany")
-
-charls %<>%
-  mutate(
-    first_child = case_when(
-      w1_cc002_1 > 0 |w1_cc002_3 > 0|w1_cc004_1 > 0|w1_cc004_3 > 0|
-        w2_cc002_1_1_ > 0|w2_cc002_3_1_ > 0|w2_cc004_1_1_ > 0|
-        w2_cc004_3_1_ > 0 ~ 0,
-      ((w1_cc002_1 == 0 & w1_cc002_3 == 0 & w1_cc004_1 == 0 & w1_cc004_3 == 0)|
-        (w2_cc002_1_1_ == 0 & w2_cc002_3_1_ == 0 & w2_cc004_1_1_ == 0 & 
-           w2_cc004_3_1_ == 0)) ~ 1,
-      # lh_b2_1_1_ %in% c(2, 4) ~ 1,
-      w3_xsiblingnum == 0 ~ 1,
-      w4_cc000_w4_1 == 0 ~ 1,
-      is.na(w1_cc002_1) & is.na(w1_cc002_3) & is.na(w1_cc004_1) & 
-        is.na(w1_cc004_3) & is.na(w2_cc002_1_1_) & is.na(w2_cc002_3_1_) & 
-        is.na(w2_cc004_1_1_) & is.na(w2_cc004_3_1_) ~ NA_real_
-      # TRUE ~ 1
-    ))
-
-# Sanity check
-proc_freq(charls, first_child)
-proc_freq(charls, lh_b1)
-charls %>% select(contains("lh_b2_1_")) %>% 
-  apply(., 2, function(x) table(x, useNA = "ifany"))
-with(charls, table(lh_b2_1_1_, lh_b2_1_2_, useNA = "ifany"))
-with(charls, table(lh_b2_1_1_, lh_b2_1_3_, useNA = "ifany"))
-with(charls, table(lh_b2_1_1_, lh_b2_1_4_, useNA = "ifany"))
-with(charls, table(lh_b2_1_1_, lh_b2_1_5_, useNA = "ifany"))
-with(charls, table(lh_b2_1_1_, lh_b2_1_6_, useNA = "ifany"))
-with(charls, table(lh_b2_1_1_, lh_b2_1_7_, useNA = "ifany"))
-with(charls, table(lh_b2_1_1_, lh_b2_1_8_, useNA = "ifany"))
-with(charls, table(lh_b2_1_1_, lh_b2_1_9_, useNA = "ifany"))
-with(charls, table(lh_b2_1_1_, lh_b2_1_10_, useNA = "ifany"))
-with(charls, table(first_child, w3_xsiblingnum, useNA = "ifany"))
-
-sib_mat_liv6 <- charls %>% select(ID, contains("lh_b4_3_")) %>%
-  mutate(sib1_sib2 = lh_b4_3_1_ - lh_b4_3_2_)
-
-view(charls %>% filter(ID == "056346102001") %>%
-       select(ID, female, rabyear, edu_cat, contains("lh_b4_3_")))
+# #---- birth order ----
+# # Pending 
+# # Come back after SER abstract
+# proc_freq(charls, w3_cc003_w3_1_)
+# proc_freq(charls, w4_cc000_w4_1)
+# with(charls, table(lh_b2_1_1_, lh_b2_1_5_, useNA = "ifany"))
+# 
+# charls %>% select(contains("lh_b4_2_")) %>%
+#   apply(., 2, table, useNA = "ifany")
+# 
+# charls %<>%
+#   mutate(
+#     first_child = case_when(
+#       w1_cc002_1 > 0 |w1_cc002_3 > 0|w1_cc004_1 > 0|w1_cc004_3 > 0|
+#         w2_cc002_1_1_ > 0|w2_cc002_3_1_ > 0|w2_cc004_1_1_ > 0|
+#         w2_cc004_3_1_ > 0 ~ 0,
+#       ((w1_cc002_1 == 0 & w1_cc002_3 == 0 & w1_cc004_1 == 0 & w1_cc004_3 == 0)|
+#         (w2_cc002_1_1_ == 0 & w2_cc002_3_1_ == 0 & w2_cc004_1_1_ == 0 & 
+#            w2_cc004_3_1_ == 0)) ~ 1,
+#       # lh_b2_1_1_ %in% c(2, 4) ~ 1,
+#       w3_xsiblingnum == 0 ~ 1,
+#       w4_cc000_w4_1 == 0 ~ 1,
+#       is.na(w1_cc002_1) & is.na(w1_cc002_3) & is.na(w1_cc004_1) & 
+#         is.na(w1_cc004_3) & is.na(w2_cc002_1_1_) & is.na(w2_cc002_3_1_) & 
+#         is.na(w2_cc004_1_1_) & is.na(w2_cc004_3_1_) ~ NA_real_
+#       # TRUE ~ 1
+#     ))
+# 
+# # Sanity check
+# proc_freq(charls, first_child)
+# proc_freq(charls, lh_b1)
+# charls %>% select(contains("lh_b2_1_")) %>% 
+#   apply(., 2, function(x) table(x, useNA = "ifany"))
+# with(charls, table(lh_b2_1_1_, lh_b2_1_2_, useNA = "ifany"))
+# with(charls, table(lh_b2_1_1_, lh_b2_1_3_, useNA = "ifany"))
+# with(charls, table(lh_b2_1_1_, lh_b2_1_4_, useNA = "ifany"))
+# with(charls, table(lh_b2_1_1_, lh_b2_1_5_, useNA = "ifany"))
+# with(charls, table(lh_b2_1_1_, lh_b2_1_6_, useNA = "ifany"))
+# with(charls, table(lh_b2_1_1_, lh_b2_1_7_, useNA = "ifany"))
+# with(charls, table(lh_b2_1_1_, lh_b2_1_8_, useNA = "ifany"))
+# with(charls, table(lh_b2_1_1_, lh_b2_1_9_, useNA = "ifany"))
+# with(charls, table(lh_b2_1_1_, lh_b2_1_10_, useNA = "ifany"))
+# with(charls, table(first_child, w3_xsiblingnum, useNA = "ifany"))
+# 
+# sib_mat_liv6 <- charls %>% select(ID, contains("lh_b4_3_")) %>%
+#   mutate(sib1_sib2 = lh_b4_3_1_ - lh_b4_3_2_)
+# 
+# view(charls %>% filter(ID == "056346102001") %>%
+#        select(ID, female, rabyear, edu_cat, contains("lh_b4_3_")))
 
 #---- First occupation type ----
-proc_freq(charls, w1_fb002)
-proc_freq(charls, w2_fb002)
-with(charls, table(w2_fb002, w1_fb002, useNA = "ifany"))
-with(charls %>% filter(is.na(w1_fb002) & !is.na(w2_fb002)), 
-     table(inw1, inw2, useNA = "ifany"))
+# # Pending after SER
+# proc_freq(charls, w1_fb002)
+# proc_freq(charls, w2_fb002)
+# with(charls, table(w2_fb002, w1_fb002, useNA = "ifany"))
+# with(charls %>% filter(is.na(w1_fb002) & !is.na(w2_fb002)), 
+#      table(inw1, inw2, useNA = "ifany"))
+# 
+# charls %<>%
+#   mutate(first_occupation = case_when(!is.na(w1_fb002) ~ w1_fb002,
+#                                       !is.na(w2_fb002) ~ w2_fb002))
+# proc_freq(charls, first_occupation)
+# colnames(charls %>% select(contains("fb002")))
 
-charls %<>%
-  mutate(first_occupation = case_when(!is.na(w1_fb002) ~ w1_fb002,
-                                      !is.na(w2_fb002) ~ w2_fb002))
-proc_freq(charls, first_occupation)
-colnames(charls %>% select(contains("fb002")))
+# 2011 wave 1 labor force
+proc_freq(charls, r1lbrf_c)
 
 #---- Marital status ----
 charls %<>%
@@ -579,8 +583,13 @@ charls %<>% mutate(
 proc_freq(charls, region_eng)
 with(charls, table(region_eng, province_eng, useNA = "ifany"))
 
+#---- Pending on birth place ----
+# Pending after SER
+
 #---- Hukou status ----
 proc_freq(charls, r1hukou)
+proc_freq(charls, lh_hukoutype) # First hukou status
+
 with(charls, table(r1hukou, r2hukou, useNA = "ifany"))
 with(charls %>% filter(is.na(r1hukou) & !is.na(r2hukou)), 
      table(inw1, inw2, useNA = "ifany"))
@@ -597,16 +606,15 @@ charls %<>%
       is.na(r4hukou) & is.na(lh_hukoutype) ~ NA_real_,
     TRUE ~ 1))
 
-# Pending
+# Pending after SER
 
 proc_freq(charls, hukou_flag)
 hukou_mat <- charls %>% select(contains("hukou")) %>% select(-hukou_flag)
 colSums(is.na(hukou_mat))
 
-#---- 
-
 #---- Save the data ----
-save(charls, file = here::here("data", "analysis_data", "charls_ser_abstract.RData"))
+save(charls, 
+     file = here::here("data", "analysis_data", "charls_ser_abstract.RData"))
 
 #---- OLD ----
 #---- ** Edu level cleaning ----
