@@ -396,5 +396,5 @@ results_for_figure %>%
   theme(legend.position = "bottom", legend.direction = "horizontal") +
   ggtitle("The Estimated Effect of Education Level on Cognition")
 
-ggsave(here::here("output", "figures", "figure_SER.jpeg"),
-       device = "jpeg", dpi = 300, width = 7, height = 5, units = "in")
+ggsave(here::here("output", "figures", "figure_SER.jpg"),
+       device = "jpg", dpi = 300, width = 7, height = 5, units = "in")
