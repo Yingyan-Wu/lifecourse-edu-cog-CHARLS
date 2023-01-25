@@ -232,13 +232,13 @@ charls %>% select(contains("age_y")) %>%
   apply(., 2, proc_sum)
 
 # Check those missing all the ages
-# view(charls %>% filter(is.na(r1age_y)) %>% 
-#        select(paste0("w", 1:4, "_ba002_1"), 
-#               paste0("w", 1:4, "_ba003"), 
-#               "rabyear", "rabmonth", "rabday", 
-#               paste0("r", 1:4, "agey"),
-#               "radyear", "radmonth",
-#               "ragender"))
+view(charls %>% filter(is.na(r1age_y)) %>%
+       select(paste0("w", 1:4, "_ba002_1"),
+              paste0("w", 1:4, "_ba003"),
+              "rabyear", "rabmonth", "rabday",
+              paste0("r", 1:4, "agey"),
+              "radyear", "radmonth",
+              "ragender"))
 
 #---- Gender ----
 charls %<>% 
