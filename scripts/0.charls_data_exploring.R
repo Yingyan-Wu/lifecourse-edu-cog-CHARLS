@@ -64,10 +64,20 @@ round(colSums(is.na(harmonized_selected %>%
                       select(contains("agey"), contains("imrc"),
                              contains("dlrc"))))/length(unique(harmonized$ID))*100, 2)
 
+harmonized_selected %<>%
+  mutate(imrc_balanced = case_when(!is.na(r1imrc) & !is.na(r2imrc) & 
+                                     !is.na(r3imrc) & !is.na(r4imrc) ~ 1,
+                                   TRUE ~ 0),
+         dlrc_balanced = case_when(!is.na(r1dlrc) & !is.na(r2dlrc) & 
+                                     !is.na(r3dlrc) & !is.na(r4dlrc) ~ 1,
+                                   TRUE ~ 0))
+with(harmonized_selected, table(imrc_balanced, useNA = "ifany"))
+with(harmonized_selected, table(dlrc_balanced, useNA = "ifany"))
+
 harmonized_long <- harmonized_selected %>%
   select(ID, contains("agey"), contains("imrc"),
-         contains("dlrc")) %>%
-  pivot_longer(cols = -ID,
+         contains("dlrc"), imrc_balanced, dlrc_balanced) %>%
+  pivot_longer(cols = -c(ID, imrc_balanced, dlrc_balanced),
                names_to = c("wave", ".value"),
                names_pattern = "r(\\d+)(.*)") %>%
   print()
@@ -92,7 +102,9 @@ harmonized_long %>%
        y = "Delayed word recall") +
   theme(legend.position = "none")
 
-harmonized_empirical <- harmonized_long %>%
+
+#---- **empirical plot ----
+harmonized_empirical_all <- harmonized_long %>%
   filter(!is.na(imrc)) %>%
   group_by(wave) %>%
   summarise_at(vars(imrc), 
@@ -108,7 +120,35 @@ harmonized_empirical <- harmonized_long %>%
                  variable = "Delayed word recall")) %>%
   print()
 
-harmonized_empirical %>%
+harmonized_empirical_all %>%
+  ggplot(aes(x = wave, y = mean, group = variable, color = variable)) + 
+  geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1) +
+  geom_text(aes(label = paste0("n = ", n), y = mean + 2 * se), vjust = -.5) +
+  geom_line() +
+  geom_point() +
+  theme_classic() +
+  labs(x = "Wave",
+       y = "Word recall",
+       title = "Average word recall score +/- 2 SE at different wave
+       all available data")
+
+harmonized_empirical_balanced <- harmonized_long %>%
+  filter(imrc_balanced == 1) %>%
+  group_by(wave) %>%
+  summarise_at(vars(imrc), 
+               funs(n(), mean, sd)) %>%
+  mutate(se = sd/sqrt(n),
+         variable = "Immediate word recall\n(n = 7946)") %>%
+  rbind(harmonized_long %>%
+          filter(dlrc_balanced == 1) %>%
+          group_by(wave) %>%
+          summarise_at(vars(dlrc), 
+                       funs(n(), mean, sd)) %>%
+          mutate(se = sd/sqrt(n),
+                 variable = "Delayed word recall\n(n = 7446)")) %>%
+  print()
+
+harmonized_empirical_balanced %>%
   ggplot(aes(x = wave, y = mean, group = variable, color = variable)) + 
   geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1) +
   geom_line() +
@@ -116,7 +156,11 @@ harmonized_empirical %>%
   theme_classic() +
   labs(x = "Wave",
        y = "Word recall",
-       title = "Average word recall score +/- 2 SE at different wave")
+       title = "Average word recall score +/- 2 SE at different wave
+       balanced data")
+
+view(harmonized_long %>%
+       filter(dlrc_balanced == 1 & wave == 4))
 
 #---- Check wave 4 delay word recall ----
 with(harmonized %>%
@@ -568,7 +612,7 @@ charls_w1 %<>% mutate(w1_age_work =
                                   w1_fb001 == 2 ~ w1_fb001_2 - w1_ba002_1))
 # The reason of stop working
 proc_freq(charls_w1, w1_fb010)
-  # 24 of them stopped 
+# 24 of them stopped 
 # Age start working * work unit at first job
 with(charls_w1, table(w1_age_work, w1_fb002, useNA = "ifany"))
 
@@ -584,9 +628,9 @@ charls %<>%
   mutate(age_edu_start = case_when(!is.na(w2_bd005) ~ w2_bd005,
                                    !is.na(w1_bd005) ~ w1_bd005),
          age_edu_finish = case_when(!is.na(w4_bd006) ~ w4_bd006,
-                                   !is.na(w3_bd006) ~ w3_bd006,
-                                   !is.na(w2_bd006) ~ w2_bd006,
-                                   !is.na(w1_bd006) ~ w1_bd006))
+                                    !is.na(w3_bd006) ~ w3_bd006,
+                                    !is.na(w2_bd006) ~ w2_bd006,
+                                    !is.na(w1_bd006) ~ w1_bd006))
 
 with(charls, table(age_edu_start, w1_bd005, useNA = "ifany"))
 summarytools::freq(charls$age_edu_start) # missing 9999 people
