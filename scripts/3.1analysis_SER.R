@@ -121,7 +121,7 @@ for (i in c(10, 20, 21, 30, 31, 32)){
         dataset_forpe,
         x = paste0("childhood_edu", i), c = cov_ch_total, 
         y = outcome, wt = "r1wtrespb", 
-        bootstrap = T),
+        bootstrap = F),
         Exposure = paste0("childhood_edu", i),
         Outcome = outcome))
   }
