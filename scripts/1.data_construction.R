@@ -49,6 +49,11 @@ harmonized <- haven::read_dta(here::here("data", "raw_data", "harmonized",
 #        filter(ID_w1 == ""))
 
 # harmonized_selected <- harmonized %>% filter(ID_w1 != "")
+
+#---- **harmonized life history ----
+harmonized_lh <- haven::read_dta(here::here("data", "raw_data", "harmonized",
+                                            "H_CHARLS_LH_a.dta"))
+
 #---- **psu ----
 psuw1 <- haven::read_dta(here::here("data", "raw_data", "2011", 
                                     "chinese_characters_clean", "psu.dta"))
@@ -209,11 +214,22 @@ charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4,
                    type = "full") %>% 
   as_tibble()
 
-colnames(charls %>% contains(".x"))
-rm(list = paste0("charls_", c(paste0("w", 1:4), "lh")))
+# colnames(charls %>% select(contains(".x")))
+charls %<>%
+  left_join(harmonized %>% select(-householdID, -communityID, 
+                                  -ID_w1), by = "ID")
+colnames(charls %>% select(contains(".x")))
 
 charls %<>%
-  left_join(harmonized, by = "ID")
+  left_join(harmonized_lh %>% 
+              select(-c("householdID", "communityID",
+                     "rabmonth", "rabyear", "ragender", 
+                     "ramomoccup_c", "radadoccup_c")),
+            by = "ID")
+colnames(charls %>% select(contains(".x")))
+
+rm(list = paste0("charls_", c(paste0("w", 1:4), "lh")))
+
 charls %<>% remove_labels()
 gc()
 # proc_freq(harmonized, raeduc_c)
@@ -222,7 +238,7 @@ gc()
 charls %>% select(contains("agey")) %>%
   apply(., 2, proc_sum)
 
-age_y <- charls %>% dplyr::select(contains("agey")) %>% 
+age_y <- charls %>% dplyr::select(contains("agey"), -contains("LHagey")) %>% 
   apply(., 1, impute_ages) %>% t()
 
 charls[, paste0("r", 1:4, "age_y")] <- age_y
@@ -261,11 +277,13 @@ colSums(is.na(charls %>% filter(is.na(r1age_y) & is.na(female)) %>%
                        "rabyear", "rabmonth", "rabday",
                        paste0("r", 1:4, "agey"),
                        "radyear", "radmonth")))
-# id_298 <- charls %>% filter(is.na(r1age_y) & is.na(female)) %>% 
-#   select(ID) %>% pull()
+id_298 <- charls %>% filter(is.na(r1age_y) & is.na(female)) %>%
+  select(ID) %>% pull()
+
+view(harmonized_lh %>% filter(ID %in% id_298))
 
 #Drop CHARLS harmonized gender variable
-charls %<>% dplyr::select(-ragender)
+# charls %<>% dplyr::select(-ragender)
 
 #---- Education variables ----
 #---- **Adult Education ----
@@ -340,9 +358,9 @@ with(charls, table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 charls %<>%
   mutate(
     childhood_edu = case_when(raeduc_c == 1 ~ 0,
-                               raeduc_c %in% c(2, 3, 4) ~ 1,
-                               raeduc_c %in% c(5, 6, 7) ~ 2,
-                               raeduc_c %in% c(8, 9, 10) ~ 3),
+                              raeduc_c %in% c(2, 3, 4) ~ 1,
+                              raeduc_c %in% c(5, 6, 7) ~ 2,
+                              raeduc_c %in% c(8, 9, 10) ~ 3),
     continuing_edu = case_when(adult_edu == 0 ~ 0,
                                adult_edu == 1 & adult_edu_dplm == 0 ~ 1,
                                adult_edu == 1 & adult_edu_dplm == 1 ~ 2),
@@ -524,6 +542,34 @@ with(charls, table(rameduc_c, useNA = "ifany"))
 # view(charls %>% filter(ID == "056346102001") %>%
 #        select(ID, female, rabyear, edu_cat, contains("lh_b4_3_")))
 
+#---- working history from harmonized LH ----
+work_history_long_mat <- charls %>%
+  select(ID, rLHagey, contains("c_wrkstate")) %>%
+  pivot_longer(!c(ID, rLHagey), 
+               names_to = "Age",
+               values_to = "wrkstate",
+               names_pattern = "c_wrkstate(.*)") %>%
+  filter(Age <= rLHagey) # exclude the records of later age which participants
+# have not reached (assigned NA records)
+
+# Sanity check
+with(work_history_long_mat, table(Age, useNA = "ifany"))
+
+# A random sample of 5 people
+set.seed("62283")
+random_id <- sample(unique(harmonized_lh$ID), 100, replace = F)
+
+work_history_long_mat %>%
+  filter(ID %in% random_id) %>%
+  ggplot(aes(x = Age, y = as.factor(wrkstate), group = ID, color = factor(ID))) +
+  geom_line() +
+  theme_classic() +
+  labs(x = "Age (year)",
+       y = "Work status",
+       title = paste0("Profile Plot of Work status across different age",
+                      "\nA random sample of 100 people")) +
+  theme(legend.position = "none")
+
 #---- First occupation type ----
 # # Pending after SER
 # proc_freq(charls, w1_fb002)
@@ -540,6 +586,28 @@ with(charls, table(rameduc_c, useNA = "ifany"))
 
 # 2011 wave 1 labor force
 proc_freq(charls, r1lbrf_c)
+
+#---- Marital history from harmonized LH ----
+marital_long_mat <- charls %>%
+  select(ID, rLHagey, contains("prtnstate")) %>%
+  pivot_longer(!c(ID, rLHagey), 
+               names_to = "Age",
+               values_to = "prtnstate",
+               names_pattern = "prtnstate(.*)") %>%
+  filter(Age <= rLHagey) # exclude the records of later age which participants
+# have not reached (assigned NA records)
+
+# Sanity check
+with(marital_long_mat, table(Age, useNA = "ifany"))
+
+marital_long_mat %>%
+  ggplot(aes(x = Age, y = as.factor(prtnstate), group = ID, color = factor(ID))) +
+  geom_line() +
+  theme_classic() +
+  labs(x = "Age (year)",
+       y = "Marital status",
+       title = paste0("Profile Plot of Marital status across different age")) +
+  theme(legend.position = "none")
 
 #---- Marital status ----
 charls %<>%
@@ -585,6 +653,28 @@ with(charls, table(region_eng, province_eng, useNA = "ifany"))
 
 #---- Pending on birth place ----
 # Pending after SER
+
+#---- Hukou history from harmonized LH ----
+hukou_long_mat <- charls %>%
+  select(ID, rLHagey, contains("hkstate")) %>%
+  pivot_longer(!c(ID, rLHagey), 
+               names_to = "Age",
+               values_to = "hkstate",
+               names_pattern = "hkstate(.*)") %>%
+  filter(Age <= rLHagey) # exclude the records of later age which participants
+# have not reached (assigned NA records)
+
+# Sanity check
+with(hukou_long_mat, table(Age, useNA = "ifany"))
+
+hukou_long_mat %>%
+  ggplot(aes(x = Age, y = as.factor(hkstate), group = ID, color = factor(ID))) +
+  geom_line() +
+  theme_classic() +
+  labs(x = "Age (year)",
+       y = "Hukou status",
+       title = paste0("Profile Plot of Hukou status across different age")) +
+  theme(legend.position = "none")
 
 #---- Hukou status ----
 proc_freq(charls, r1hukou)
