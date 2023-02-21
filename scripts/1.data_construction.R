@@ -223,8 +223,8 @@ colnames(charls %>% select(contains(".x")))
 charls %<>%
   left_join(harmonized_lh %>% 
               select(-c("householdID", "communityID",
-                     "rabmonth", "rabyear", "ragender", 
-                     "ramomoccup_c", "radadoccup_c")),
+                        "rabmonth", "rabyear", "ragender", 
+                        "ramomoccup_c", "radadoccup_c")),
             by = "ID")
 colnames(charls %>% select(contains(".x")))
 
@@ -233,6 +233,13 @@ rm(list = paste0("charls_", c(paste0("w", 1:4), "lh")))
 charls %<>% remove_labels()
 gc()
 # proc_freq(harmonized, raeduc_c)
+
+diffdf::diffdf(harmonized_lh %>% filter(ID %in% harmonized$ID) %>% 
+                 select(ID, "rabmonth", "rabyear", "ragender", 
+                        "ramomoccup_c", "radadoccup_c"),
+               harmonized %>% filter(ID %in% harmonized_lh$ID) %>% 
+                 select(ID, "rabmonth", "rabyear", "ragender", 
+                        "ramomoccup_c", "radadoccup_c"))
 
 #---- Age ----
 charls %>% select(contains("agey")) %>%
@@ -253,8 +260,8 @@ view(charls %>% filter(is.na(r1age_y)) %>%
               paste0("w", 1:4, "_ba003"),
               "rabyear", "rabmonth", "rabday",
               paste0("r", 1:4, "agey"),
-              "radyear", "radmonth",
-              "ragender"))
+              "radyear", "radmonth"))
+# "ragender"))
 
 #---- Gender ----
 charls %<>% 
