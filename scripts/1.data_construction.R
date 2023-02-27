@@ -78,17 +78,28 @@ table(harmonized$province_eng,useNA = "ifany")
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("demographic_background", "health_status_and_functioning", 
-              "work_retirement_and_pension",
-              "family_information")
+              "work_retirement_and_pension", "work_retirement",
+              "family_information", "weights", "Sample_infor"
+              )
 folder_index <- c(1:length(folders))[-c(1, 3, 5, 8)] # main waves only
 
 # Read in function
 read_charls <- function(paths){
-  if (str_detect(paths, "2011")) {
+  if (str_detect(paths, "2011") & str_detect(paths, "weights")) {
+    haven::read_dta(paths)
+  } else if (str_detect(paths, "2011")) {
     haven::read_dta(paths) %>%
-      select(-"proxy") # pending: can't figure out how to rename proxy automatically
-  } else if (str_detect(paths, "Family_Information") & 
+      select(-c("proxy")) # pending: can't figure out how to rename proxy automatically
+  } else if (str_detect(paths, "Health_Status_and_Functioning") & 
+             str_detect(paths, "2015")){
+    haven::read_dta(paths) %>%
+      select(-c("xrtype", "versionID", "proxy"))
+  } else if (str_detect(paths, "Family_Information|Weights") & 
              str_detect(paths, "2013|2015")){
+    haven::read_dta(paths) %>%
+      select(-c("versionID"))
+  } else if (str_detect(paths, "2015|2018") &
+             str_detect(paths, "Sample_Infor")){
     haven::read_dta(paths) %>%
       select(-c("versionID"))
   } else if (str_detect(paths, "2013|2015")){
@@ -98,6 +109,19 @@ read_charls <- function(paths){
              str_detect(paths, "2018")){
     haven::read_dta(paths) %>%
       select(-c("versionID"))
+  } else if (str_detect(paths, "2018") &
+             str_detect(paths, "Weights")){
+    haven::read_dta(paths) %>%
+      select(-c("versionID"))
+  } else if (str_detect(paths, "2018") & 
+             str_detect(paths, "Health_Status_and_Functioning")){
+    haven::read_dta(paths) %>%
+      select(-c("versionID", "xrtype",
+                "xrgender", "ziwtime"))
+  } else if (str_detect(paths, "2018") & 
+             str_detect(paths, "Work_Retirement")){
+    haven::read_dta(paths) %>%
+      select(-c("versionID", "xrtype"))
   } else if (str_detect(paths, "2018")){
     haven::read_dta(paths) %>%
       select(-c("versionID",
@@ -116,8 +140,8 @@ for (i in folder_index){
   files <- files[str_detect(files, regex(glue_collapse(datasets, sep="|"), 
                                          ignore_case = T))]
   # Read in as list
+  # list <- lapply(files, read_dta)
   list <- lapply(files, read_charls)
-  # list <- lapply(files, read_charls)
   names(list) <- gsub(".*/(.*)\\..*", "\\1", files)
   # Assign names for each wave's list
   assign(paste0("wave", which(folder_index == i)), list)
@@ -135,8 +159,16 @@ folder_index <- c(1:length(folders))[5] # life history only
 files <- list.files(path = folders[5], full.names = TRUE)
 files <- files[str_detect(files, regex(glue_collapse(datasets, sep="|"), 
                                        ignore_case = T))]
+
+read_charls_lh <- function(paths){
+  if (str_detect(paths, "Residence")) {
+    haven::read_dta(paths) %>% select(-rgender)
+  } else {
+    haven::read_dta(paths)
+  }
+}
 # Read in as list
-list <- lapply(files, haven::read_dta)
+list <- lapply(files, read_charls_lh)
 names(list) <- gsub(".*/(.*)\\..*", "\\1", files)
 # Assign names for each wave's list
 assign("life_history", list)
@@ -147,7 +179,7 @@ rm(list)
 charls_w1 <- join_all(wave1, 
                       by = c("ID", "householdID", "communityID"),
                       type = "left", match = "all") %>%
-  rename_with(.cols = !c("ID", "householdID", "communityID"), 
+  rename_with(.cols = !c("ID", "householdID", "communityID"),
               function(x){paste0("w1_", x)})
 # colnames(charls_w1)
 
@@ -159,21 +191,21 @@ charls_w2 <- join_all(wave2,
 # colnames(charls_w2)
 
 charls_w3 <- join_all(wave3, 
-                      # by = c("ID", "householdID", "communityID"),
+                      by = c("ID", "householdID", "communityID"),
                       type = "left", match = "all") %>%
   rename_with(.cols = !c("ID", "householdID", "communityID"), 
               function(x){paste0("w3_", x)})
 # colnames(charls_w3)
 
 charls_w4 <- join_all(wave4, 
-                      # by = c("ID", "householdID", "communityID"),
-                      type = "left", match = "all") %>%
+                          by = c("ID", "householdID", "communityID"),
+                          type = "left", match = "all") %>%
   rename_with(.cols = !c("ID", "householdID", "communityID"), 
               function(x){paste0("w4_", x)})
 # colnames(charls_w4)
 
 charls_lh <- join_all(life_history, 
-                      # by = c("ID", "householdID", "communityID", "versionID"), 
+                      by = c("ID", "householdID", "communityID", "versionID"),
                       type = "left", match = "all") %>%
   rename_with(.cols = !c("ID", "householdID", "communityID", "versionID"), 
               function(x){paste0("lh_", x)})
@@ -222,9 +254,9 @@ colnames(charls %>% select(contains(".x")))
 
 charls %<>%
   left_join(harmonized_lh %>% 
-              select(-c("householdID", "communityID",
-                        "rabmonth", "rabyear", "ragender", 
-                        "ramomoccup_c", "radadoccup_c")),
+              dplyr::rename_with(.cols = starts_with("ra"), 
+                                 function(x){paste0("lh_", x)}) %>%
+              select(-c("householdID", "communityID")),
             by = "ID")
 colnames(charls %>% select(contains(".x")))
 
@@ -254,14 +286,41 @@ rm(age_y)
 charls %>% select(contains("age_y")) %>%
   apply(., 2, proc_sum)
 
-# Check those missing all the ages
+# Check those missing the ages
 view(charls %>% filter(is.na(r1age_y)) %>%
        select(paste0("w", 1:4, "_ba002_1"),
+              paste0("w", 1:4, "_ba002_2"),
               paste0("w", 1:4, "_ba003"),
+              paste0("w", 1:4, "_iyear"),
+              paste0("w", 1:4, "_imonth"),
               "rabyear", "rabmonth", "rabday",
               paste0("r", 1:4, "agey"),
-              "radyear", "radmonth"))
-# "ragender"))
+              "radyear", "radmonth", contains("lh_r")))
+
+colSums(is.na(harmonized %>% filter(is.na(r1agey) & is.na(r2agey) & is.na(r3agey) &
+                             is.na(r4agey)) %>%
+       select(rabyear, rabmonth, rabday))) # 305 missing
+
+missingage_id <- harmonized %>% filter(is.na(r1agey) & is.na(r2agey) & is.na(r3agey) &
+                        is.na(r4agey)) %>% pull(ID)
+
+harmonized_lh %>% filter(ID %in% missingage_id) %>% nrow()
+
+colSums(is.na(harmonized_lh %>% filter(ID %in% missingage_id) %>%
+                select(rabyear, rabmonth)))
+charls %>% filter(ID %in% missingage_id) %>% nrow()
+colSums(is.na(harmonized_lh %>% filter(ID %in% missingage_id) %>%
+                select(rabyear, rabmonth)))
+
+view(charls %>% filter(ID %in% missingage_id) %>%
+       select(paste0("w", 1:4, "_ba002_1"),
+              paste0("w", 1:4, "_ba002_2"),
+              paste0("w", 1:4, "_ba003"),
+              paste0("w", 1:4, "_iyear"),
+              paste0("w", 1:4, "_imonth"),
+              "rabyear", "rabmonth", "rabday",
+              paste0("r", 1:4, "agey"),
+              "radyear", "radmonth", contains("lh_r")))
 
 #---- Gender ----
 charls %<>% 
