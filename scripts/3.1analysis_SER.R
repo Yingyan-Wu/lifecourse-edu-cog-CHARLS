@@ -31,12 +31,95 @@ charls_selected <- charls %>%
 source(here::here("scripts", "functions.R"))
 source(here::here("scripts", "3.0time_fixed_g_comp_func.R"))
 
+#---- Table 1 ----
+p_load("gtsummary")
+charls_selected_svy <- charls_selected %>%
+  select(r1age_y, female, edu_cat, h1rural,
+         rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c,
+         r1imrc, r1dlrc,
+         r1wtrespb) %>%
+  labelled::set_variable_labels(
+    r1age_y = "Baseline age in years",
+    female = "Female (%)",
+    edu_cat = "Education level (%)",
+    h1rural = "Rural residence (%)",
+    rameduc_c = "Mother's education level (%)", 
+    rafeduc_c = "Father's education level (%)", 
+    ramoccup_c = "Mother's occupation (%)", 
+    rafoccup_c = "Father's occupation (%)",
+    r1imrc = "Baseline Immediate word recall", 
+    r1dlrc = "Baseline delayed word recall") %>%
+  labelled::drop_unused_value_labels() %>%
+  labelled::set_value_labels(
+    female = c("Yes" = 1, "No" = 0),
+    h1rural = c("Yes" = 1, "No" = 0),
+    rameduc_c = c(
+      "No formal education" = 0,
+      "Elementary school or less" = 1,
+      "Vocational school/middle school/high school" = 2,
+      "College & above" = 3), 
+    rafeduc_c = c(
+      "No formal education" = 0,
+      "Elementary school or less" = 1,
+      "Vocational school/middle school/high school" = 2,
+      "College & above" = 3) , 
+    ramoccup_c = c("Farming" = 1,
+                   "Non-Agricultural" = 0), 
+    rafoccup_c = c("Farming" = 1,
+                   "Non-Agricultural" = 0)) %>%
+  modify_if(is.labelled, to_factor) %>%
+  modify_if(is.factor,
+            function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
+  survey::svydesign(~1, data = ., weights = ~r1wtrespb)
+
+table1 <- tbl_svysummary(
+    data = charls_selected_svy,
+    statistic = list(all_categorical() ~ "{n_unweighted} ({p}%)",
+                     all_continuous() ~ c("{mean} ({sd})")),
+    type = all_continuous() ~ "continuous",
+    digits = list(all_continuous() ~ 1,
+                  all_categorical() ~ c(0, 1))) %>% 
+  bold_labels() %>%
+  modify_footnote(
+    update = list(
+      starts_with("stat_") ~
+        "Mean (SD) for continuous variables; n (%) for categorical variables")
+  )  
+
+table1 %>% as_flex_table() %>% flextable::save_as_pptx(
+    path = here::here("output", "tables", "table1_poster.pptx"))
+  # select(-ID, -province_eng) %>%
+  # modify_if(is.labelled, to_factor) %>%
+  # modify_if(is.factor,
+  #           function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
+  # tbl_summary(
+  #   statistic = list(all_categorical() ~ "{n} ({p}%)",
+  #                    all_continuous() ~ c("{mean} ({sd})",
+  #                                         "({min}, {max})")),
+  #   type = all_continuous() ~ "continuous2",
+  #   # by = childhood_edu20,
+  #   digits = list(all_continuous() ~ 1,
+  #                 all_categorical() ~ c(0, 1)),
+  #   missing = "ifany",
+  #   missing_text = "Missing") %>% 
+  # # modify_spanning_header(starts_with("stat_") ~ "**Baseline CES-D**") %>%
+  # bold_labels() %>%
+  # modify_footnote(
+  #   update = list(
+  #     starts_with("stat_") ~
+  #       "Mean (SD) for continuous variables; n (%) for categorical variables")
+  # ) %>% as_flex_table()
+
+
 #---- Prepare the dataset ----
 covariates <- c("r1age_y", "female", "region_eng", "rarural_child", 
                 "lh_hukoutype", "r1lbrf_c", "h1rural", "r1mstat_c_v2", 
                 "rameduc_c", "rafeduc_c", "ramoccup_c", "rafoccup_c")
 charls_selected %>% select(all_of(covariates)) %>%
   apply(., 2, unique)
+
+# charls_selected %<>%
+#   filter(lh_hukoutype != 4 & rameduc_c != 3)
 
 charls_selected %<>%
   mutate(childhood_edu10 = case_when(childhood_edu == 1 ~ 1,
@@ -72,32 +155,6 @@ with(charls_selected, table(childhood_edu, childhood_edu30, useNA = "ifany"))
 with(charls_selected, table(continuing_edu, continuing_edu20, useNA = "ifany")) 
 charls_selected %>% select(all_of(covariates)) %>%
   map_dfr(class) %>% t()
-
-
-p_load("gtsummary")
-charls_selected %>%
-  select(-ID, -province_eng) %>%
-  modify_if(is.labelled, to_factor) %>%
-  tbl_summary(
-    statistic = list(all_categorical() ~ "{n} ({p}%)",
-                     all_continuous() ~ c("{mean} ({sd})",
-                                          "({min}, {max})")),
-    type = all_continuous() ~ "continuous2",
-    # by = childhood_edu20,
-    digits = list(all_continuous() ~ 1,
-                  all_categorical() ~ c(0, 1)),
-    missing = "ifany",
-    missing_text = "Missing") %>% 
-  # modify_spanning_header(starts_with("stat_") ~ "**Baseline CES-D**") %>%
-  bold_labels() %>%
-  modify_footnote(
-    update = list(
-      starts_with("stat_") ~
-        "Mean (SD) for continuous variables; n (%) for categorical variables")
-  ) %>% as_flex_table()
-
-# charls_selected %<>%
-#   filter(lh_hukoutype != 4 & rameduc_c != 3)
 
 #---- E(Y_edu1) ----
 cov_ch_total <- c("r1age_y", "female", "region_eng", "rarural_child", 
@@ -391,6 +448,67 @@ results_for_figure %>%
   # scale_x_continuous(limits=c(-3, 2), breaks = seq(0, 2.5, 0.5)) +
   scale_y_discrete(limits = rev(levels(results_for_figure$contrast))) +
   facet_grid(cols = vars(Outcome), scales = "free") +
+  # cols = vars(contrast)) +
+  theme_minimal() +
+  theme(legend.position = "bottom", legend.direction = "horizontal") +
+  ggtitle("The Estimated Effect of Education Level on Cognition")
+
+ggsave(here::here("output", "figures", "figure_SER.jpg"),
+       device = "jpg", dpi = 300, width = 7, height = 5, units = "in")
+#---- ** another version of the figure ----
+results_for_figure <- rbind(results_Y_x, results_Y_x2_cond) %>%
+  filter(Exposure != "continuing_edu210") %>%
+  mutate(
+    Outcome = case_when(Outcome == "r1imrc" ~ "Immediate word recall score",
+                        Outcome == "r1dlrc" ~ "Delayed word recall score",
+                        TRUE ~ Outcome),
+    contrast = case_when(
+      Exposure == "childhood_edu10" ~ 
+        "Elementary school or less vs.\nNo Formal Education",
+      Exposure == "childhood_edu20" ~ 
+        "Middle school level vs.\nNo Formal Education",
+      Exposure == "childhood_edu21" ~ 
+        "Middle school level vs.\nElementary school or less",
+      Exposure == "childhood_edu30" ~ 
+        "College & above vs.\nNo Formal Education",
+      Exposure == "childhood_edu31" ~ 
+        "College & above vs.\nElementary school or less",
+      Exposure == "childhood_edu32" ~ 
+        "College & above vs.\nMiddle school level",
+      Exposure == "continuing_edu10" ~
+        "Continuing education without a diploma vs.\nno continuing education\n(conditioning on early life education level)",
+      Exposure == "continuing_edu20" ~
+        "Continuing education with a diploma vs.\nno continuing education\n(conditioning on early life education level)")) %>%
+  # Exposure == "continuing_edu210" ~
+  #   "Continuing education with/without a diploma vs.\nno continuing education\n(conditioning on early life education level)")) %>%
+  mutate(contrast = factor(
+    contrast, 
+    levels = 
+      c("Elementary school or less vs.\nNo Formal Education",
+        "Middle school level vs.\nNo Formal Education",
+        "College & above vs.\nNo Formal Education",
+        "Middle school level vs.\nElementary school or less",
+        "College & above vs.\nMiddle school level",
+        "College & above vs.\nElementary school or less",
+        "Continuing education without a diploma vs.\nno continuing education\n(conditioning on early life education level)",
+        # "Continuing education with/without a diploma vs.\nno continuing education\n(conditioning on early life education level)",
+        "Continuing education with a diploma vs.\nno continuing education\n(conditioning on early life education level)")))
+
+results_for_figure %>%
+  ggplot(aes(x = Mean,
+             # x = Point_est, 
+             y = contrast)) +
+  geom_point(position = position_dodge((width = 0.3))) +
+  geom_errorbarh(aes(xmin = p2.5th, xmax = p97.5th), height = 0.1,
+                 position = position_dodge()) +
+  geom_vline(xintercept = 0) +
+  ylab("Comparison") +
+  xlab("Mean Difference") +
+  scale_x_continuous(limits = c(-0.7, 3.3)) +
+  # scale_x_continuous(limits=c(-3, 2), breaks = seq(0, 2.5, 0.5)) +
+  scale_y_discrete(limits = rev(levels(results_for_figure$contrast))) +
+  facet_grid(rows = vars(contrast), scales = "free") +
+  # facet_grid(cols = vars(Outcome), scales = "free") +
   # cols = vars(contrast)) +
   theme_minimal() +
   theme(legend.position = "bottom", legend.direction = "horizontal") +
