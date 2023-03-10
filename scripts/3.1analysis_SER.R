@@ -418,13 +418,15 @@ results_for_figure <- rbind(results_Y_x, results_Y_x2_cond) %>%
       Exposure == "continuing_edu10" ~
         "Continuing education without a diploma vs.\nno continuing education\n(conditioning on early life education level)",
       Exposure == "continuing_edu20" ~
-        "Continuing education with a diploma vs.\nno continuing education\n(conditioning on early life education level)")) %>%
+        "Continuing education with a diploma vs.\nno continuing education\n(conditioning on early life education level)"),
+    comparison = case_when(str_detect(Exposure, "childhood_edu") ~ "Early life edu",
+                           str_detect(Exposure, "continuing_edu") ~ "Continuing edu")) %>%
       # Exposure == "continuing_edu210" ~
       #   "Continuing education with/without a diploma vs.\nno continuing education\n(conditioning on early life education level)")) %>%
   mutate(contrast = factor(
     contrast, 
     levels = 
-      c("Elementary school or less vs.\nNo Formal Education",
+      rev(c("Elementary school or less vs.\nNo Formal Education",
         "Middle school level vs.\nNo Formal Education",
         "College & above vs.\nNo Formal Education",
         "Middle school level vs.\nElementary school or less",
@@ -432,7 +434,7 @@ results_for_figure <- rbind(results_Y_x, results_Y_x2_cond) %>%
         "College & above vs.\nElementary school or less",
         "Continuing education without a diploma vs.\nno continuing education\n(conditioning on early life education level)",
         # "Continuing education with/without a diploma vs.\nno continuing education\n(conditioning on early life education level)",
-        "Continuing education with a diploma vs.\nno continuing education\n(conditioning on early life education level)")))
+        "Continuing education with a diploma vs.\nno continuing education\n(conditioning on early life education level)"))))
 
 results_for_figure %>%
   ggplot(aes(x = Mean,
@@ -446,7 +448,7 @@ results_for_figure %>%
   xlab("Mean Difference") +
   scale_x_continuous(limits = c(-0.7, 3.3)) +
   # scale_x_continuous(limits=c(-3, 2), breaks = seq(0, 2.5, 0.5)) +
-  scale_y_discrete(limits = rev(levels(results_for_figure$contrast))) +
+  # scale_y_discrete(limits = rev(levels(results_for_figure$contrast))) +
   facet_grid(cols = vars(Outcome), scales = "free") +
   # cols = vars(contrast)) +
   theme_minimal() +
@@ -455,6 +457,7 @@ results_for_figure %>%
 
 ggsave(here::here("output", "figures", "figure_SER.jpg"),
        device = "jpg", dpi = 300, width = 7, height = 5, units = "in")
+
 #---- ** another version of the figure ----
 results_for_figure <- rbind(results_Y_x, results_Y_x2_cond) %>%
   filter(Exposure != "continuing_edu210") %>%
@@ -476,43 +479,47 @@ results_for_figure <- rbind(results_Y_x, results_Y_x2_cond) %>%
       Exposure == "childhood_edu32" ~ 
         "College & above vs.\nMiddle school level",
       Exposure == "continuing_edu10" ~
-        "Continuing education without a diploma vs.\nno continuing education\n(conditioning on early life education level)",
+        "Continuing education w/o a diploma vs.\nno continuing education",
       Exposure == "continuing_edu20" ~
-        "Continuing education with a diploma vs.\nno continuing education\n(conditioning on early life education level)")) %>%
+        "Continuing education w/ a diploma vs.\nno continuing education"),
+    comparison = case_when(str_detect(Exposure, "childhood_edu") ~ "Early life edu",
+                           str_detect(Exposure, "continuing_edu") ~ "Continuing edu")) %>%
   # Exposure == "continuing_edu210" ~
   #   "Continuing education with/without a diploma vs.\nno continuing education\n(conditioning on early life education level)")) %>%
   mutate(contrast = factor(
     contrast, 
     levels = 
-      c("Elementary school or less vs.\nNo Formal Education",
-        "Middle school level vs.\nNo Formal Education",
-        "College & above vs.\nNo Formal Education",
-        "Middle school level vs.\nElementary school or less",
-        "College & above vs.\nMiddle school level",
-        "College & above vs.\nElementary school or less",
-        "Continuing education without a diploma vs.\nno continuing education\n(conditioning on early life education level)",
-        # "Continuing education with/without a diploma vs.\nno continuing education\n(conditioning on early life education level)",
-        "Continuing education with a diploma vs.\nno continuing education\n(conditioning on early life education level)")))
+      rev(c("Elementary school or less vs.\nNo Formal Education",
+            "Middle school level vs.\nNo Formal Education",
+            "College & above vs.\nNo Formal Education",
+            "Middle school level vs.\nElementary school or less",
+            "College & above vs.\nMiddle school level",
+            "College & above vs.\nElementary school or less",
+            "Continuing education w/o a diploma vs.\nno continuing education",
+            # "Continuing education with/w/o a diploma vs.\nno continuing education\n(conditioning on early life education level)",
+            "Continuing education w/ a diploma vs.\nno continuing education"))))
 
 results_for_figure %>%
   ggplot(aes(x = Mean,
-             # x = Point_est, 
              y = contrast)) +
-  geom_point(position = position_dodge((width = 0.3))) +
-  geom_errorbarh(aes(xmin = p2.5th, xmax = p97.5th), height = 0.1,
-                 position = position_dodge()) +
+  geom_point(position = position_dodge((width = 0.3)), 
+             color = "#0083C3", size = 2.5) +
+  geom_errorbarh(aes(xmin = p2.5th, xmax = p97.5th), color = "#0083C3",
+                 height = 0.1, position = position_dodge(), size = 0.8) +
   geom_vline(xintercept = 0) +
-  ylab("Comparison") +
   xlab("Mean Difference") +
-  scale_x_continuous(limits = c(-0.7, 3.3)) +
+  scale_x_continuous(limits = c(-0.7, 3.3), breaks = seq(-0.7, 3.3, 0.5)) +
   # scale_x_continuous(limits=c(-3, 2), breaks = seq(0, 2.5, 0.5)) +
-  scale_y_discrete(limits = rev(levels(results_for_figure$contrast))) +
-  facet_grid(rows = vars(contrast), scales = "free") +
-  # facet_grid(cols = vars(Outcome), scales = "free") +
+  facet_grid(fct_rev(comparison) ~ Outcome, scales = "free", space = "free") +
+  # scale_y_discrete(limits = rev(levels(results_for_figure$contrast))) +
   # cols = vars(contrast)) +
-  theme_minimal() +
-  theme(legend.position = "bottom", legend.direction = "horizontal") +
-  ggtitle("The Estimated Effect of Education Level on Cognition")
+  theme_bw() +
+  theme(axis.text.y = element_text(color = "black", size = 11),
+        axis.title.y = element_blank(),
+        strip.text.y = element_text(size = 10.5),
+        plot.background = element_rect(fill='transparent', color=NA))
+  # ggtitle("The Estimated Effect of Education Level on Cognition")
 
-ggsave(here::here("output", "figures", "figure_SER.jpg"),
-       device = "jpg", dpi = 300, width = 7, height = 5, units = "in")
+ggsave(here::here("output", "figures", "figure_poster.png"),
+       bg='transparent',
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
