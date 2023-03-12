@@ -55,15 +55,19 @@ harmonized_lh <- haven::read_dta(here::here("data", "raw_data", "harmonized",
                                             "H_CHARLS_LH_a.dta"))
 
 #---- **psu ----
-psuw1 <- haven::read_dta(here::here("data", "raw_data", "2011", 
-                                    "chinese_characters_clean", "psu.dta"))
-colnames(psuw1)
+# psuw1 <- haven::read_dta(here::here("data", "raw_data", "2011", 
+#                                     "chinese_characters_clean", "psu.dta"))
+# colnames(psuw1)
+# 
+# p_load("deeplr")
+# psuw1 %<>%
+#   mutate(province_eng = toEnglish2(
+#     province, get_detect = T, 
+#     auth_key = "a152826f-19ff-78ea-32a5-1b8a9b13a291:fx")$translation)
+# 
+# save(psuw1, file = here::here("data", "analysis_data", "psuw1.RData"))
 
-p_load("deeplr")
-psuw1 %<>%
-  mutate(province_eng = toEnglish2(
-    province, get_detect = T, 
-    auth_key = "a152826f-19ff-78ea-32a5-1b8a9b13a291:fx")$translation)
+load(here::here("data", "analysis_data", "psuw1.RData"))
 
 harmonized %<>% left_join(psuw1 %>% select(communityID, province_eng), 
                           by = "communityID")
@@ -148,6 +152,8 @@ for (i in folder_index){
 }
 
 rm(list)
+
+gc()
 
 #---- **life history datasets ----
 getwd()
@@ -301,8 +307,9 @@ colSums(is.na(harmonized %>% filter(is.na(r1agey) & is.na(r2agey) & is.na(r3agey
                              is.na(r4agey)) %>%
        select(rabyear, rabmonth, rabday))) # 305 missing
 
-missingage_id <- harmonized %>% filter(is.na(r1agey) & is.na(r2agey) & is.na(r3agey) &
-                        is.na(r4agey)) %>% pull(ID)
+missingage_id <- harmonized %>% 
+  filter(is.na(r1agey) & is.na(r2agey) & is.na(r3agey) & is.na(r4agey)) %>% 
+  pull(ID)
 
 harmonized_lh %>% filter(ID %in% missingage_id) %>% nrow()
 
@@ -312,7 +319,7 @@ charls %>% filter(ID %in% missingage_id) %>% nrow()
 colSums(is.na(harmonized_lh %>% filter(ID %in% missingage_id) %>%
                 select(rabyear, rabmonth)))
 
-view(charls %>% filter(ID %in% missingage_id) %>%
+charls_missingage <- charls %>% filter(ID %in% missingage_id) %>%
        select(paste0("w", 1:4, "_ba002_1"),
               paste0("w", 1:4, "_ba002_2"),
               paste0("w", 1:4, "_ba003"),
@@ -320,7 +327,18 @@ view(charls %>% filter(ID %in% missingage_id) %>%
               paste0("w", 1:4, "_imonth"),
               "rabyear", "rabmonth", "rabday",
               paste0("r", 1:4, "agey"),
-              "radyear", "radmonth", contains("lh_r")))
+              "radyear", "radmonth", contains("lh_r"))
+table(charls_missingage$w1_ba002_2, useNA = "ifany") # 72 of them can't remember their birth month
+
+view(charls_missingage %>% filter(w1_ba002_2 == 0) %>%
+  select(paste0("w", 1:4, "_ba002_1"),
+         paste0("w", 1:4, "_ba002_2"),
+         paste0("w", 1:4, "_ba003"),
+         paste0("w", 1:4, "_iyear"),
+         paste0("w", 1:4, "_imonth"),
+         "rabyear", "rabmonth", "rabday",
+         paste0("r", 1:4, "agey"),
+         "radyear", "radmonth", contains("lh_r")))
 
 #---- Gender ----
 charls %<>% 
