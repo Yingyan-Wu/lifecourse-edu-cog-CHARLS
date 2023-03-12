@@ -523,3 +523,30 @@ results_for_figure %>%
 ggsave(here::here("output", "figures", "figure_poster.png"),
        bg='transparent',
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
+
+results_for_figure %>%
+  filter(Outcome == "Delayed word recall score") %>%
+  ggplot(aes(x = Mean,
+             y = contrast)) +
+  geom_point(position = position_dodge((width = 0.3)), 
+             color = "#0083C3", size = 2.5) +
+  geom_errorbarh(aes(xmin = p2.5th, xmax = p97.5th), color = "#0083C3",
+                 height = 0.1, position = position_dodge(), size = 0.8) +
+  geom_vline(xintercept = 0) +
+  xlab("Mean Difference") +
+  scale_x_continuous(limits = c(-0.7, 3.3), breaks = seq(-0.7, 3.3, 0.5)) +
+  # scale_x_continuous(limits=c(-3, 2), breaks = seq(0, 2.5, 0.5)) +
+  facet_grid(fct_rev(comparison) ~ ., scales = "free", space = "free") +
+  # scale_y_discrete(limits = rev(levels(results_for_figure$contrast))) +
+  # cols = vars(contrast)) +
+  theme_bw() +
+  theme(axis.text.y = element_text(color = "black", size = 11),
+        axis.title.y = element_blank(),
+        strip.text.y = element_text(size = 10.5),
+        strip.text.x = element_text(size = 10.5),
+        plot.background = element_rect(fill='transparent', color=NA))
+# ggtitle("The Estimated Effect of Education Level on Cognition")
+
+ggsave(here::here("output", "figures", "figure_poster_dlrc.png"),
+       bg='transparent',
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
