@@ -90,7 +90,8 @@ harmonized_long %>%
   geom_line() +
   theme_minimal() +
   labs(x = "Wave",
-       y = "Immediate word recall") +
+       y = "Immediate word recall",
+       title = "Spaghetti plot for a random sample (n = 50)") +
   theme(legend.position = "none")
 
 harmonized_long %>%
@@ -99,7 +100,8 @@ harmonized_long %>%
   geom_line() +
   theme_minimal() +
   labs(x = "Wave",
-       y = "Delayed word recall") +
+       y = "Delayed word recall",
+       title = "Spaghetti plot for a random sample (n = 50)") +
   theme(legend.position = "none")
 
 
@@ -176,6 +178,48 @@ with(harmonized %>%
 
 with(harmonized,
      table(r4imrc < r4dlrc, useNA = "ifany"))
+
+#---- Check the word recall time ----
+# This can be used after loading in core data in the data_construction script
+
+# immediate word recall ends
+charls %>% select(contains("DC008")) %>% head
+
+# when delay word recall starts
+charls %>% select(contains("DC026")) %>% head
+
+word_recall_time <- charls %>% select(contains(c("dc008", "dc026")),
+                                      -"w2_dc026", -"w2_dc008") %>%
+  mutate(w1_dc008 = case_when(!is.na(w1_dc008_1) ~ 
+                                paste0(w1_dc008_1, ":", w1_dc008_2),
+                              TRUE ~ NA_character_),
+         w1_dc026 = case_when(!is.na(w1_dc026_1) ~ 
+                                paste0(w1_dc026_1, ":", w1_dc026_2),
+                              TRUE ~ NA_character_)) %>%
+  # select(w1_dc008, w1_dc026, w2_dc008_1, w2_dc026_1, w3_dc008, w3_dc026) %>%
+  mutate(across(c("w1_dc008", "w1_dc026"), as.POSIXct,format="%H:%M")) %>%
+  mutate(across(c(w2_dc008_1, w2_dc026_1, w3_dc008, w3_dc026), 
+                as.POSIXct,format="%H:%M:%S")) %>%
+  mutate(w1_time_diff = difftime(w1_dc026, w1_dc008, tz,
+                                 units = c("mins")),
+         w2_time_diff = difftime(w2_dc026_1, w2_dc008_1, tz,
+                                 units = c("mins")),
+         w3_time_diff = difftime(w3_dc026, w3_dc008, tz,
+                                 units = c("mins")))
+
+word_recall_time %>%
+  select(contains("time_diff")) %>%
+  mutate_all(as.numeric) %>%
+  mutate(w1_time_diff = case_when(w1_time_diff < 0 ~ NA_real_,
+                                  TRUE ~ w1_time_diff),
+         w2_time_diff = case_when(w2_time_diff < 0 ~ NA_real_,
+                                  TRUE ~ w2_time_diff),
+         w3_time_diff = case_when(w3_time_diff < 0 ~ NA_real_,
+                                  TRUE ~ w3_time_diff)) %>%
+  apply(.,2, proc_sum, more = T)
+
+view(word_recall_time %>%
+  select(contains("time_diff")))
 
 #---- Reading core data ----
 #---- **main datasets ----
