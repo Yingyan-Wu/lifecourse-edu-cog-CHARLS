@@ -75,7 +75,7 @@ harmonized %<>%
                               raeduc_c %in% c(5, 6, 7) ~ 2,
                               raeduc_c %in% c(8, 9, 10) ~ 3))
 
-#---- Table 1 ----
+#---- Baseline Table 1 ----
 table1 <- harmonized %>%
   select(r1age_y, female, raeduc_c, childhood_edu, h1rural,
          r1hukou, h1rural, r1imrc, r1dlrc) %>%
@@ -121,6 +121,66 @@ modify_footnote(
 table1 %>%  as_flex_table() %>%
   flextable::save_as_docx(path = here::here("output", "tables", 
                                             "table1_equating_sample.docx"))
+#---- 2015 to 2018 long dataset ----
+harmonized_long_1518 <- harmonized %>%
+  select(ID:pnc, female, childhood_edu, 
+         contains("ra"), contains(c("3", "4")), -contains(c("1", "2"))) %>%
+  dplyr::rename_at(c("h3rural", "h4rural"), function(x) sub("h", "r", x)) %>%
+  pivot_longer(cols = !ID:raeduc_c,
+               names_to = c("wave", ".value"),
+               names_pattern = ("r(.)(.*)"))
+
+#---- ** Table 1 ----
+table1_1518 <- harmonized_long_1518 %>%
+  select(age_y, female, raeduc_c, childhood_edu, rural,
+         hukou, imrc, dlrc, wave) %>%
+  labelled::set_variable_labels(
+    age_y = "Age at waves",
+    female = "Female (%)",
+    raeduc_c = "Early life education level (%)",
+    childhood_edu = "Early life education level (simplified) (%)",
+    rural = "Rural residence (%)",
+    hukou = "Hukou status (%)",
+    imrc = "Immediate word recall", 
+    dlrc = "Delayed word recall") %>%
+  labelled::drop_unused_value_labels() %>%
+  labelled::set_value_labels(
+    female = c("Yes" = 1, "No" = 0),
+    rural = c("Yes" = 1, "No" = 0),
+    childhood_edu = c(
+      "No formal education" = 0,
+      "Elementary school or less" = 1,
+      "Vocational school/middle school/high school" = 2,
+      "College & above" = 3),
+    wave = c("2015" = "3", "2018" = "4")) %>%
+  modify_if(is.labelled, to_factor) %>%
+  modify_if(is.factor,
+            function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
+  tbl_summary(
+    statistic = list(all_categorical() ~ "{n} ({p}%)",
+                     all_continuous() ~ c("{mean} ({sd})",
+                                          "({min}, {max})")),
+    type = all_continuous() ~ "continuous2",
+    by = wave,
+    digits = list(all_continuous() ~ 1,
+                  all_categorical() ~ c(0, 1)),
+    missing = "ifany",
+    missing_text = "Missing") %>%
+  add_overall() %>%
+  # modify_spanning_header(starts_with("stat_") ~ "**Baseline CES-D**") %>%
+  bold_labels() %>%
+  modify_footnote(
+    update = list(
+      starts_with("stat_") ~
+        "Mean (SD) for continuous variables; n (%) for categorical variables")
+  )
+
+table1_1518 %>%  as_flex_table() %>%
+  flextable::save_as_docx(path = here::here("output", "tables", 
+                                            "table1_equating_sample_15_18.docx"))
+
 #---- Save the dataset ----
-saveRDS(harmonized, file = here::here("data", "analysis_data", 
-                                      "charls_equating_samp.RDS"))
+save(harmonized, harmonized_long_1518, file = here::here("data", "analysis_data", 
+                                      "charls_equating_samp.RData"))
+
+
