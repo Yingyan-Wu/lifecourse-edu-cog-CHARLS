@@ -17,8 +17,7 @@ p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "glue",
 #---- function ----
 source(here::here("scripts", "functions.R"))
 
-#---- Load the datasets ----
-#---- **harmonized ----
+#---- Harmonized dataset ----
 harmonized_variables <- c("ID", "householdID", "pnc", "communityID",
                           "ID_w1", "householdID_w1", 
                           "rabyear", "rabmonth", "rabday", 
@@ -38,7 +37,7 @@ harmonized <- haven::read_dta(here::here("data", "raw_data", "harmonized",
 
 harmonized_selected <- harmonized %>% filter(ID_w1 != "")
 
-#---- Age distribution at each wave ----
+#---- **Age distribution at each wave ----
 harmonized_selected %>%
   select(contains("agey")) %>%
   apply(., 2, function(x) proc_sum(x, more = T))
@@ -58,7 +57,7 @@ harmonized_selected %>%
   facet_wrap(~ wave, scales = "free_x") +
   theme_minimal()
 
-#---- Word recall ----
+#---- **Word recall ----
 # Missingness
 round(colSums(is.na(harmonized_selected %>%
                       select(contains("agey"), contains("imrc"),
@@ -105,7 +104,7 @@ harmonized_long %>%
   theme(legend.position = "none")
 
 
-#---- **empirical plot ----
+#---- ****empirical plot ----
 harmonized_empirical_all <- harmonized_long %>%
   filter(!is.na(imrc)) %>%
   group_by(wave) %>%
@@ -164,7 +163,7 @@ harmonized_empirical_balanced %>%
 view(harmonized_long %>%
        filter(dlrc_balanced == 1 & wave == 4))
 
-#---- Check wave 4 delay word recall ----
+#---- **Check wave 4 delay word recall ----
 with(harmonized %>%
        mutate(r4rc_flag = case_when(r4imrc < r4dlrc ~ "immediate < delay",
                                     r4imrc == r4dlrc ~ "immediate = delay",
@@ -179,7 +178,7 @@ with(harmonized %>%
 with(harmonized,
      table(r4imrc < r4dlrc, useNA = "ifany"))
 
-#---- Check the word recall time ----
+#---- **Check the word recall time ----
 # This can be used after loading in core data in the data_construction script
 
 # immediate word recall ends
@@ -219,9 +218,9 @@ word_recall_time %>%
   apply(.,2, proc_sum, more = T)
 
 view(word_recall_time %>%
-  select(contains("time_diff")))
+       select(contains("time_diff")))
 
-#---- Reading core data ----
+#---- Core data ----
 #---- **main datasets ----
 # Adapted from Mingfei Dong's data reading script, 
 # Crystal's reading result snippet from make_figures.R in exposure_trajectories
@@ -278,14 +277,14 @@ rm(list)
 # ---- **join the datasets ----
 # Waves
 charls_w1 <- join_all(wave1, 
-                      by = c("ID", "householdID", "communityID"),
+                      # by = c("ID", "householdID", "communityID"),
                       type = "left", match = "all") %>%
   rename_with(.cols = !c("ID", "householdID", "communityID"), 
               function(x){paste0("w1_", x)})
 # colnames(charls_w1)
 
 charls_w2 <- join_all(wave2, 
-                      by = c("ID", "householdID", "communityID"),
+                      # by = c("ID", "householdID", "communityID"),
                       type = "left", match = "all") %>%
   rename_with(.cols = !c("ID", "householdID", "communityID"), 
               function(x){paste0("w2_", x)})
@@ -323,45 +322,166 @@ charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4)),
                    type = "full") %>% 
   as_tibble()
 
-#---- Select to dlrc variables only ----
+rm(list = paste0("wave", 1:4))
+gc()
 
+#---- Checking 0 in harmonized ----
+# immediate word recall
+harmonized_r3imrc_0_id <- harmonized %>% filter(r3imrc == 0) %>% pull(ID)
+view(charls %>% 
+       filter(ID %in% harmonized_r3imrc_0_id) %>%
+       select(contains(c("w3_dc006s"))))
+with(charls %>% filter(ID %in% harmonized_r3imrc_0_id),
+     table(w3_dc006s11, w3_dc006s12, useNA = "ifany"))
+# Two 0s are NAs
+
+harmonized_r4imrc_0_id <- harmonized %>% filter(r4imrc == 0) %>% pull(ID)
+view(charls %>% 
+       filter(ID %in% harmonized_r4imrc_0_id) %>%
+       select(contains(c("dc028_w4_s", "dc029_w4_s", "dc030_w4_s"))))
+with(charls %>% filter(ID %in% harmonized_r4imrc_0_id),
+     table(w4_dc028_w4_s11, w4_dc028_w4_s12, useNA = "ifany"))
+# There are 1877 participants with non responses (can't recall any of the words)
+# But the rest 653 participants seem to be NAed
+
+# Delayed word recall
+harmonized_r3dlrc_0_id <- harmonized %>% filter(r3dlrc == 0) %>% pull(ID)
+view(charls %>% 
+       filter(ID %in% harmonized_r3imrc_0_id) %>%
+       select(contains(c("w3_dc027s"))))
+with(charls %>% filter(ID %in% harmonized_r3imrc_0_id),
+     table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
+# 0s are nonresponses
+
+harmonized_r4dlrc_0_id <- harmonized %>% filter(r4imrc == 0) %>% pull(ID)
+view(charls %>% 
+       filter(ID %in% harmonized_r4imrc_0_id) %>%
+       select(contains(c("dc047_w4_s"))))
+with(charls %>% filter(ID %in% harmonized_r4imrc_0_id),
+     table(w4_dc047_w4_s11, w4_dc047_w4_s12, useNA = "ifany"))
+# There are 1877 participants with non responses (can't recall any of the words)
+# But the rest 653 participants seem to be NAed
+
+
+#---- Immediate word recall ----
+# Wave 2
+charls %>% filter(w2_dc006_cnt == 3) %>%
+  select(contains("w2_dc006_1")) %>%
+  apply(., 2, table, useNA = "ifany")
+
+charls %>% select(contains("w2_dc006_")) %>%
+  apply(., 2, table, useNA = "ifany")
+
+charls %>% select(contains("w1_dc006s")) %>%
+  filter(w1_dc006s11 == 11) %>%
+  apply(., 2, table, useNA = "ifany")
+
+imrc_mat<- charls %>% select(
+  contains(c("dc006s", # for wave 1 and 3
+             "w2_dc006_1_s", "w2_dc006_2_s", "w2_dc006_3_s",
+             "dc028_w4_s", "dc029_w4_s", "dc030_w4_s")))
+colnames(imrc_mat)
+
+imrc_mat %<>%
+  mutate(across(ends_with("s11"), ~ case_when(.x == 0 ~ NA_real_,
+                                              .x == 11 ~ 0)))
+
+# Sanity check
+imrc_mat %>% select(ends_with("s11")) %>%
+  apply(., 2, function(x) table(x, useNA = "ifany"))
+imrc_mat %>% select(ends_with("s12")) %>%
+  apply(., 2, function(x) table(x, useNA = "ifany"))
+
+imrc_mat %>% apply(., 2, function(x) table(x, useNA = "ifany"))
+
+# put every non missing and non zero value to be 1 besides s12
+imrc_mat[imrc_mat != 0 & !is.na(imrc_mat)] <- 1
+
+charls %<>%
+  mutate(w1_imrc = 
+           case_when(
+             w1_dc006s11 == 11 ~ 0,
+             rowSums(is.na(imrc_mat%>%
+                             select(contains("w1_dc006s"),
+                                    -contains("s11")))) == 10 ~ NA_real_,
+             TRUE ~ rowSums(imrc_mat%>% select(contains("w1_dc006s")),
+                            na.rm = T)),
+         w2_imrc = case_when(
+           w2_dc006_1_s11 == 11 ~ 0,
+           rowSums(is.na(imrc_mat%>% select(
+             contains("w2_dc006_1_s"), 
+             -contains(c("s11", "s12"))))) == 10 ~ NA_real_,
+           TRUE ~ rowSums(imrc_mat%>% 
+                            select(contains("w2_dc006_1_s"), 
+                                   -contains(c("s12", "s11"))), 
+                          na.rm = T)),
+         w3_imrc = case_when(
+           w3_dc006s11 == 11 ~ 0,
+           w3_dc006s12 == 12 ~ NA_real_,
+           TRUE ~ rowSums(imrc_mat %>% 
+                            select(contains("w3_dc006s")), na.rm = T)),
+         w4_imrc = case_when(
+           w4_dc028_w4_s11 == 11 ~ 0,
+           w4_dc028_w4_s12 == 12 ~ NA_real_,
+           is.na(w4_dc028_w4_s11) & is.na(w4_dc028_w4_s12) ~ NA_real_,
+           TRUE ~ rowSums(imrc_mat %>% select(
+             contains("dc028_w4_s"), -contains(c("s12", "s11"))), na.rm = T)))
+
+with(charls, table(w1_imrc, useNA = "ifany"))
+with(harmonized, table(r1imrc, useNA = "ifany"))
+# Wave 1 is in a closer enough distribution (miscategorized 1 or 2 participants)
+
+with(charls, table(w2_imrc, useNA = "ifany"))
+with(harmonized, table(r2imrc, useNA = "ifany"))
+# Can't figure this out!!!!!!
+
+with(charls, table(w3_imrc, useNA = "ifany"))
+with(harmonized, table(r3imrc, useNA = "ifany"))
+# Wave 3 is in a closer enough distribution (miscategorized 1 or 2 participants)
+
+with(charls, table(w4_imrc, useNA = "ifany"))
+with(harmonized, table(r4imrc, useNA = "ifany"))
+# There are 1877 participants with non responses (can't recall any of the words)
+# But the rest 653 participants seem to be NAed
+
+#---- Delayed word recall ----
 with(charls, table(w1_dc027s1, useNA = "ifany"))
 with(charls, table(w4_dc047_w4_s11, useNA = "ifany"))
 with(harmonized, table(r1dlrc, useNA = "ifany"))
 with(harmonized, table(r4dlrc, useNA = "ifany"))
 
-charls_cog_mat <- charls %>% select(contains("dc027s"), contains("dc047_w4_s"))
-charls_cog_mat %<>%
+dlrc_mat<- charls %>% select(contains("dc027s"), contains("dc047_w4_s"))
+dlrc_mat%<>%
   mutate(across(c(w1_dc027s11, w2_dc027s11, w3_dc027s11, w4_dc047_w4_s11),
                 ~ case_when(. == 0 ~ NA_real_,
                             . == 11 ~ 0)))
 
-charls_cog_mat[charls_cog_mat != 0 & !is.na(charls_cog_mat)] <- 1
+dlrc_mat[dlrc_mat!= 0 & !is.na(dlrc_mat)] <- 1
 
-with(charls_cog_mat, table(w3_dc027s12, useNA = "ifany"))
-with(charls_cog_mat, table(w4_dc047_w4_s12, useNA = "ifany"))
+with(dlrc_mat, table(w3_dc027s12, useNA = "ifany"))
+with(dlrc_mat, table(w4_dc047_w4_s12, useNA = "ifany"))
 
 charls %<>%
   mutate(w1_dlrc = 
            case_when(
-             rowSums(is.na(charls_cog_mat %>% 
+             rowSums(is.na(dlrc_mat %>% 
                              select(contains("w1_dc027s"), 
                                     -contains("s11")))) == 10 ~ NA_real_,
-             TRUE ~ rowSums(charls_cog_mat %>% select(contains("w1_dc027s")), 
-                           na.rm = T)),
+             TRUE ~ rowSums(dlrc_mat %>% select(contains("w1_dc027s")), 
+                            na.rm = T)),
          w2_dlrc = case_when(
-           rowSums(is.na(charls_cog_mat %>% 
+           rowSums(is.na(dlrc_mat%>% 
                            select(contains("w2_dc027s"), 
                                   -contains("s11")))) == 10 ~ NA_real_,
-           TRUE ~ rowSums(charls_cog_mat %>% select(contains("w2_dc027s")), 
-                         na.rm = T)),
+           TRUE ~ rowSums(dlrc_mat%>% select(contains("w2_dc027s")), 
+                          na.rm = T)),
          w3_dlrc = 
            case_when(w3_dc027s12 == 12 ~ NA_real_,
-                     TRUE ~ rowSums(charls_cog_mat %>% 
-                                     select(contains("w3_dc027s")), na.rm = T)),
+                     TRUE ~ rowSums(dlrc_mat%>% 
+                                      select(contains("w3_dc027s")), na.rm = T)),
          w4_dlrc = case_when(w4_dc047_w4_s12 == 12 ~ NA_real_,
                              TRUE ~ rowSums(
-                               charls_cog_mat %>% 
+                               dlrc_mat%>% 
                                  select(contains("dc047_w4_s")), na.rm = T)))
 
 with(charls, table(w1_dlrc, useNA = "ifany"))
