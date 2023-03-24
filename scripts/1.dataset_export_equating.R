@@ -228,7 +228,7 @@ harmonized_long_1518 <- harmonized %>%
 #---- ** Table 1 ----
 table1_1518 <- harmonized_long_1518 %>%
   select(age_y, female, raeduc_c, childhood_edu, rural,
-         hukou, imrc, dlrc, wave) %>%
+         hukou, imrc_cleaned, dlrc_cleaned, wave) %>%
   labelled::set_variable_labels(
     age_y = "Age at waves",
     female = "Female (%)",
@@ -236,8 +236,8 @@ table1_1518 <- harmonized_long_1518 %>%
     childhood_edu = "Early life education level (simplified) (%)",
     rural = "Rural residence (%)",
     hukou = "Hukou status (%)",
-    imrc = "Immediate word recall", 
-    dlrc = "Delayed word recall") %>%
+    imrc_cleaned = "Immediate word recall", 
+    dlrc_cleaned = "Delayed word recall") %>%
   labelled::drop_unused_value_labels() %>%
   labelled::set_value_labels(
     female = c("Yes" = 1, "No" = 0),
