@@ -37,11 +37,64 @@ harmonized_variables <- c("ID", "householdID", "pnc", "communityID",
                           paste0("r", 1:4, "lbrf_c"), # labor force status
                           paste0("r", 1:4, "imrc"), # immediate word recall
                           paste0("r", 1:4, "dlrc") # delayed word recall
-                          )
+)
 
 harmonized <- haven::read_dta(here::here("data", "raw_data", "harmonized",
                                          "H_CHARLS_D_Data.dta"),
                               col_select = all_of(harmonized_variables))
+
+#---- Core data for cleaning the imrc and dlrc ----
+# Adapted from Mingfei Dong's data reading script, 
+# Crystal's reading result snippet from make_figures.R in exposure_trajectories
+# and the IDRE website
+# https://stats.idre.ucla.edu/r/codefragments/read_multiple/
+getwd()
+folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
+datasets <- c("health_status_and_functioning", "cognition")
+
+folder_index <- c(6, 7) # 2015, 2018 waves only
+
+for (i in folder_index){
+  # get all file names
+  files <- list.files(path = folders[i], full.names = TRUE)
+  files <- files[str_detect(files, regex(glue_collapse(datasets, sep="|"), 
+                                         ignore_case = T))]
+  # Read in as list
+  list <- lapply(files, read_dta)
+  # list <- lapply(files, read_charls)
+  names(list) <- gsub(".*/(.*)\\..*", "\\1", files)
+  # Assign names for each wave's list
+  assign(paste0("wave", which(folder_index == i)), list)
+}
+
+rm(list)
+
+# ---- **join the datasets ----
+# Waves
+charls_w3 <- join_all(wave1, 
+                      # by = c("ID", "householdID", "communityID"),
+                      type = "left", match = "all") %>%
+  rename_with(.cols = !c("ID", "householdID", "communityID"), 
+              function(x){paste0("w3_", x)})
+# colnames(charls_w3)
+
+charls_w4 <- join_all(wave2, 
+                      # by = c("ID", "householdID", "communityID"),
+                      type = "left", match = "all") %>%
+  rename_with(.cols = !c("ID", "householdID", "communityID"), 
+              function(x){paste0("w4_", x)})
+# colnames(charls_w4)
+
+#---- ** join to a single dataset (wave 1 baseline) ----
+# Merge all the waves (All the participants!)
+charls <- join_all(c(list(charls_w3, charls_w4)),
+                   by = c("ID"), # "ID_w234" = "ID", # somehow it didn't work anymore. Rename the ID_w234 in w1 above
+                   # "householdID", "communityID"),# Pending: needs to figure out this later
+                   type = "full") %>% 
+  as_tibble()
+
+rm(list = paste0("wave", 1:4))
+gc()
 
 #---- Age cleaning ----
 age_y <- harmonized %>% dplyr::select(contains("agey"), -contains("LHagey")) %>% 
@@ -75,6 +128,48 @@ harmonized %<>%
                               raeduc_c %in% c(5, 6, 7) ~ 2,
                               raeduc_c %in% c(8, 9, 10) ~ 3))
 
+#---- imrc and dlrc cleaning ----
+harmonized %<>%
+  left_join(charls %>% select(ID, w3_dc006s11, w3_dc006s12,
+                              w4_dc028_w4_s11, w4_dc028_w4_s12,
+                              w3_dc027s11, w3_dc027s12,
+                              w4_dc047_w4_s11, w4_dc047_w4_s12),
+            by = "ID")
+
+# immediate word recall
+with(harmonized %>% filter(r3imrc == 0),
+     table(w3_dc006s11, w3_dc006s12, useNA = "ifany"))
+with(harmonized %>% filter(r4imrc == 0),
+     table(w4_dc028_w4_s11, w4_dc028_w4_s12, useNA = "ifany"))
+# There are 1877 participants with non responses (can't recall any of the words)
+# But the rest 653 participants seem to be NAed
+
+harmonized %<>% 
+  mutate(r3imrc_cleaned = case_when(r3imrc == 0 & w3_dc006s12 == 12 ~ NA_real_,
+                                    TRUE ~ r3imrc),
+         r4imrc_cleaned = case_when(r4imrc == 0 & w4_dc028_w4_s12 == 12 ~ NA_real_,
+                                    TRUE ~ r4imrc))
+# Sanity check
+with(harmonized, table(r3imrc_cleaned, r3imrc, useNA = "ifany"))
+with(harmonized, table(r4imrc_cleaned, r4imrc, useNA = "ifany"))
+
+# Delayed word recall
+with(harmonized %>% filter(r3dlrc == 0),
+     table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
+with(harmonized %>% filter(r4dlrc == 0),
+     table(w4_dc047_w4_s11, w4_dc047_w4_s12, useNA = "ifany"))
+# There are 2334 participants with non responses (can't recall any of the words)
+# But the rest 505 participants seem to be NAed
+
+harmonized %<>% 
+  mutate(r3dlrc_cleaned = case_when(r3dlrc == 0 & w3_dc027s12 == 12 ~ NA_real_,
+                                    TRUE ~ r3dlrc),
+         r4dlrc_cleaned = case_when(r4dlrc == 0 & w4_dc047_w4_s12 == 12 ~ NA_real_,
+                                    TRUE ~ r4dlrc))
+# Sanity check
+with(harmonized, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
+with(harmonized, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
+
 #---- Baseline Table 1 ----
 table1 <- harmonized %>%
   select(r1age_y, female, raeduc_c, childhood_edu, h1rural,
@@ -97,26 +192,26 @@ table1 <- harmonized %>%
       "Elementary school or less" = 1,
       "Vocational school/middle school/high school" = 2,
       "College & above" = 3)) %>%
-modify_if(is.labelled, to_factor) %>%
-modify_if(is.factor,
-          function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
-tbl_summary(
-  statistic = list(all_categorical() ~ "{n} ({p}%)",
-                   all_continuous() ~ c("{mean} ({sd})",
-                                        "({min}, {max})")),
-  type = all_continuous() ~ "continuous2",
-  # by = childhood_edu20,
-  digits = list(all_continuous() ~ 1,
-                all_categorical() ~ c(0, 1)),
-  missing = "ifany",
-  missing_text = "Missing") %>%
-# modify_spanning_header(starts_with("stat_") ~ "**Baseline CES-D**") %>%
-bold_labels() %>%
-modify_footnote(
-  update = list(
-    starts_with("stat_") ~
-      "Mean (SD) for continuous variables; n (%) for categorical variables")
-)
+  modify_if(is.labelled, to_factor) %>%
+  modify_if(is.factor,
+            function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
+  tbl_summary(
+    statistic = list(all_categorical() ~ "{n} ({p}%)",
+                     all_continuous() ~ c("{mean} ({sd})",
+                                          "({min}, {max})")),
+    type = all_continuous() ~ "continuous2",
+    # by = childhood_edu20,
+    digits = list(all_continuous() ~ 1,
+                  all_categorical() ~ c(0, 1)),
+    missing = "ifany",
+    missing_text = "Missing") %>%
+  # modify_spanning_header(starts_with("stat_") ~ "**Baseline CES-D**") %>%
+  bold_labels() %>%
+  modify_footnote(
+    update = list(
+      starts_with("stat_") ~
+        "Mean (SD) for continuous variables; n (%) for categorical variables")
+  )
 
 table1 %>%  as_flex_table() %>%
   flextable::save_as_docx(path = here::here("output", "tables", 
@@ -181,6 +276,6 @@ table1_1518 %>%  as_flex_table() %>%
 
 #---- Save the dataset ----
 save(harmonized, harmonized_long_1518, file = here::here("data", "analysis_data", 
-                                      "charls_equating_samp.RData"))
+                                                         "charls_equating_samp.RData"))
 
 
