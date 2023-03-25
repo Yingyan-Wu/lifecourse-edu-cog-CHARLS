@@ -254,26 +254,26 @@ r4freqdl_IOW <- charls_covbal %>%
 
 #---- 3. Perform the equating ----
 #---- **Immediate recall ----
-eqim_linear <- equate(r4freqim_IOW, r3freqim_IOW, type = "l")
-eqim_mean <- equate(r4freqim_IOW, r3freqim_IOW, type = "mean")
-eqim_eqp <- equate(r4freqim_IOW, r3freqim_IOW, type = "equipercentile")
+eqim_linear_IOW <- equate(r4freqim_IOW, r3freqim_IOW, type = "l")
+eqim_mean_IOW <- equate(r4freqim_IOW, r3freqim_IOW, type = "mean")
+eqim_eqp_IOW <- equate(r4freqim_IOW, r3freqim_IOW, type = "equipercentile")
 
-eqim_linear
-eqim_mean
-eqim_eqp$concordance
+eqim_linear_IOW
+eqim_mean_IOW
+eqim_eqp_IOW$concordance
 
-plot(eqim_eqp, eqim_mean, eqim_linear)
+plot(eqim_eqp_IOW, eqim_mean_IOW, eqim_linear_IOW)
 
 #---- **Delayed recall ----
-eqdl_linear <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "l")
-eqdl_mean <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "mean")
-eqdl_eqp <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "equipercentile")
+eqdl_linear_IOW <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "l")
+eqdl_mean_IOW <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "mean")
+eqdl_eqp_IOW <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "equipercentile")
 
-eqdl_linear
-eqdl_mean
-eqdl_eqp$concordance
+eqdl_linear_IOW
+eqdl_mean_IOW
+eqdl_eqp_IOW$concordance
 
-plot(eqdl_eqp, eqdl_mean, eqdl_linear)
+plot(eqdl_eqp_IOW, eqdl_mean_IOW, eqdl_linear_IOW)
 
 #---- 4. Apply the equipercentile equating algorithm to the full sample in the focal group -----
 
