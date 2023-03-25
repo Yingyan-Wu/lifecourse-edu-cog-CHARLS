@@ -152,14 +152,14 @@ weight_dev <- function(dataset, pS_Z_formula, index){
            # SW_twang = SW*samplingwt
            !!paste0("SW", index, "_twang") := 
              !!sym(paste0("SW", index))*unweight)
-    
- # Truncation pending
+  
+  # Truncation pending
   
   return(dataset %>%
            select(paste0("pS_Z", index), paste0("W", index),
                   paste0("SW", index), paste0("SW", index, "_twang")))
-                  # paste0("SW", index, "_twang_trunc99"),
-                  # paste0("pS_Z", index, "_trunc99")))
+  # paste0("SW", index, "_twang_trunc99"),
+  # paste0("pS_Z", index, "_trunc99")))
 }
 
 #---- **setup ----
@@ -234,8 +234,29 @@ charls_covbal %>%
 w3_test <- checkcovbal(charls_covbal, "SW3_twang")
 covbal_comp_plot(w3_test$covbal_data, unw_test$covbal_data)
 
-#---- IPW: remove the covariates' effect ----
-# charls_covbal
+# #---- IPW: remove the covariates' effect ----
+# charls_selected %<>%
+#   mutate(
+#     # Estimate P(A)
+#     p_imrc = predict(glm(imrc_cleaned ~ 1, family = gaussian(link = "identity"), 
+#                          data = charls_selected), type = "response"),
+#     p_dlrc = predict(glm(dlrc_cleaned ~ 1, family = gaussian(link = "identity"), 
+#                          data = charls_selected), type = "response"),
+#     # Estimate P(A|W1, W2)
+#     p_imrc_cov3 = predict(glm(imrc_cleaned ~ 
+#                                 childhood_edu + age_y + work_status + female, 
+#                               family = gaussian(link = "identity"), 
+#                               data = charls_selected), type = "response"),
+#     p_dlrc_cov3 = predict(glm(dlrc_cleaned ~ 
+#                                 childhood_edu + age_y + work_status + female, 
+#                               family = gaussian(link = "identity"), 
+#                               data = charls_selected), type = "response"),
+#     # Get the IPTW for ATE, ATU and ATT
+#     iptw3_imrc = case_when(A == 1 ~ pA/pA_W1W2,
+#                          A == 0 ~ (1 - pA)/(1 - pA_W1W2)),
+#     iptw3_dlrc = case_when(A == 1 ~ pA/pA_W1W2,
+#                           A == 0 ~ (1 - pA)/(1 - pA_W1W2)))
+
 
 #----2a. Check distribution for weighted 2018 and 2015 ----
 # Unweighted 2015
@@ -274,7 +295,6 @@ eqdl_mean_IOW
 eqdl_eqp_IOW$concordance
 
 plot(eqdl_eqp_IOW, eqdl_mean_IOW, eqdl_linear_IOW)
-
 #---- 4. Apply the equipercentile equating algorithm to the full sample in the focal group -----
 
 
