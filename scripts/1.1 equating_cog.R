@@ -32,7 +32,17 @@ charls_selected <- harmonized_long_1518 %>%
   na.omit() %>%
   select(-householdID, -communityID, -pnc) %>%
   filter(age_y >= 60 & age_y < 90 & raeduc_c >= 4 & raeduc_c != 10 &
-           hukou != 3 & hukou != 4) 
+           hukou != 3 & hukou != 4) %>%
+  mutate(treat = case_when(wave == "4" ~ 1,
+                           wave == "3" ~ 0),
+         work_status = case_when(lbrf_c %in% c(1, 2) ~ 1, # Agriculture employed
+                                 lbrf_c %in% c(3, 4, 5) ~ 2, # Non-agriculture employed
+                                 lbrf_c == 6 ~ 3, # Unemployed
+                                 lbrf_c == 7 ~ 4, # retired
+                                 lbrf_c == 8 ~ 5 # Never work
+         ),
+         unweight = 1) %>%
+  mutate(across(c("childhood_edu", "hukou", "work_status"), factor))
 
 #---- 2. Generate weights ----
 # Generate weights, to ensure the age/education distributions are the same 
@@ -40,7 +50,7 @@ charls_selected <- harmonized_long_1518 %>%
 # equating algorithm. You can generate weights using any approach; 
 # AG uses IPW but other options work.
 
-
+#---- IOW ----
 #---- **functions ----
 checkcovbal <- function(data, weightvar){
   # data = charls_covbal
@@ -154,16 +164,6 @@ weight_dev <- function(dataset, pS_Z_formula, index){
 
 #---- **setup ----
 charls_covbal <- charls_selected %>%
-  mutate(treat = case_when(wave == "4" ~ 1,
-                           wave == "3" ~ 0),
-         work_status = case_when(lbrf_c %in% c(1, 2) ~ 1, # Agriculture employed
-                                 lbrf_c %in% c(3, 4, 5) ~ 2, # Non-agriculture employed
-                                 lbrf_c == 6 ~ 3, # Unemployed
-                                 lbrf_c == 7 ~ 4, # retired
-                                 lbrf_c == 8 ~ 5 # Never work
-         ),
-         unweight = 1) %>%
-  mutate(across(c("childhood_edu", "hukou", "work_status"), factor)) %>%
   remove_labels() %>%
   remove_val_labels() %>%
   as.data.frame()
@@ -234,26 +234,29 @@ charls_covbal %>%
 w3_test <- checkcovbal(charls_covbal, "SW3_twang")
 covbal_comp_plot(w3_test$covbal_data, unw_test$covbal_data)
 
-#----3. Check distribution for weighted 2018 and 2015 ----
+#---- IPW: remove the covariates' effect ----
+# charls_covbal
+
+#----2a. Check distribution for weighted 2018 and 2015 ----
 # Unweighted 2015
-r3freqim <- freqtab(charls_covbal[charls_covbal$wave == "3", "imrc_cleaned"])
-r4freqdl <- freqtab(charls_covbal[charls_covbal$wave == "3", "dlrc_cleaned"])
+r3freqim_IOW <- freqtab(charls_covbal[charls_covbal$wave == "3", "imrc_cleaned"])
+r3freqdl_IOW <- freqtab(charls_covbal[charls_covbal$wave == "3", "dlrc_cleaned"])
 # Weighted 2018
-r4freqim <- charls_covbal %>%
+r4freqim_IOW <- charls_covbal %>%
   filter(wave == "4") %>%
   dplyr::count(imrc_cleaned, wt = SW3_twang) %>%
   as.freqtab()
 
-r4freqdl <- charls_covbal %>%
+r4freqdl_IOW <- charls_covbal %>%
   filter(wave == "4") %>%
   dplyr::count(dlrc_cleaned, wt = SW3_twang) %>%
   as.freqtab()
 
-#---- 4. Perform the equating ----
+#---- 3. Perform the equating ----
 #---- **Immediate recall ----
-eqim_linear <- equate(r4freqim, r3freqim, type = "l")
-eqim_mean <- equate(r4freqim, r3freqim, type = "mean")
-eqim_eqp <- equate(r4freqim, r3freqim, type = "equipercentile")
+eqim_linear <- equate(r4freqim_IOW, r3freqim_IOW, type = "l")
+eqim_mean <- equate(r4freqim_IOW, r3freqim_IOW, type = "mean")
+eqim_eqp <- equate(r4freqim_IOW, r3freqim_IOW, type = "equipercentile")
 
 eqim_linear
 eqim_mean
@@ -262,9 +265,9 @@ eqim_eqp$concordance
 plot(eqim_eqp, eqim_mean, eqim_linear)
 
 #---- **Delayed recall ----
-eqdl_linear <- equate(r4freqdl, r3freqdl, type = "l")
-eqdl_mean <- equate(r4freqdl, r3freqdl, type = "mean")
-eqdl_eqp <- equate(r4freqdl, r3freqdl, type = "equipercentile")
+eqdl_linear <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "l")
+eqdl_mean <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "mean")
+eqdl_eqp <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "equipercentile")
 
 eqdl_linear
 eqdl_mean
