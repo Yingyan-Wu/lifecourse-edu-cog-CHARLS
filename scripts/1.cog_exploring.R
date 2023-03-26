@@ -327,10 +327,29 @@ gc()
 
 #---- Checking 0 in harmonized ----
 # immediate word recall
+harmonized_r1imrc_0_id <- harmonized %>% filter(r1imrc == 0) %>% pull(ID)
+view(charls %>%
+       filter(ID %in% harmonized_r1imrc_0_id) %>%
+       select(contains(c("w1_dc006s"))))
+with(charls %>% filter(ID %in% harmonized_r1imrc_0_id),
+     table(w1_dc006s11, useNA = "ifany"))
+# All true zeros
+
+harmonized_r2imrc_0_id <- harmonized %>% filter(r2imrc == 0) %>% pull(ID)
+view(charls %>%
+       filter(ID %in% harmonized_r2imrc_0_id) %>%
+       select(contains(c("w2_dc006_1_s"))))
+with(charls %>% filter(ID %in% harmonized_r2imrc_0_id),
+     table(w2_dc006_1_s11, useNA = "ifany"))
+view(charls %>%
+       filter(ID %in% harmonized_r2imrc_0_id & is.na(w2_dc006_1_s11)) %>%
+       select(contains(c("w2_dc006"))))
+# All true zeros
+
 harmonized_r3imrc_0_id <- harmonized %>% filter(r3imrc == 0) %>% pull(ID)
-view(charls %>% 
-       filter(ID %in% harmonized_r3imrc_0_id) %>%
-       select(contains(c("w3_dc006s"))))
+# view(charls %>% 
+#        filter(ID %in% harmonized_r3imrc_0_id) %>%
+#        select(contains(c("w3_dc006s"))))
 with(charls %>% filter(ID %in% harmonized_r3imrc_0_id),
      table(w3_dc006s11, w3_dc006s12, useNA = "ifany"))
 # Two 0s are NAs
@@ -345,19 +364,39 @@ with(charls %>% filter(ID %in% harmonized_r4imrc_0_id),
 # But the rest 653 participants seem to be NAed
 
 # Delayed word recall
+harmonized_r1dlrc_0_id <- harmonized %>% filter(r1dlrc == 0) %>% pull(ID)
+view(charls %>%
+       filter(ID %in% harmonized_r1dlrc_0_id) %>%
+       select(contains(c("w1_dc027s"))))
+with(charls %>% filter(ID %in% harmonized_r1dlrc_0_id),
+     table(w1_dc027s11, useNA = "ifany"))
+# There's no way to infer if 0s are nonresponses
+
+harmonized_r2dlrc_0_id <- harmonized %>% filter(r2dlrc == 0) %>% pull(ID)
+view(charls %>%
+       filter(ID %in% harmonized_r2dlrc_0_id) %>%
+       select(contains(c("w2_dc027s"))))
+with(charls %>% filter(ID %in% harmonized_r2dlrc_0_id),
+     table(w2_dc027s11, useNA = "ifany"))
+# There's no way to infer if 0s are nonresponses
+
 harmonized_r3dlrc_0_id <- harmonized %>% filter(r3dlrc == 0) %>% pull(ID)
-view(charls %>% 
-       filter(ID %in% harmonized_r3imrc_0_id) %>%
-       select(contains(c("w3_dc027s"))))
-with(charls %>% filter(ID %in% harmonized_r3imrc_0_id),
+# view(charls %>% 
+#        filter(ID %in% harmonized_r1dlrc_0_id) %>%
+#        select(contains(c("w3_dc027s"))))
+with(charls %>% filter(ID %in% harmonized_r1dlrc_0_id),
      table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
+view(charls %>%
+       filter(ID %in% harmonized_r1dlrc_0_id & w3_dc027s11 == 11 &
+                w3_dc027s12 == 12) %>%
+       select(contains(c("w3_dc027s"))))
 # 0s are nonresponses
 
 harmonized_r4dlrc_0_id <- harmonized %>% filter(r4imrc == 0) %>% pull(ID)
 view(charls %>% 
-       filter(ID %in% harmonized_r4imrc_0_id) %>%
+       filter(ID %in% harmonized_r4dlrc_0_id) %>%
        select(contains(c("dc047_w4_s"))))
-with(charls %>% filter(ID %in% harmonized_r4imrc_0_id),
+with(charls %>% filter(ID %in% harmonized_r4dlrc_0_id),
      table(w4_dc047_w4_s11, w4_dc047_w4_s12, useNA = "ifany"))
 # There are 1877 participants with non responses (can't recall any of the words)
 # But the rest 653 participants seem to be NAed
