@@ -295,8 +295,85 @@ eqdl_mean_IOW
 eqdl_eqp_IOW$concordance
 
 plot(eqdl_eqp_IOW, eqdl_mean_IOW, eqdl_linear_IOW)
-#---- 4. Apply the equipercentile equating algorithm to the full sample in the focal group -----
 
+#---- 4. Apply the equipercentile equating algorithm to the full sample in the focal group -----
+harmonized %<>%
+  left_join(eqim_eqp_IOW$concordance %>% 
+              dplyr::rename(r4imrc_cleaned = scale, r4imrc_eqt = yx),
+            by = "r4imrc_cleaned") %>%
+  left_join(eqdl_eqp_IOW$concordance %>% 
+              dplyr::rename(r4dlrc_cleaned = scale, r4dlrc_eqt = yx),
+            by = "r4dlrc_cleaned")
+
+with(harmonized, table(r4imrc_cleaned, r4imrc_eqt, useNA = "ifany"))
+with(harmonized, table(r4dlrc_cleaned, r4dlrc_eqt, useNA = "ifany"))
+
+#---- ** Empirical plot ----
+harmonized %<>%
+  mutate(imrc_balanced = case_when(!is.na(r1imrc) & !is.na(r2imrc) & 
+                                     !is.na(r3imrc_cleaned) & 
+                                     !is.na(r4imrc_cleaned) ~ 1,
+                                   TRUE ~ 0),
+         dlrc_balanced = case_when(!is.na(r1dlrc) & !is.na(r2dlrc) & 
+                                     !is.na(r3dlrc_cleaned) & 
+                                     !is.na(r4dlrc_cleaned) ~ 1,
+                                   TRUE ~ 0))
+with(harmonized, table(imrc_balanced, useNA = "ifany"))
+with(harmonized, table(dlrc_balanced, useNA = "ifany"))
+
+harmonized_long <- harmonized %>%
+  select(ID, contains("imrc"), contains("dlrc"), 
+         -c("r3dlrc", "r4dlrc", "r3imrc", "r4imrc"),
+         imrc_balanced, dlrc_balanced) %>%
+  dplyr::rename_with(.cols = c(paste0("r", c(1, 2), "dlrc"),
+                               paste0("r", c(1, 2), "imrc")), 
+                     function(x){paste0(x, "_cleaned")}) %>%
+  pivot_longer(cols = -c(ID, imrc_balanced, dlrc_balanced),
+               names_to = c("wave", ".value", "type"),
+               names_pattern = "r(\\d+)(.*)_(.*)") %>%
+  print()
+
+harmonized_empirical_balanced <- harmonized_long %>%
+  filter(imrc_balanced == 1) %>%
+  group_by(wave, type) %>%
+  summarise_at(vars(imrc), 
+               funs(n(), mean, sd)) %>%
+  mutate(se = sd/sqrt(n),
+         variable = paste0("Immediate word recall\n(n = ", n, ")")) %>%
+  rbind(harmonized_long %>%
+          filter(dlrc_balanced == 1) %>%
+          group_by(wave, type) %>%
+          summarise_at(vars(dlrc), 
+                       funs(n(), mean, sd)) %>%
+          mutate(se = sd/sqrt(n),
+                 variable = paste0("Delayed word recall\n(n = ", n, ")"))) 
+
+harmonized_empirical_balanced %<>%
+  rbind(harmonized_empirical_balanced %>% 
+          filter(type == "cleaned" & wave != 4) %>%
+          mutate(type = "eqt")) %>%
+  mutate(type = factor(type, levels = c("eqt", "cleaned"))) %>%
+  arrange(type, wave) %>%
+  print()
+
+harmonized_empirical_balanced %>%
+  ggplot(aes(x = wave, y = mean,
+             group = interaction(variable, type),
+             color = interaction(variable, type))) +
+  geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1) +
+  geom_line(aes(linetype = interaction(variable, type))) +
+  geom_point() +
+  scale_color_manual(values = c("salmon", "cyan3", "salmon", "cyan3"),
+                     labels=c("Equated w4 dlrc", "Equated w4 imrc",
+                              "Original scores","Original scores")) +
+  scale_linetype_manual(values = c(2, 2, 1, 1)) +
+  theme_classic() +
+  guides(linetype = FALSE) +
+  labs(x = "Wave",
+       y = "Word recall",
+       title = "Average word recall score +/- 2 SE at different wave
+       balanced data",
+       color = "Variable")
 
 #---- OLD ----
 #---- **Table 1 ----
