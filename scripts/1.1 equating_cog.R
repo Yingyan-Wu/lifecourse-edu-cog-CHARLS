@@ -375,6 +375,11 @@ harmonized_empirical_balanced %>%
        balanced data",
        color = "Variable")
 
+#---- Save the dataset ----
+r4rc_eqt_tib <- harmonized %>%
+  select(ID, r4imrc_eqt, r4dlrc_eqt)
+save(r4rc_eqt_tib, file = here::here("data", "analysis_data", "eqt_r4_rc.RData"))
+
 #---- OLD ----
 #---- **Table 1 ----
 table1_1518 <- charls_selected %>%
