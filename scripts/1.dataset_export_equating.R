@@ -213,7 +213,7 @@ table1 <- harmonized %>%
         "Mean (SD) for continuous variables; n (%) for categorical variables")
   )
 
-table1 %>%  as_flex_table() %>%
+table1 %>% as_flex_table() %>%
   flextable::save_as_docx(path = here::here("output", "tables", 
                                             "table1_equating_sample.docx"))
 #---- 2015 to 2018 long dataset ----

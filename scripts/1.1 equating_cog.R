@@ -232,7 +232,12 @@ charls_covbal %>%
 
 # Covbalance plot
 w3_test <- checkcovbal(charls_covbal, "SW3_twang")
-covbal_comp_plot(w3_test$covbal_data, unw_test$covbal_data)
+covbal_comp_plot(w3_test$covbal_data, unw_test$covbal_data) +
+  scale_shape_manual(values = c(21, 16), labels = c("Unweighted", "Weighted")) +
+  theme(legend.position = "right")
+
+ggsave(here::here("output", "figures", "cog_equating_covbal.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 # #---- IPW: remove the covariates' effect ----
 # charls_selected %<>%
@@ -295,6 +300,28 @@ eqdl_mean_IOW
 eqdl_eqp_IOW$concordance
 
 plot(eqdl_eqp_IOW, eqdl_mean_IOW, eqdl_linear_IOW)
+
+# Plots
+par(mfrow=c(1,2))
+plot(eqim_eqp_IOW)
+title(main = "Immediate word recall score")
+plot(eqdl_eqp_IOW)
+title(main = "Delayed word recall score")
+
+par(mfrow=c(1,2))
+plot(eqim_eqp_IOW, eqim_mean_IOW, eqim_linear_IOW)
+title(main = "Immediate word recall score")
+plot(eqdl_eqp_IOW, eqdl_mean_IOW, eqdl_linear_IOW)
+title(main = "Delayed word recall score")
+
+# Table 
+rbind(eqim_eqp_IOW$concordance %>% mutate(Score = "Immediate"), 
+      eqdl_eqp_IOW$concordance %>% mutate(Score = "Delayed")) %>%
+  select(Score, scale, yx) %>%
+  set_colnames(c("Score", "Original score", "Equated score")) %>%
+  mutate_if(is.numeric, round, 2) %>%
+  writexl::write_xlsx(path = here::here("output", "tables", "table2_equating.xlsx"))
+
 
 #---- 4. Apply the equipercentile equating algorithm to the full sample in the focal group -----
 harmonized %<>%
@@ -362,18 +389,27 @@ harmonized_empirical_balanced %>%
              color = interaction(variable, type))) +
   geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1) +
   geom_line(aes(linetype = interaction(variable, type))) +
-  geom_point() +
-  scale_color_manual(values = c("salmon", "cyan3", "salmon", "cyan3"),
-                     labels=c("Equated w4 dlrc", "Equated w4 imrc",
-                              "Original scores","Original scores")) +
-  scale_linetype_manual(values = c(2, 2, 1, 1)) +
+  geom_point(aes(shape = interaction(variable, type))) +
+  scale_color_manual(name = "Variable",
+                     values = c("salmon", "cyan3", "salmon", "cyan3"),
+                     labels = c("Equated w4 dlrc", "Equated w4 imrc",
+                                "Original scores","Original scores")) +
+  scale_linetype_manual(name = "Variable",
+                        values = c(2, 2, 1, 1),
+                        labels = c("Equated w4 dlrc", "Equated w4 imrc",
+                                   "Original scores","Original scores")) +
+  scale_shape_manual(name = "Variable",
+                     values = c(17, 17, 19, 19),
+                     labels = c("Equated w4 dlrc", "Equated w4 imrc",
+                                "Original scores","Original scores")) + 
   theme_classic() +
-  guides(linetype = FALSE) +
   labs(x = "Wave",
        y = "Word recall",
        title = "Average word recall score +/- 2 SE at different wave
-       balanced data",
-       color = "Variable")
+       balanced data")
+
+ggsave(here::here("output", "figures", "empirical_plot_equated.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 #---- Save the dataset ----
 r4rc_eqt_tib <- harmonized %>%
@@ -382,9 +418,10 @@ save(r4rc_eqt_tib, file = here::here("data", "analysis_data", "eqt_r4_rc.RData")
 
 #---- OLD ----
 #---- **Table 1 ----
-table1_1518 <- charls_selected %>%
+table1_1518 <- harmonized_long_1518 %>%
   select(age_y, female, raeduc_c, childhood_edu, rural,
          hukou, imrc_cleaned, dlrc_cleaned, wave) %>%
+  na.omit() %>%
   labelled::set_variable_labels(
     age_y = "Age at waves",
     female = "Female (%)",
