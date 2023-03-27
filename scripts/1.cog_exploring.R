@@ -483,6 +483,26 @@ with(harmonized, table(r4imrc, useNA = "ifany"))
 # There are 1877 participants with non responses (can't recall any of the words)
 # But the rest 653 participants seem to be NAed
 
+#---- **Wave 4: 3 trials ----
+charls %<>%
+  mutate(
+    w4_imrc_trial2 = case_when(
+    w4_dc029_w4_s11 == 11 ~ 0,
+    w4_dc029_w4_s12 == 12 ~ NA_real_,
+    is.na(w4_dc029_w4_s11) & is.na(w4_dc029_w4_s12) ~ NA_real_,
+    TRUE ~ rowSums(imrc_mat %>% select(
+      contains("dc029_w4_s"), -contains(c("s12", "s11"))), na.rm = T)),
+    w4_imrc_trial3 = case_when(
+      w4_dc030_w4_s11 == 11 ~ 0,
+      w4_dc030_w4_s12 == 12 ~ NA_real_,
+      is.na(w4_dc030_w4_s11) & is.na(w4_dc030_w4_s12) ~ NA_real_,
+      TRUE ~ rowSums(imrc_mat %>% select(
+        contains("dc030_w4_s"), -contains(c("s12", "s11"))), na.rm = T)))
+
+with(charls, table(w4_imrc, useNA = "ifany"))
+with(charls, table(w4_imrc_trial2, useNA = "ifany"))
+with(charls, table(w4_imrc_trial3, useNA = "ifany"))
+
 #---- Delayed word recall ----
 with(charls, table(w1_dc027s1, useNA = "ifany"))
 with(charls, table(w4_dc047_w4_s11, useNA = "ifany"))
