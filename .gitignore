@@ -6,6 +6,7 @@
 # folders
 data/
 output/
+manuscript/
 
 # files
 CHARLS_Dataset_construction_codebook.xlsx
