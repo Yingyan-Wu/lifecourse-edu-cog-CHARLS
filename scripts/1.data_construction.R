@@ -538,6 +538,48 @@ length(charls %>% filter(rabyear <= 1962 & rabyear >= 1946))
 
 # Pending
 
+#---- Outcome: Word recall ----
+# harmonized %<>%
+#   left_join(charls %>% select(ID, w3_dc006s11, w3_dc006s12,
+#                               w4_dc028_w4_s11, w4_dc028_w4_s12,
+#                               w3_dc027s11, w3_dc027s12,
+#                               w4_dc047_w4_s11, w4_dc047_w4_s12),
+#             by = "ID")
+
+# immediate word recall
+with(charls %>% filter(r3imrc == 0),
+     table(w3_dc006s11, w3_dc006s12, useNA = "ifany"))
+with(charls %>% filter(r4imrc == 0),
+     table(w4_dc028_w4_s11, w4_dc028_w4_s12, useNA = "ifany"))
+# There are 1877 participants with non responses (can't recall any of the words)
+# But the rest 653 participants seem to be NAed
+
+charls %<>% 
+  mutate(r3imrc_cleaned = case_when(r3imrc == 0 & w3_dc006s12 == 12 ~ NA_real_,
+                                    TRUE ~ r3imrc),
+         r4imrc_cleaned = case_when(r4imrc == 0 & w4_dc028_w4_s12 == 12 ~ NA_real_,
+                                    TRUE ~ r4imrc))
+# Sanity check
+with(charls, table(r3imrc_cleaned, r3imrc, useNA = "ifany"))
+with(charls, table(r4imrc_cleaned, r4imrc, useNA = "ifany"))
+
+# Delayed word recall
+with(charls %>% filter(r3dlrc == 0),
+     table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
+with(charls %>% filter(r4dlrc == 0),
+     table(w4_dc047_w4_s11, w4_dc047_w4_s12, useNA = "ifany"))
+# There are 2334 participants with non responses (can't recall any of the words)
+# But the rest 505 participants seem to be NAed
+
+charls %<>% 
+  mutate(r3dlrc_cleaned = case_when(r3dlrc == 0 & w3_dc027s12 == 12 ~ NA_real_,
+                                    TRUE ~ r3dlrc),
+         r4dlrc_cleaned = case_when(r4dlrc == 0 & w4_dc047_w4_s12 == 12 ~ NA_real_,
+                                    TRUE ~ r4dlrc))
+# Sanity check
+with(charls, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
+with(charls, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
+
 #---- Region of residence Childhood ----
 proc_freq(charls, lh_t002_psu_1_) %>% print(n = Inf)
 # These code corresponds to the 2011 NBS area code
