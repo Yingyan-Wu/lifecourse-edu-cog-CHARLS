@@ -128,10 +128,8 @@ impute_ages <- function(vector){
     for(slot in missing_age){
       if(slot < last_age){
         vector[slot] <- vector[last_age] - 2*(last_age - slot)
-        # vector[slot] <- vector[last_age] - 24*(last_age - slot)
       } else{
         vector[slot] <- vector[last_age] + 2*(slot - last_age)
-        # vector[slot] <- vector[last_age] + 24*(slot - last_age)
       }
     }
     return(vector)
