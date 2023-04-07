@@ -11,8 +11,8 @@ if (!require("pacman")){
 }
 
 p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "glue", 
-       "survey", "lme4",  "labelled")
-# Do not load "summarytools" as it contains conflicted functions as dplyr
+       "survey", "lme4",  "labelled", "lubridate")
+# Do not load "summarytools" as it contains conflicted functions from dplyr
 
 #---- function ----
 source(here::here("scripts", "functions.R"))
@@ -22,6 +22,8 @@ source(here::here("scripts", "functions.R"))
 harmonized_variables <- c("ID", "householdID", "pnc", "communityID",
                           "ID_w1", "householdID_w1", 
                           paste0("inw", 1:4),
+                          paste0("r", 1:4, "iwy"),
+                          paste0("r", 1:4, "iwm"),
                           paste0("r", 1:4, "iwstat"),
                           # Weights
                           paste0("r", 1:4, "wtrespb"),
@@ -83,8 +85,7 @@ getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("demographic_background", "health_status_and_functioning", 
               "work_retirement_and_pension", "work_retirement",
-              "family_information", "weights", "Sample_infor"
-              )
+              "family_information", "weights")
 folder_index <- c(1:length(folders))[-c(1, 3, 5, 8)] # main waves only
 
 # Read in function
@@ -102,10 +103,10 @@ read_charls <- function(paths){
              str_detect(paths, "2013|2015")){
     haven::read_dta(paths) %>%
       select(-c("versionID"))
-  } else if (str_detect(paths, "2015|2018") &
-             str_detect(paths, "Sample_Infor")){
-    haven::read_dta(paths) %>%
-      select(-c("versionID"))
+    # } else if (str_detect(paths, "2015|2018") &
+    #            str_detect(paths, "Sample_Infor")){
+    #   haven::read_dta(paths) %>%
+    #     select(-c("versionID"))
   } else if (str_detect(paths, "2013|2015")){
     haven::read_dta(paths) %>%
       select(-c("xrtype", "versionID"))
@@ -204,8 +205,8 @@ charls_w3 <- join_all(wave3,
 # colnames(charls_w3)
 
 charls_w4 <- join_all(wave4, 
-                          by = c("ID", "householdID", "communityID"),
-                          type = "left", match = "all") %>%
+                      by = c("ID", "householdID", "communityID"),
+                      type = "left", match = "all") %>%
   rename_with(.cols = !c("ID", "householdID", "communityID"), 
               function(x){paste0("w4_", x)})
 # colnames(charls_w4)
@@ -272,99 +273,161 @@ charls %<>% remove_labels()
 gc()
 # proc_freq(harmonized, raeduc_c)
 
-diffdf::diffdf(harmonized_lh %>% filter(ID %in% harmonized$ID) %>% 
-                 select(ID, "rabmonth", "rabyear", "ragender", 
-                        "ramomoccup_c", "radadoccup_c"),
-               harmonized %>% filter(ID %in% harmonized_lh$ID) %>% 
-                 select(ID, "rabmonth", "rabyear", "ragender", 
-                        "ramomoccup_c", "radadoccup_c"))
+# # Sanity check
+# diffdf::diffdf(harmonized_lh %>% filter(ID %in% harmonized$ID) %>% 
+#                  select(ID, "rabmonth", "rabyear", "ragender", 
+#                         "ramomoccup_c", "radadoccup_c"),
+#                harmonized %>% filter(ID %in% harmonized_lh$ID) %>% 
+#                  select(ID, "rabmonth", "rabyear", "ragender", 
+#                         "ramomoccup_c", "radadoccup_c"))
+# 
+# with(charls, table(rabmonth == lh_rabmonth, is.na(rabmonth), useNA = "ifany"))
+# with(charls, table(rabyear == lh_rabyear, is.na(rabyear), useNA = "ifany"))
+# with(charls, table(ragender == lh_ragender, useNA = "ifany"))
+# with(charls, table(ramomoccup_c == lh_ramomoccup_c, useNA = "ifany"))
+# with(charls, table(radadoccup_c == lh_radadoccup_c, useNA = "ifany"))
+
+# Filling NAs for birth month, birth year, gender in the harmonized dataset
+# with values from life history dataset
+
+charls %<>%
+  mutate(rabmonth_v2 = case_when(!is.na(rabmonth) ~ rabmonth,
+                                 !is.na(lh_rabmonth) ~ lh_rabmonth),
+         rabyear_v2 = case_when(!is.na(rabyear) ~ rabyear,
+                                !is.na(lh_rabyear) ~ lh_rabyear),
+         ragender_v2 = case_when(!is.na(ragender) ~ ragender,
+                                 !is.na(lh_ragender) ~ lh_ragender),
+         ramomoccup_c_v2 = case_when(!is.na(ramomoccup_c) ~ ramomoccup_c,
+                                     !is.na(lh_ramomoccup_c) ~ lh_ramomoccup_c),
+         radadoccup_c_v2 = case_when(!is.na(radadoccup_c) ~ radadoccup_c,
+                                     !is.na(lh_radadoccup_c) ~ lh_radadoccup_c))
+
+# Sanity check
+with(charls, table(rabyear_v2 == lh_raidbyear, useNA = "ifany"))
+with(charls, table(is.na(rabmonth_v2) & !is.na(lh_raidbmonth),useNA = "ifany"))
+with(charls, table(is.na(rabyear_v2) & !is.na(lh_raidbyear),useNA = "ifany"))
 
 #---- Age ----
 charls %>% select(contains("agey")) %>%
   apply(., 2, proc_sum)
 
-age_y <- charls %>% dplyr::select(contains("agey"), -contains("LHagey")) %>% 
+# Using birth year, birth month and interview dates to calculate age
+charls %<>%
+  # birth dates (assuming at the first day of the month)
+  mutate(rabdate_v2 = as.Date(paste0(rabmonth_v2, "/1/", rabyear_v2),
+                              "%m/%d/%Y"))
+for (i in 1:4){
+  charls %<>%
+    mutate(
+      # Interview dates (assuming at the first day of the month)
+      !!paste0("r", i, "iwd_v2") := as.Date(
+        paste0(!!sym(paste0("r", i, "iwm")), "/1/", 
+               !!sym(paste0("r", i, "iwy"))), "%m/%d/%Y"),
+      !!paste0("r", i, "agey_v2") := 
+        case_when(!is.na(!!sym(paste0("r", i, "agey"))) ~ 
+                    !!sym(paste0("r", i, "agey")),
+                  is.na(!!sym(paste0("r", i, "agey"))) ~ 
+                    round(interval(start = rabdate_v2, 
+                                   end = !!sym(paste0("r", i, "iwd_v2"))) / 
+                            duration(num = 1, units = "years"))))
+}
+
+# Sanity check
+# Check for those with age missing, do they have interview dates and birth dates data
+colSums(is.na(charls %>% filter(is.na(r2agey)) %>% 
+                select(contains(c("iwd_v2", "rabdate_v2")))))
+
+charls %>% select(contains("agey_v2")) %>%
+  apply(., 2, proc_sum, more = T)
+
+# For those who are still missing ages, since interview dates were missing, 
+# impute them using the closest nonmissing values of age +/- 2
+age_y <- charls %>% dplyr::select(contains("agey_v2"), -contains("LHagey")) %>% 
   apply(., 1, impute_ages) %>% t()
 
-charls[, paste0("r", 1:4, "age_y")] <- age_y
+charls[, paste0("r", 1:4, "agey_v3")] <- age_y
 rm(age_y)
 
-charls %>% select(contains("age_y")) %>%
-  apply(., 2, proc_sum)
+charls %>% select(contains("agey_v3")) %>%
+  apply(., 2, proc_sum, more = T)
 
-# Check those missing the ages
-view(charls %>% filter(is.na(r1age_y)) %>%
-       select(paste0("w", 1:4, "_ba002_1"),
-              paste0("w", 1:4, "_ba002_2"),
-              paste0("w", 1:4, "_ba003"),
-              paste0("w", 1:4, "_iyear"),
-              paste0("w", 1:4, "_imonth"),
-              "rabyear", "rabmonth", "rabday",
-              paste0("r", 1:4, "agey"),
-              "radyear", "radmonth", contains("lh_r")))
+# check the birth date and the interview dates
+with(charls %>% filter(is.na(r1agey_v3)),
+     table(!is.na(r1iwd_v2), !is.na(rabdate_v2)))
+with(charls %>% filter(is.na(r2agey_v3)),
+     table(!is.na(r1iwd_v2), !is.na(rabdate_v2)))
 
-colSums(is.na(harmonized %>% filter(is.na(r1agey) & is.na(r2agey) & is.na(r3agey) &
-                             is.na(r4agey)) %>%
-       select(rabyear, rabmonth, rabday))) # 305 missing
+# Check if interview dates were available for both core waves and lh waves
+# for those still missing core wave age but has lh wave age
+with(charls %>% filter(is.na(r4agey_v3) & !is.na(rLHagey)),
+     table(!is.na(r4iwd_v2), !is.na(rLHiwm)))
 
-missingage_id <- harmonized %>% 
-  filter(is.na(r1agey) & is.na(r2agey) & is.na(r3agey) & is.na(r4agey)) %>% 
+# missingage_id <- harmonized %>% 
+#   filter(is.na(r1agey) & is.na(r2agey) & is.na(r3agey) & is.na(r4agey)) %>% 
+#   pull(ID)
+# charls_missingage <- charls %>% filter(ID %in% missingage_id) %>%
+#   select(paste0("w", 1:4, "_ba002_1"),
+#          paste0("w", 1:4, "_ba002_2"),
+#          paste0("w", 1:4, "_ba003"),
+#          paste0("w", 1:4, "_iyear"),
+#          paste0("w", 1:4, "_imonth"),
+#          "rabyear", "rabmonth", "rabday",
+#          paste0("r", 1:4, "agey"),
+#          "radyear", "radmonth", contains("lh_r"))
+# table(charls_missingage$w1_ba002_2, useNA = "ifany") # 72 of them can't remember their birth month
+# 
+# view(charls_missingage %>% filter(w1_ba002_2 == 0) %>%
+#        select(paste0("w", 1:4, "_ba002_1"),
+#               paste0("w", 1:4, "_ba002_2"),
+#               paste0("w", 1:4, "_ba003"),
+#               paste0("w", 1:4, "_iyear"),
+#               paste0("w", 1:4, "_imonth"),
+#               "rabyear", "rabmonth", "rabday",
+#               paste0("r", 1:4, "agey"),
+#               "radyear", "radmonth", contains("lh_r")))
+
+missingage_id <- charls%>%
+  filter(is.na(r1agey_v3) & is.na(r2agey_v3) & is.na(r3agey_v3) & 
+           is.na(r4agey_v3)) %>%
   pull(ID)
 
-harmonized_lh %>% filter(ID %in% missingage_id) %>% nrow()
+charls_missingage <- charls %>%
+  filter(ID %in% missingage_id) %>%
+  select("ID", 
+         # Weights
+         paste0("r", 1:4, "wtrespb"),
+         "ragender",
+         "rabplace_c",
+         paste0("h", 1:4, "rural"),
+         paste0("r", 1:4, "hukou"),
+         "raeduc_c",
+         paste0("r", 1:4, "imrc"), # immediate word recall
+         paste0("r", 1:4, "dlrc"), # delayed word recall
+         # parent's edu & occupation
+         "rameduc_c", "rafeduc_c", "ramomoccup_c", 
+         "radadoccup_c")
 
-colSums(is.na(harmonized_lh %>% filter(ID %in% missingage_id) %>%
-                select(rabyear, rabmonth)))
-charls %>% filter(ID %in% missingage_id) %>% nrow()
-colSums(is.na(harmonized_lh %>% filter(ID %in% missingage_id) %>%
-                select(rabyear, rabmonth)))
-
-charls_missingage <- charls %>% filter(ID %in% missingage_id) %>%
-       select(paste0("w", 1:4, "_ba002_1"),
-              paste0("w", 1:4, "_ba002_2"),
-              paste0("w", 1:4, "_ba003"),
-              paste0("w", 1:4, "_iyear"),
-              paste0("w", 1:4, "_imonth"),
-              "rabyear", "rabmonth", "rabday",
-              paste0("r", 1:4, "agey"),
-              "radyear", "radmonth", contains("lh_r"))
-table(charls_missingage$w1_ba002_2, useNA = "ifany") # 72 of them can't remember their birth month
-
-view(charls_missingage %>% filter(w1_ba002_2 == 0) %>%
-  select(paste0("w", 1:4, "_ba002_1"),
-         paste0("w", 1:4, "_ba002_2"),
-         paste0("w", 1:4, "_ba003"),
-         paste0("w", 1:4, "_iyear"),
-         paste0("w", 1:4, "_imonth"),
-         "rabyear", "rabmonth", "rabday",
-         paste0("r", 1:4, "agey"),
-         "radyear", "radmonth", contains("lh_r")))
 
 #---- Gender ----
 charls %<>% 
   mutate(female = case_when(ragender == 1 ~ 0,
-                            ragender == 2 ~ 1))
+                            ragender == 2 ~ 1),
+         lh_female = case_when(lh_ragender == 1 ~ 0,
+                               lh_ragender == 2 ~ 1),
+         female_v2 = case_when(!is.na(female) ~ female,
+                              is.na(female) ~ lh_female))
 # sanity check
 with(charls, table(female, ragender, useNA = "ifany"))
-with(charls, table(female, w1_rgender, useNA = "ifany"))
-with(charls, table(female, w2_ba000_w2_3, useNA = "ifany"))
-with(charls, table(female, w2_xrgender, useNA = "ifany"))
-with(charls, table(female, w3_ba000_w2_3, useNA = "ifany"))
-with(charls, table(female, w3_xrgender, useNA = "ifany"))
-with(charls, table(female, w4_ba000_w2_3, useNA = "ifany"))
-with(charls, table(female, w4_zfrgender, useNA = "ifany"))
-with(charls, table(female, lh_rgender, useNA = "ifany"))
-# This 298 participants didn't get any variables related to birthdate as well!
-colSums(is.na(charls %>% filter(is.na(r1age_y) & is.na(female)) %>%
-                select(paste0("w", 1:4, "_ba002_1"),
-                       paste0("w", 1:4, "_ba003"),
-                       "rabyear", "rabmonth", "rabday",
-                       paste0("r", 1:4, "agey"),
-                       "radyear", "radmonth")))
-id_298 <- charls %>% filter(is.na(r1age_y) & is.na(female)) %>%
-  select(ID) %>% pull()
-
-view(harmonized_lh %>% filter(ID %in% id_298))
+with(charls, table(female, lh_ragender, useNA = "ifany"))
+with(charls, table(female, female_v2, useNA = "ifany"))
+with(charls, table(female_v2, useNA = "ifany")) # 6 missing gender
+# with(charls, table(female, w1_rgender, useNA = "ifany"))
+# with(charls, table(female, w2_ba000_w2_3, useNA = "ifany"))
+# with(charls, table(female, w2_xrgender, useNA = "ifany"))
+# with(charls, table(female, w3_ba000_w2_3, useNA = "ifany"))
+# with(charls, table(female, w3_xrgender, useNA = "ifany"))
+# with(charls, table(female, w4_ba000_w2_3, useNA = "ifany"))
+# with(charls, table(female, w4_zfrgender, useNA = "ifany"))
 
 #Drop CHARLS harmonized gender variable
 # charls %<>% dplyr::select(-ragender)
@@ -828,9 +891,14 @@ proc_freq(charls, hukou_flag)
 hukou_mat <- charls %>% select(contains("hukou")) %>% select(-hukou_flag)
 colSums(is.na(hukou_mat))
 
+#---- Dropping people ----
+#---- **1. Dropping those who still missing age and gender ----
+charls_selected <- charls %>%
+  filter(is.na(female) & is.na(r1agey_v3))
+
 #---- Save the data ----
-save(charls, 
-     file = here::here("data", "analysis_data", "charls_ser_abstract.RData"))
+save(charls_selected, 
+     file = here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- OLD ----
 #---- ** Edu level cleaning ----
