@@ -31,8 +31,9 @@ summary(charls_selected$childhood_edu)
 charls_selected <- harmonized_long_1518 %>%
   na.omit() %>%
   select(-householdID, -communityID, -pnc) %>%
-  filter(age_y >= 60 & age_y < 90 & raeduc_c >= 4 & raeduc_c != 10 &
-           hukou != 3 & hukou != 4) %>%
+  filter(age_y >= 60 & age_y < 90) %>%
+  # filter(age_y >= 60 & age_y < 90 & raeduc_c >= 4 & raeduc_c != 10 &
+  #          hukou != 3 & hukou != 4) %>%
   mutate(treat = case_when(wave == "4" ~ 1,
                            wave == "3" ~ 0),
          work_status = case_when(lbrf_c %in% c(1, 2) ~ 1, # Agriculture employed
