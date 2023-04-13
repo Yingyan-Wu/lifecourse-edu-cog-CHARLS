@@ -415,7 +415,7 @@ charls %<>%
          lh_female = case_when(lh_ragender == 1 ~ 0,
                                lh_ragender == 2 ~ 1),
          female_v2 = case_when(!is.na(female) ~ female,
-                              is.na(female) ~ lh_female))
+                               is.na(female) ~ lh_female))
 # sanity check
 with(charls, table(female, ragender, useNA = "ifany"))
 with(charls, table(female, lh_ragender, useNA = "ifany"))
@@ -466,27 +466,42 @@ with(charls, table(w1_bd007s1, w1_bd007s1))
 with(charls, table(w3_bd007_w2_1, useNA = "ifany"))
 
 charls %<>%
-  mutate(adult_edu = case_when(w4_bd007_w2_1 != 1|w3_bd007_w2_1 != 1|
-                                 w2_bd007_w2_1 != 1|w2_bd007 != 1|
-                                 w1_bd007 != 1 ~ 1,
-                               is.na(w4_bd007_w2_1) & is.na(w3_bd007_w2_1) & 
-                                 is.na(w2_bd007_w2_1) & is.na(w2_bd007) & 
-                                 is.na(w1_bd007) ~ NA_real_,
-                               TRUE ~ 0),
-         adult_edu_dplm = case_when(w4_bd009_w2_1 == 1|w3_bd009_w2_1 == 1|
-                                      w2_bd009_w2_1 == 1|w2_bd009 == 1|
-                                      w1_bd009 == 1|w3_bd011 == 2 ~ 1, 
-                                    # pending on being more generalized on setting 
-                                    # those indicating adult education degree and 
-                                    # the time obtaining the degree to have the diploma
-                                    is.na(w4_bd009_w2_1) & is.na(w3_bd009_w2_1) & 
-                                      is.na(w2_bd009_w2_1) & is.na(w2_bd009) & 
-                                      is.na(w1_bd009) ~ NA_real_,
-                                    TRUE ~ 0))
+  mutate(adult_edu = case_when(
+    # bd007's = 1 none adult education
+    w4_bd007_w2_1 != 1|w3_bd007_w2_1 != 1|w2_bd007_w2_1 != 1|w2_bd007 != 1|
+      w1_bd007 != 1 ~ 1,
+    is.na(w4_bd007_w2_1) & is.na(w3_bd007_w2_1) & 
+      is.na(w2_bd007_w2_1) & is.na(w2_bd007) & 
+      is.na(w1_bd007) ~ NA_real_,
+    TRUE ~ 0),
+    # This needs to be before wave 1 (2011)
+    adult_edu_dplm = case_when(
+      # bd009's = 1: no diploma for adult education program
+      (w4_bd009_w2_1 == 1|w3_bd009_w2_1 == 1|w2_bd009_w2_1 == 1|w2_bd009 == 1|
+         w1_bd009 == 1) ~ 1, 
+      is.na(w4_bd009_w2_1) & is.na(w3_bd009_w2_1) & 
+        is.na(w2_bd009_w2_1) & is.na(w2_bd009) & 
+        is.na(w1_bd009) ~ NA_real_,
+      TRUE ~ 0))
+# 
+# # Check the time of getting the diploma
+# charls %>%
+#   filter(!is.na(adult_edu_dplm)) %>%
+#   select(contains("bd010")) %>%
+#   apply(., 2, proc_sum, more = T)
+# 
+# table(charls$adult_edu_dplm, useNA = "ifany")
+# 
+# with(charls %>%
+#        filter(!is.na(adult_edu_dplm)), 
+#      table(w4_bd010 <= 2011, useNA = "ifany"))
+# 
+# with(charls, table(w3_bd009_w2_1, w3_bd011, useNA = "ifany"))
+# 
+# proc_freq(charls, adult_edu)
+# proc_freq(charls, adult_edu_dplm)
+# with(charls, table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 
-proc_freq(charls, adult_edu)
-proc_freq(charls, adult_edu_dplm)
-with(charls, table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 # For those reported not having adult edu but having diploma, check their degree
 charls %>% filter(adult_edu == 0 & adult_edu_dplm == 1) %>% select(contains("bd011"))
 
@@ -538,110 +553,30 @@ charls %<>%
                 "college & above + continuing education without a diploma" = 10,
                 "college & above + continuing education with a diploma" = 11))
 
-proc_freq(charls, edu_cat)
+# Sanity check
 with(charls, table(edu_cat, raeduc_c, useNA = "ifany"))
+with(charls, table(continuing_edu, adult_edu_dplm, useNA = "ifany"))
 with(charls %>% filter(is.na(edu_cat) & raeduc_c == 1), 
      table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 
-#---- **Adult edu time ----
-proc_univariate(charls$w1_bd010)
-with(charls %>% filter(adult_edu == 1), 
-     table(w1_bd011, adult_edu_dplm,useNA = "ifany"))
-with(charls %>% filter(adult_edu == 1), 
-     table(w2_bd011, adult_edu_dplm,useNA = "ifany"))
-with(charls %>% filter(adult_edu == 1), 
-     table(w3_bd011, adult_edu_dplm,useNA = "ifany"))
-with(charls %>% filter(adult_edu == 1), 
-     table(w4_bd011, adult_edu_dplm,useNA = "ifany"))
-
-charls %>% filter(w3_bd011 == 2 & adult_edu_dplm == 0) %>% 
-  select(contains(c("bd009", "bd010", "edu")))
-
-# All those indicate adult degree as others, set them to be NA
-charls %<>% 
-  mutate(across(.cols = ends_with("bd011"), 
-                ~ case_when(. == 4 ~ NA_real_,
-                            TRUE ~ .)))
-# Year of the highest adult education degree obtained
-with(charls, table(adult_edu_dplm, (!is.na(w1_bd010)|!is.na(w2_bd010)|
-                                      !is.na(w3_bd010)|!is.na(w4_bd010)),
-                   useNA = "ifany"))
-
-# charls %<>% mutate(
-#   adult_edu_dplm_year = case_when(!is.na(w1_bd010) ~ w1_bd010,
-#                                   !is.na(w2_bd010) ~ w2_bd010,
-#                                   !is.na(w3_bd010) ~ w3_bd010,
-#                                   !is.na(w4_bd010) ~ w4_bd010),
-#   adult_edu_start_year = case_when(!is.na(w1_bd010) ~ w1_bd010 - w1_bd008,
-#                                    !is.na(w2_bd010) ~ w2_bd010 - w2_bd008,
-#                                    !is.na(w3_bd010) ~ w3_bd010 - w3_bd008,
-#                                    !is.na(w4_bd010) ~ w4_bd010 - w4_bd008_w2_1)) %>%
-#   mutate(adult_edu_dplm_year = case_when(adult_edu_dplm_year > 2010 ~ NA_real_,
-#                                          TRUE ~ adult_edu_dplm_year),
-#          age_adult_edu_dplm = adult_edu_dplm_year - rabyear)
-# 
-# proc_univariate(charls$adult_edu_dplm_year)
-# proc_univariate(charls$age_adult_edu_dplm)
-# 
-# view(charls %>% filter(age_adult_edu_dplm <= 23) %>%
-#        select(contains(c("bd008", "bd009", "bd010", "edu"))))
-
-# view(charls %>%
-#   select(ID, adult_edu, adult_edu_dplm, adult_edu_dplm_year,
-#          contains(c("bd011", "bd010", "bd009"))) %>%
-#   filter(adult_edu_dplm == 1 & adult_edu_dplm_year > 2011))
-
 #---- **Education interruption 1967 - 1977 ----
+# For sensitivity analysis
+# Pending
+with(charls %>% filter(r1agey_v3 >= 45), 
+     table(rabyear_v2, lh_e002, useNA = "ifany"))
 proc_freq(charls, lh_e002)
-with(charls, table(rabyear, lh_e002, useNA = "ifany"))
 with(charls, table(lh_e003a, lh_e002, useNA = "ifany"))
 with(charls, table(lh_e004, lh_e002, useNA = "ifany"))
 length(charls %>% filter(rabyear <= 1962 & rabyear >= 1946))
 # charls %>% filter(rabyear <= 1962 & rabyear >= 1946)
 
-# Pending
+# Since the life history interviewees all have non missing rLHiwm and rLHiwy
+# these serve as indicators
+with(charls %>% filter(!is.na(rLHiwm)),
+     table(lh_e004, lh_e002, useNA = "ifany"))
 
-#---- Outcome: Word recall ----
-# harmonized %<>%
-#   left_join(charls %>% select(ID, w3_dc006s11, w3_dc006s12,
-#                               w4_dc028_w4_s11, w4_dc028_w4_s12,
-#                               w3_dc027s11, w3_dc027s12,
-#                               w4_dc047_w4_s11, w4_dc047_w4_s12),
-#             by = "ID")
-
-# immediate word recall
-with(charls %>% filter(r3imrc == 0),
-     table(w3_dc006s11, w3_dc006s12, useNA = "ifany"))
-with(charls %>% filter(r4imrc == 0),
-     table(w4_dc028_w4_s11, w4_dc028_w4_s12, useNA = "ifany"))
-# There are 1877 participants with non responses (can't recall any of the words)
-# But the rest 653 participants seem to be NAed
-
-charls %<>% 
-  mutate(r3imrc_cleaned = case_when(r3imrc == 0 & w3_dc006s12 == 12 ~ NA_real_,
-                                    TRUE ~ r3imrc),
-         r4imrc_cleaned = case_when(r4imrc == 0 & w4_dc028_w4_s12 == 12 ~ NA_real_,
-                                    TRUE ~ r4imrc))
-# Sanity check
-with(charls, table(r3imrc_cleaned, r3imrc, useNA = "ifany"))
-with(charls, table(r4imrc_cleaned, r4imrc, useNA = "ifany"))
-
-# Delayed word recall
-with(charls %>% filter(r3dlrc == 0),
-     table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
-with(charls %>% filter(r4dlrc == 0),
-     table(w4_dc047_w4_s11, w4_dc047_w4_s12, useNA = "ifany"))
-# There are 2334 participants with non responses (can't recall any of the words)
-# But the rest 505 participants seem to be NAed
-
-charls %<>% 
-  mutate(r3dlrc_cleaned = case_when(r3dlrc == 0 & w3_dc027s12 == 12 ~ NA_real_,
-                                    TRUE ~ r3dlrc),
-         r4dlrc_cleaned = case_when(r4dlrc == 0 & w4_dc047_w4_s12 == 12 ~ NA_real_,
-                                    TRUE ~ r4dlrc))
-# Sanity check
-with(charls, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
-with(charls, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
+#---- Outcome ----
+# The outcome was cleaned in another script (equipercentile equating method)
 
 #---- Region of residence Childhood ----
 proc_freq(charls, lh_t002_psu_1_) %>% print(n = Inf)
@@ -901,6 +836,87 @@ save(charls_selected,
      file = here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- OLD ----
+# #---- Outcome: Word recall ----
+# # immediate word recall
+# with(charls %>% filter(r3imrc == 0),
+#      table(w3_dc006s11, w3_dc006s12, useNA = "ifany"))
+# with(charls %>% filter(r4imrc == 0),
+#      table(w4_dc028_w4_s11, w4_dc028_w4_s12, useNA = "ifany"))
+# # There are 1877 participants with non responses (can't recall any of the words)
+# # But the rest 653 participants seem to be NAed
+# 
+# charls %<>% 
+#   mutate(r3imrc_cleaned = case_when(r3imrc == 0 & w3_dc006s12 == 12 ~ NA_real_,
+#                                     TRUE ~ r3imrc),
+#          r4imrc_cleaned = case_when(r4imrc == 0 & w4_dc028_w4_s12 == 12 ~ NA_real_,
+#                                     TRUE ~ r4imrc))
+# # Sanity check
+# with(charls, table(r3imrc_cleaned, r3imrc, useNA = "ifany"))
+# with(charls, table(r4imrc_cleaned, r4imrc, useNA = "ifany"))
+# 
+# # Delayed word recall
+# with(charls %>% filter(r3dlrc == 0),
+#      table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
+# with(charls %>% filter(r4dlrc == 0),
+#      table(w4_dc047_w4_s11, w4_dc047_w4_s12, useNA = "ifany"))
+# # There are 2334 participants with non responses (can't recall any of the words)
+# # But the rest 505 participants seem to be NAed
+# 
+# charls %<>% 
+#   mutate(r3dlrc_cleaned = case_when(r3dlrc == 0 & w3_dc027s12 == 12 ~ NA_real_,
+#                                     TRUE ~ r3dlrc),
+#          r4dlrc_cleaned = case_when(r4dlrc == 0 & w4_dc047_w4_s12 == 12 ~ NA_real_,
+#                                     TRUE ~ r4dlrc))
+# # Sanity check
+# with(charls, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
+# with(charls, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
+# #---- **Adult edu time ----
+# proc_univariate(charls$w1_bd010)
+# with(charls %>% filter(adult_edu == 1), 
+#      table(w1_bd011, adult_edu_dplm,useNA = "ifany"))
+# with(charls %>% filter(adult_edu == 1), 
+#      table(w2_bd011, adult_edu_dplm,useNA = "ifany"))
+# with(charls %>% filter(adult_edu == 1), 
+#      table(w3_bd011, adult_edu_dplm,useNA = "ifany"))
+# with(charls %>% filter(adult_edu == 1), 
+#      table(w4_bd011, adult_edu_dplm,useNA = "ifany"))
+# 
+# charls %>% filter(w3_bd011 == 2 & adult_edu_dplm == 0) %>% 
+#   select(contains(c("bd009", "bd010", "edu")))
+# 
+# # All those indicate adult degree as others, set them to be NA
+# charls %<>% 
+#   mutate(across(.cols = ends_with("bd011"), 
+#                 ~ case_when(. == 4 ~ NA_real_,
+#                             TRUE ~ .)))
+# # Year of the highest adult education degree obtained
+# with(charls, table(adult_edu_dplm, (!is.na(w1_bd010)|!is.na(w2_bd010)|
+#                                       !is.na(w3_bd010)|!is.na(w4_bd010)),
+#                    useNA = "ifany"))
+# 
+# # charls %<>% mutate(
+# #   adult_edu_dplm_year = case_when(!is.na(w1_bd010) ~ w1_bd010,
+# #                                   !is.na(w2_bd010) ~ w2_bd010,
+# #                                   !is.na(w3_bd010) ~ w3_bd010,
+# #                                   !is.na(w4_bd010) ~ w4_bd010),
+# #   adult_edu_start_year = case_when(!is.na(w1_bd010) ~ w1_bd010 - w1_bd008,
+# #                                    !is.na(w2_bd010) ~ w2_bd010 - w2_bd008,
+# #                                    !is.na(w3_bd010) ~ w3_bd010 - w3_bd008,
+# #                                    !is.na(w4_bd010) ~ w4_bd010 - w4_bd008_w2_1)) %>%
+# #   mutate(adult_edu_dplm_year = case_when(adult_edu_dplm_year > 2010 ~ NA_real_,
+# #                                          TRUE ~ adult_edu_dplm_year),
+# #          age_adult_edu_dplm = adult_edu_dplm_year - rabyear)
+# # 
+# # proc_univariate(charls$adult_edu_dplm_year)
+# # proc_univariate(charls$age_adult_edu_dplm)
+# # 
+# # view(charls %>% filter(age_adult_edu_dplm <= 23) %>%
+# #        select(contains(c("bd008", "bd009", "bd010", "edu"))))
+# 
+# # view(charls %>%
+# #   select(ID, adult_edu, adult_edu_dplm, adult_edu_dplm_year,
+# #          contains(c("bd011", "bd010", "bd009"))) %>%
+# #   filter(adult_edu_dplm == 1 & adult_edu_dplm_year > 2011))
 #---- ** Edu level cleaning ----
 # # Build the final version of highest education
 # with(charls, table(w2_bd001_w2_4, w1_bd001, useNA = "ifany"))
