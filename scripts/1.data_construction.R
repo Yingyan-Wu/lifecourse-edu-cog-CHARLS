@@ -609,8 +609,6 @@ childhood_resi_short <- charls %>% select(paste0("lh_t002_psu_", 1:25, "_")) %>%
 charls[, paste0("lh_t002_psu_", 1:25, "_short")] <- childhood_resi_short
 
 charls %<>%
-  # mutate(across(all_of(paste0("lh_t002_psu_", 1:25, "_")), 
-  #               as.numeric)) %>%
   left_join(psu2011_short %>% select(PSU_code_short, province_eng) %>%
               dplyr::rename(lh_t002_province_1_ = province_eng),
             by = c("lh_t002_psu_1_short" = "PSU_code_short"))
@@ -662,38 +660,30 @@ with(charls, table(ramoccup_c, ramomoccup_c, useNA = "ifany"))
 with(charls, table(rafoccup_c, radadoccup_c, useNA = "ifany"))
 with(charls, table(rameduc_c, useNA = "ifany"))
 
-# #---- birth order ----
-# # Pending 
-# # Come back after SER abstract
-# proc_freq(charls, w3_cc003_w3_1_)
-# proc_freq(charls, w4_cc000_w4_1)
-# with(charls, table(lh_b2_1_1_, lh_b2_1_5_, useNA = "ifany"))
-# 
-# charls %>% select(contains("lh_b4_2_")) %>%
-#   apply(., 2, table, useNA = "ifany")
-# 
-# charls %<>%
-#   mutate(
-#     first_child = case_when(
-#       w1_cc002_1 > 0 |w1_cc002_3 > 0|w1_cc004_1 > 0|w1_cc004_3 > 0|
-#         w2_cc002_1_1_ > 0|w2_cc002_3_1_ > 0|w2_cc004_1_1_ > 0|
-#         w2_cc004_3_1_ > 0 ~ 0,
-#       ((w1_cc002_1 == 0 & w1_cc002_3 == 0 & w1_cc004_1 == 0 & w1_cc004_3 == 0)|
-#         (w2_cc002_1_1_ == 0 & w2_cc002_3_1_ == 0 & w2_cc004_1_1_ == 0 & 
-#            w2_cc004_3_1_ == 0)) ~ 1,
-#       # lh_b2_1_1_ %in% c(2, 4) ~ 1,
-#       w3_xsiblingnum == 0 ~ 1,
-#       w4_cc000_w4_1 == 0 ~ 1,
-#       is.na(w1_cc002_1) & is.na(w1_cc002_3) & is.na(w1_cc004_1) & 
-#         is.na(w1_cc004_3) & is.na(w2_cc002_1_1_) & is.na(w2_cc002_3_1_) & 
-#         is.na(w2_cc004_1_1_) & is.na(w2_cc004_3_1_) ~ NA_real_
-#       # TRUE ~ 1
-#     ))
-# 
+#---- birth order ----
+# From the core dataset
+charls %<>%
+  mutate(
+    first_child = case_when(
+      w1_cc002_1 > 0 |w1_cc002_3 > 0|w1_cc004_1 > 0|w1_cc004_3 > 0|
+        w2_cc002_1_1_ > 0|w2_cc002_3_1_ > 0|w2_cc004_1_1_ > 0|
+        w2_cc004_3_1_ > 0 ~ 0,
+      ((w1_cc002_1 == 0 & w1_cc002_3 == 0 & w1_cc004_1 == 0 & w1_cc004_3 == 0)|
+         (w2_cc002_1_1_ == 0 & w2_cc002_3_1_ == 0 & w2_cc004_1_1_ == 0 &
+            w2_cc004_3_1_ == 0)) ~ 1,
+      # lh_b2_1_1_ %in% c(2, 4) ~ 1,
+      w3_xsiblingnum == 0 ~ 1,
+      w4_cc000_w4_1 == 0 ~ 1,
+      is.na(w1_cc002_1) & is.na(w1_cc002_3) & is.na(w1_cc004_1) &
+        is.na(w1_cc004_3) & is.na(w2_cc002_1_1_) & is.na(w2_cc002_3_1_) &
+        is.na(w2_cc004_1_1_) & is.na(w2_cc004_3_1_) ~ NA_real_
+      # TRUE ~ 1
+    ))
+
 # # Sanity check
 # proc_freq(charls, first_child)
 # proc_freq(charls, lh_b1)
-# charls %>% select(contains("lh_b2_1_")) %>% 
+# charls %>% select(contains("lh_b2_1_")) %>%
 #   apply(., 2, function(x) table(x, useNA = "ifany"))
 # with(charls, table(lh_b2_1_1_, lh_b2_1_2_, useNA = "ifany"))
 # with(charls, table(lh_b2_1_1_, lh_b2_1_3_, useNA = "ifany"))
@@ -705,12 +695,62 @@ with(charls, table(rameduc_c, useNA = "ifany"))
 # with(charls, table(lh_b2_1_1_, lh_b2_1_9_, useNA = "ifany"))
 # with(charls, table(lh_b2_1_1_, lh_b2_1_10_, useNA = "ifany"))
 # with(charls, table(first_child, w3_xsiblingnum, useNA = "ifany"))
-# 
-# sib_mat_liv6 <- charls %>% select(ID, contains("lh_b4_3_")) %>%
-#   mutate(sib1_sib2 = lh_b4_3_1_ - lh_b4_3_2_)
-# 
-# view(charls %>% filter(ID == "056346102001") %>%
-#        select(ID, female, rabyear, edu_cat, contains("lh_b4_3_")))
+# sib_mat_long <- charls %>% select(ID, contains("lh_b4_3_")) %>%
+#   pivot_longer(cols = !ID, 
+#                names_to = "sibling_num",
+#                values_to = "rsibbyear",
+#                names_pattern = "lh_b4_3_(.)_") %>%
+#   filter(!is.na(sibling_num) & !is.na(rsibbyear)) %>%
+#   arrange(ID, rsibbyear)
+# Sanity check
+# colSums(is.na(sib_mat_long))
+# sum(is.na(sib_mat_liv6 %>% select(-rabyear_v2, -first_child)))
+# Equal if we didn't filter on nonmissing when creating long dataset
+
+sib_mat_liv6 <- charls %>% select(ID, rabyear_v2, contains("lh_b4_3_")) %>%
+  mutate(nonNA_1st_sibbyear = coalesce(
+    lh_b4_3_1_, lh_b4_3_2_, lh_b4_3_3_, lh_b4_3_4_, lh_b4_3_5_, lh_b4_3_6_, 
+    lh_b4_3_7_, lh_b4_3_8_, lh_b4_3_9_, lh_b4_3_10_, lh_b4_3_11_, lh_b4_3_12_,
+    lh_b4_3_13_, lh_b4_3_14_, lh_b4_3_15_), 
+    first_child = case_when(rabyear_v2 <= nonNA_1st_sibbyear ~ 1,
+                            rabyear_v2 > nonNA_1st_sibbyear ~ 0))
+
+# with(sib_mat_liv6, table(nonNA_1st_sibbyear, useNA = "ifany"))
+# with(sib_mat_liv6, table(lh_b4_3_1_, useNA = "ifany"))
+# view(sib_mat_liv6 %>% filter(is.na(first_child) & !is.na(rabyear_v2)))
+# colSums(is.na(sib_mat_liv6 %>% filter(is.na(first_child) & !is.na(rabyear_v2)) %>%
+#                 select(contains("lh_b4_3_"))))
+
+charls$first_child_lh <- sib_mat_liv6$first_child
+
+# # Sanity check
+# with(charls, table(first_child_lh, first_child, useNA = "ifany"))
+# with(charls, table(first_child, useNA = "ifany"))
+# with(charls, table(first_child_lh, useNA = "ifany"))
+# # For those who got 0,1 and 1,0
+# view(charls %>% filter(
+#   # (first_child == 0 & first_child_lh == 1)|
+#   (first_child == 1 & first_child_lh == 0)) %>%
+#     select(ID, rabyear_v2, contains("lh_b4_3_"), 
+#            w1_cc002_1, w1_cc002_3, w1_cc004_1, w1_cc004_3, 
+#            w2_cc002_1_1_, w2_cc002_3_1_, w2_cc004_1_1_, w2_cc004_3_1_,
+#            w3_xsiblingnum,
+#            w4_cc000_w4_1))
+
+# Stick with the lh version for first_child, if it's missing, supplement the
+# values with the version derived from core datasets
+charls %<>%
+  mutate(first_child_v2 = case_when(!is.na(first_child_lh) ~ first_child_lh,
+                                    is.na(first_child_lh) ~ first_child))
+
+with(charls, table(first_child_lh, first_child_v2, useNA = "ifany"))
+proc_freq(charls, first_child_v2)
+
+# Pending
+# This person's really weird
+# Every year after she was born, there was a sibling born.
+view(charls %>% filter(ID == "056346102001") %>%
+       select(ID, female, rabyear, edu_cat,first_child_v2, contains("lh_b4_3_")))
 
 #---- working history from harmonized LH ----
 work_history_long_mat <- charls %>%
