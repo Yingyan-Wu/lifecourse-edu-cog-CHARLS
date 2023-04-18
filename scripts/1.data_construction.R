@@ -579,11 +579,54 @@ with(charls %>% filter(!is.na(rLHiwm)),
 # The outcome was cleaned in another script (equipercentile equating method)
 
 #---- Region of residence Childhood ----
+# psu2011_nbs <- readxl::read_xlsx(here::here("data", "analysis_data", 
+#                                             "psu2011_nbs.xlsx"))
+# colnames(psu2011_nbs)
+# 
+# p_load("deeplr")
+# psu2011_nbs %<>%
+#   mutate(
+#     province_eng = toEnglish2(
+#       province_CN, get_detect = T,
+#       auth_key = "a152826f-19ff-78ea-32a5-1b8a9b13a291:fx")$translation)
+# 
+# save(psu2011_nbs, file = here::here("data", "analysis_data", "psu2011_nbs.RData"))
+
+load(here::here("data", "analysis_data", "psu2011_nbs.RData"))
+psu2011_short <- psu2011_nbs %>%
+  mutate(PSU_code_short = substr(as.character(PSU_code), 1, 2)) %>%
+  select(-PSU_code, -city_CN) %>%
+  unique()
+
 proc_freq(charls, lh_t002_psu_1_) %>% print(n = Inf)
 # These code corresponds to the 2011 NBS area code
 charls %>% select(contains("lh_t002_psu_")) %>%
   apply(., 2, function(x) table(x, useNA = "ifany"))
-# Pending
+
+childhood_resi_short <- charls %>% select(paste0("lh_t002_psu_", 1:25, "_")) %>%
+  mutate(across(all_of(paste0("lh_t002_psu_", 1:25, "_")), 
+                function(x) substr(as.character(x), 1, 2)))
+charls[, paste0("lh_t002_psu_", 1:25, "_short")] <- childhood_resi_short
+
+charls %<>%
+  # mutate(across(all_of(paste0("lh_t002_psu_", 1:25, "_")), 
+  #               as.numeric)) %>%
+  left_join(psu2011_short %>% select(PSU_code_short, province_eng) %>%
+              dplyr::rename(lh_t002_province_1_ = province_eng),
+            by = c("lh_t002_psu_1_short" = "PSU_code_short"))
+
+# Sanity check
+# colnames(charls %>% select(contains(".x")))
+# with(charls, table(is.na(lh_t002_psu_1_), is.na(lh_t002_province_1_)))
+# with(charls %>%
+#   select("lh_t002_province_1_", lh_t002_psu_1_) %>%
+#   filter(!is.na(lh_t002_psu_1_) & is.na(lh_t002_province_1_)),
+#   table(lh_t002_psu_1_))
+# proc_freq(charls, lh_t002_province_1_) %>% print(n = Inf)
+# with(charls, table(is.na(lh_t002_psu_1_short), is.na(lh_t002_psu_5_short)))
+
+charls %<>%
+  mutate(childhood_1st_resi = lh_t002_province_1_)
 
 #---- Rural/urban residence Childhood ----
 colnames(charls %>% select(contains("bb006")))
@@ -598,7 +641,10 @@ charls %<>%
                                    !is.na(w2_bb006) ~ w2_bb006)) %>%
   mutate(rarural_child = case_when(rarural_child == 2 ~ 0,
                                    TRUE ~ rarural_child))
-proc_freq(charls, rarural_child)
+
+# Sanity check
+# proc_freq(charls, rarural_child)
+# with(charls, table(rarural_child, childhood_1st_resi, useNA = "ifany"))
 
 #---- Parental socioeconomic status (latent variable to be built) ----
 charls %<>% mutate(rameduc_c = case_when(rameduc_c == 1 ~ 0,
@@ -828,8 +874,17 @@ colSums(is.na(hukou_mat))
 
 #---- Dropping people ----
 #---- **1. Dropping those who still missing age and gender ----
+# test <- charls %>%
+#   filter(is.na(female) & is.na(r1agey_v3)) %>%
+#   select(contains("edu"), contains("imrc"), contains("dlrc"))
+# table(colSums(is.na(test)))
+
+# These 298 people did not have the outcome measures and the eductaion variables
+
 charls_selected <- charls %>%
   filter(is.na(female) & is.na(r1agey_v3))
+
+
 
 #---- Save the data ----
 save(charls_selected, 
