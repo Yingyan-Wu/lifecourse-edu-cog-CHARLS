@@ -752,7 +752,11 @@ proc_freq(charls, first_child_v2)
 view(charls %>% filter(ID == "056346102001") %>%
        select(ID, female, rabyear, edu_cat,first_child_v2, contains("lh_b4_3_")))
 
-#---- working history from harmonized LH ----
+view(charls %>% filter(first_child_v2 == 1) %>%
+       select(ID, female, rabyear_v2, edu_cat, first_child_v2, 
+              contains("lh_b4_3_")))
+
+#---- Working history from harmonized LH ----
 work_history_long_mat <- charls %>%
   select(ID, rLHagey, contains("c_wrkstate")) %>%
   pivot_longer(!c(ID, rLHagey), 
@@ -765,7 +769,7 @@ work_history_long_mat <- charls %>%
 # Sanity check
 with(work_history_long_mat, table(Age, useNA = "ifany"))
 
-# A random sample of 5 people
+# A random sample of 100 people
 set.seed("62283")
 random_id <- sample(unique(harmonized_lh$ID), 100, replace = F)
 
@@ -780,7 +784,7 @@ work_history_long_mat %>%
                       "\nA random sample of 100 people")) +
   theme(legend.position = "none")
 
-#---- First occupation type ----
+#---- **First occupation type ----
 # # Pending after SER
 # proc_freq(charls, w1_fb002)
 # proc_freq(charls, w2_fb002)
