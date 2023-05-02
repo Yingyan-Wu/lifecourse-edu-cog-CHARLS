@@ -747,6 +747,7 @@ with(charls, table(first_child_lh, first_child_v2, useNA = "ifany"))
 proc_freq(charls, first_child_v2)
 
 # Pending
+# Not sure whether I can trust this
 # This person's really weird
 # Every year after she was born, there was a sibling born.
 view(charls %>% filter(ID == "056346102001") %>%
@@ -764,7 +765,7 @@ work_history_long_mat <- charls %>%
                values_to = "wrkstate",
                names_pattern = "c_wrkstate(.*)") %>%
   filter(Age <= rLHagey) # exclude the records of later age which participants
-# have not reached (assigned NA records)
+# have not reached (exclude the assigned NA records)
 
 # Sanity check
 with(work_history_long_mat, table(Age, useNA = "ifany"))
@@ -785,7 +786,34 @@ work_history_long_mat %>%
   theme(legend.position = "none")
 
 #---- **First occupation type ----
-# # Pending after SER
+# # First occupation mat
+# work_history_wide_mat <- charls %>%
+#   select(ID, rLHagey, contains("c_wrkstate"))
+# with(work_history_wide_mat %>% filter(c_wrkstate15 == 9 & c_wrkstate16 == 9 & 
+#                                         c_wrkstate17 == 9 & c_wrkstate18 == 9 &
+#                                         c_wrkstate19 == 9 & c_wrkstate20 == 9 &
+#                                         c_wrkstate21 == 9 & c_wrkstate22 == 9 &
+#                                         c_wrkstate23 == 9 & c_wrkstate24 == 9), 
+#      table(c_wrkstate25, c_wrkstate26, useNA = "ifany"))
+
+first_work_mat <- work_history_long_mat %>%
+  na.omit() %>%
+  filter(wrkstate != 9 & wrkstate != 7) %>%
+  arrange(ID, Age) %>%
+  group_by(ID) %>%
+  slice(1) %>%
+  ungroup() %>%
+  dplyr::rename(first_occupation = wrkstate,
+                first_occupation_age = Age)
+
+charls %<>%
+  left_join(first_work_mat %>% select(ID, contains("first_occupation")),
+            by = "ID")
+
+proc_freq(first_work_mat, first_occupation)
+proc_freq(charls, first_occupation)
+
+# OLD
 # proc_freq(charls, w1_fb002)
 # proc_freq(charls, w2_fb002)
 # with(charls, table(w2_fb002, w1_fb002, useNA = "ifany"))
@@ -799,7 +827,7 @@ work_history_long_mat %>%
 # colnames(charls %>% select(contains("fb002")))
 
 # 2011 wave 1 labor force
-proc_freq(charls, r1lbrf_c)
+# proc_freq(charls, r1lbrf_c)
 
 #---- Marital history from harmonized LH ----
 marital_long_mat <- charls %>%
