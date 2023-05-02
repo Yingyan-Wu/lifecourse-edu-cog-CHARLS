@@ -110,6 +110,55 @@ table1 %>% as_flex_table() %>% flextable::save_as_pptx(
   #       "Mean (SD) for continuous variables; n (%) for categorical variables")
   # ) %>% as_flex_table()
 
+tbl_strata_ex1 <-
+  charls_selected %>%
+  select(r1age_y, female, edu_cat, h1rural,
+         rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c,
+         r1imrc, r1dlrc,
+         r1wtrespb) %>%
+  na.omit() %>%
+  labelled::set_variable_labels(
+    r1age_y = "Baseline age in years",
+    female = "Female (%)",
+    edu_cat = "Education level (%)",
+    h1rural = "Rural residence (%)",
+    rameduc_c = "Mother's education level (%)", 
+    rafeduc_c = "Father's education level (%)", 
+    ramoccup_c = "Mother's occupation (%)", 
+    rafoccup_c = "Father's occupation (%)",
+    r1imrc = "Baseline Immediate word recall", 
+    r1dlrc = "Baseline delayed word recall") %>%
+  labelled::drop_unused_value_labels() %>%
+  labelled::set_value_labels(
+    female = c("Female" = 1, "Male" = 0),
+    h1rural = c("Rural" = 1, "Urban" = 0),
+    rameduc_c = c(
+      "No formal education" = 0,
+      "Elementary school or less" = 1,
+      "Vocational school/middle school/high school" = 2,
+      "College & above" = 3), 
+    rafeduc_c = c(
+      "No formal education" = 0,
+      "Elementary school or less" = 1,
+      "Vocational school/middle school/high school" = 2,
+      "College & above" = 3) , 
+    ramoccup_c = c("Farming" = 1,
+                   "Non-Agricultural" = 0), 
+    rafoccup_c = c("Farming" = 1,
+                   "Non-Agricultural" = 0)) %>%
+  modify_if(is.labelled, to_factor) %>%
+  modify_if(is.factor,
+            function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
+  tbl_strata(
+    strata = h1rural,
+    .tbl_fun =
+      ~ .x %>%
+      tbl_summary(by = female, missing = "no") %>%
+      add_n(),
+    .header = "**{strata}**, N = {n}"
+  )
+
+tbl_strata_ex1 %>% as_flex_table()
 
 #---- Prepare the dataset ----
 covariates <- c("r1age_y", "female", "region_eng", "rarural_child", 
