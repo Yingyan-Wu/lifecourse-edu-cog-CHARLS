@@ -280,5 +280,3 @@ table1_1518 %>%  as_flex_table() %>%
 #---- Save the dataset ----
 save(harmonized, harmonized_long_1518, file = here::here("data", "analysis_data", 
                                                          "charls_equating_samp.RData"))
-
-
