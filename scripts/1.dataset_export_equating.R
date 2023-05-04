@@ -173,52 +173,17 @@ harmonized %<>%
 with(harmonized, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
 with(harmonized, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
 
-#---- Baseline Table 1 ----
-table1 <- harmonized %>%
-  select(r1age_y, female, raeduc_c, childhood_edu, h1rural,
-         r1hukou, h1rural, r1imrc, r1dlrc) %>%
-  labelled::set_variable_labels(
-    r1age_y = "Baseline age in years",
-    female = "Female (%)",
-    raeduc_c = "Early life education level (%)",
-    childhood_edu = "Early life education level (simplified) (%)",
-    h1rural = "Rural residence (%)",
-    r1hukou = "Hukou status (%)",
-    r1imrc = "Baseline Immediate word recall", 
-    r1dlrc = "Baseline delayed word recall") %>%
-  labelled::drop_unused_value_labels() %>%
-  labelled::set_value_labels(
-    female = c("Yes" = 1, "No" = 0),
-    h1rural = c("Yes" = 1, "No" = 0),
-    childhood_edu = c(
-      "No formal education" = 0,
-      "Elementary school or less" = 1,
-      "Vocational school/middle school/high school" = 2,
-      "College & above" = 3)) %>%
-  modify_if(is.labelled, to_factor) %>%
-  modify_if(is.factor,
-            function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
-  tbl_summary(
-    statistic = list(all_categorical() ~ "{n} ({p}%)",
-                     all_continuous() ~ c("{mean} ({sd})",
-                                          "({min}, {max})")),
-    type = all_continuous() ~ "continuous2",
-    # by = childhood_edu20,
-    digits = list(all_continuous() ~ 1,
-                  all_categorical() ~ c(0, 1)),
-    missing = "ifany",
-    missing_text = "Missing") %>%
-  # modify_spanning_header(starts_with("stat_") ~ "**Baseline CES-D**") %>%
-  bold_labels() %>%
-  modify_footnote(
-    update = list(
-      starts_with("stat_") ~
-        "Mean (SD) for continuous variables; n (%) for categorical variables")
-  )
+# Checking for wave 4, if any participants with age < 60 answered these questions
+with(harmonized %>% filter(r4age_y < 60),
+     table(r4imrc_cleaned, useNA = "ifany"))
+with(harmonized %>% filter(r4age_y < 60),
+     table(r4dlrc_cleaned, useNA = "ifany"))
+with(harmonized %>%
+  filter(!is.na(r4imrc_cleaned)),
+  proc_sum(r4age_y, more = T))
+# Weirdly enough, we do have participants with age < 60 answered these questions
+# Though, in HCAP, only particiants with age >= 60 were asked to finish it.
 
-table1 %>% as_flex_table() %>%
-  flextable::save_as_docx(path = here::here("output", "tables", 
-                                            "table1_equating_sample.docx"))
 #---- 2015 to 2018 long dataset ----
 harmonized_long_1518 <- harmonized %>%
   select(ID:pnc, female, childhood_edu, 
@@ -280,3 +245,51 @@ table1_1518 %>%  as_flex_table() %>%
 #---- Save the dataset ----
 save(harmonized, harmonized_long_1518, file = here::here("data", "analysis_data", 
                                                          "charls_equating_samp.RData"))
+
+#---- OLD ----
+# #---- Baseline Table 1 ----
+# table1 <- harmonized %>%
+#   select(r1age_y, female, raeduc_c, childhood_edu, h1rural,
+#          r1hukou, h1rural, r1imrc, r1dlrc) %>%
+#   labelled::set_variable_labels(
+#     r1age_y = "Baseline age in years",
+#     female = "Female (%)",
+#     raeduc_c = "Early life education level (%)",
+#     childhood_edu = "Early life education level (simplified) (%)",
+#     h1rural = "Rural residence (%)",
+#     r1hukou = "Hukou status (%)",
+#     r1imrc = "Baseline Immediate word recall", 
+#     r1dlrc = "Baseline delayed word recall") %>%
+#   labelled::drop_unused_value_labels() %>%
+#   labelled::set_value_labels(
+#     female = c("Yes" = 1, "No" = 0),
+#     h1rural = c("Yes" = 1, "No" = 0),
+#     childhood_edu = c(
+#       "No formal education" = 0,
+#       "Elementary school or less" = 1,
+#       "Vocational school/middle school/high school" = 2,
+#       "College & above" = 3)) %>%
+#   modify_if(is.labelled, to_factor) %>%
+#   modify_if(is.factor,
+#             function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
+#   tbl_summary(
+#     statistic = list(all_categorical() ~ "{n} ({p}%)",
+#                      all_continuous() ~ c("{mean} ({sd})",
+#                                           "({min}, {max})")),
+#     type = all_continuous() ~ "continuous2",
+#     # by = childhood_edu20,
+#     digits = list(all_continuous() ~ 1,
+#                   all_categorical() ~ c(0, 1)),
+#     missing = "ifany",
+#     missing_text = "Missing") %>%
+#   # modify_spanning_header(starts_with("stat_") ~ "**Baseline CES-D**") %>%
+#   bold_labels() %>%
+#   modify_footnote(
+#     update = list(
+#       starts_with("stat_") ~
+#         "Mean (SD) for continuous variables; n (%) for categorical variables")
+#   )
+# 
+# table1 %>% as_flex_table() %>%
+#   flextable::save_as_docx(path = here::here("output", "tables", 
+#                                             "table1_equating_sample.docx"))
