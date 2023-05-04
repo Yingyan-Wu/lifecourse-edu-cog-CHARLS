@@ -1,7 +1,12 @@
 # Data export for equating method
 # Created by: Yingyan Wu
-# Some code adapted from Crystal Shaw's and Mingfei Dong's Data construction scripts
+# Some code was adapted from Crystal Shaw's and Mingfei Dong's Data construction scripts
 # Mar.13.2023
+
+# For the specific missing characters in stata, the data was read using 
+# the package `readstata13` and checked the distribution of refused responses
+# and no response for the word recall scores
+# The code for reading data using readstata13 was commented out below.
 
 #---- Package loading + options ----
 rm(list = ls())
@@ -11,7 +16,7 @@ if (!require("pacman")){
 }
 
 p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "labelled",
-       "gtsummary")
+       "glue", "gtsummary")
 
 #---- function ----
 source(here::here("scripts", "functions.R"))
@@ -20,16 +25,10 @@ source(here::here("scripts", "functions.R"))
 #---- **harmonized ----
 harmonized_variables <- c("ID", "householdID", "pnc", "communityID",
                           "ID_w1", "householdID_w1", 
-                          # paste0("inw", 1:4),
-                          # paste0("r", 1:4, "iwstat"),
                           # Weights
                           paste0("r", 1:4, "wtrespb"),
-                          # "hacohort_c",
-                          # "rabyear", "rabmonth", "rabday", 
                           paste0("r", 1:4, "agey"),
-                          # "radyear", "radmonth",
                           "ragender",
-                          # "rabplace_c",
                           paste0("h", 1:4, "rural"),
                           paste0("r", 1:4, "hukou"),
                           "raeduc_c",
@@ -39,9 +38,14 @@ harmonized_variables <- c("ID", "householdID", "pnc", "communityID",
                           paste0("r", 1:4, "dlrc") # delayed word recall
 )
 
-harmonized <- haven::read_dta(here::here("data", "raw_data", "harmonized",
-                                         "H_CHARLS_D_Data.dta"),
-                              col_select = all_of(harmonized_variables))
+harmonized <- read_dta(here::here("data", "raw_data", "harmonized",
+                                    "H_CHARLS_D_Data.dta"),
+                        col_select = all_of(harmonized_variables))
+
+# harmonized <- read.dta13(here::here("data", "raw_data", "harmonized",
+#                                     "H_CHARLS_D_Data.dta"),
+#                          missing.type = TRUE,
+#                          select.cols = all_of(harmonized_variables))
 
 #---- Core data for cleaning the imrc and dlrc ----
 # Adapted from Mingfei Dong's data reading script, 
@@ -61,7 +65,7 @@ for (i in folder_index){
                                          ignore_case = T))]
   # Read in as list
   list <- lapply(files, read_dta)
-  # list <- lapply(files, read_charls)
+  # list <- lapply(files, read.dta13)
   names(list) <- gsub(".*/(.*)\\..*", "\\1", files)
   # Assign names for each wave's list
   assign(paste0("wave", which(folder_index == i)), list)
@@ -93,7 +97,6 @@ charls <- join_all(c(list(charls_w3, charls_w4)),
                    type = "full") %>% 
   as_tibble()
 
-rm(list = paste0("wave", 1:4))
 gc()
 
 #---- Age cleaning ----
@@ -107,9 +110,6 @@ harmonized %<>%
   select(-contains("agey"))
 
 # Sanity check
-harmonized %>% select(contains("agey")) %>%
-  apply(., 2, proc_sum, more = T)
-
 harmonized %>% select(contains("age_y")) %>%
   apply(., 2, proc_sum, more = T)
 
@@ -142,16 +142,19 @@ with(harmonized %>% filter(r3imrc == 0),
 with(harmonized %>% filter(r4imrc == 0),
      table(w4_dc028_w4_s11, w4_dc028_w4_s12, useNA = "ifany"))
 # There are 1877 participants with non responses (can't recall any of the words)
-# But the rest 653 participants seem to be NAed
+# But the rest 653 participants refused to recall (needs to be NAed)
 
 harmonized %<>% 
-  mutate(r3imrc_cleaned = case_when(r3imrc == 0 & w3_dc006s12 == 12 ~ NA_real_,
-                                    TRUE ~ r3imrc),
-         r4imrc_cleaned = case_when(r4imrc == 0 & w4_dc028_w4_s12 == 12 ~ NA_real_,
-                                    TRUE ~ r4imrc))
+  mutate(r3imrc_cleaned = case_when(
+    r3imrc == 0 & w3_dc006s12 == 12 ~ NA_real_,
+    # Note: if using read.dta13, the value will be "12 Refuse to Recall" for dc006s12s
+    TRUE ~ as.numeric(r3imrc)),
+    r4imrc_cleaned = case_when(
+      r4imrc == 0 & w4_dc028_w4_s12 == 12 ~ NA_real_,
+      TRUE ~ as.numeric(r4imrc)))
 # Sanity check
 with(harmonized, table(r3imrc_cleaned, r3imrc, useNA = "ifany"))
-with(harmonized, table(r4imrc_cleaned, r4imrc, useNA = "ifany"))
+with(harmonized, table(r4imrc_cleaned, w4_dc028_w4_s12, useNA = "ifany"))
 
 # Delayed word recall
 with(harmonized %>% filter(r3dlrc == 0),
