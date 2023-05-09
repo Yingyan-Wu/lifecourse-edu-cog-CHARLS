@@ -1,9 +1,9 @@
 # 1.1 equating method for memory scores
-# Created by Yingyan Wu
+# Created by Yingyan Wu and Yuan Zhang
 # Mar.14.2023
 # Covariate balance and weight development code was adapted from 
-# EHL's Khandle weighting code and 
-# YW's sample selection code
+# Eleanor Hayes-Larson's Khandle weighting code and 
+# Yingyan Wu's sample selection code
 
 #---- Package loading + options ----
 rm(list = ls())
@@ -13,7 +13,10 @@ if (!require("pacman")){
 }
 
 p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "labelled",
-       "gtsummary", "equate", "twang", "spatstat", "survey")
+       "gtsummary", "equate", "twang", "spatstat", "survey", "moments")
+
+#---- function ----
+source(here::here("scripts", "functions.R"))
 
 #---- Load the datasets ----
 load(here::here("data", "analysis_data", 
@@ -26,14 +29,10 @@ load(here::here("data", "analysis_data",
 summary(harmonized$r3age_y)
 summary(harmonized$r4age_y)
 
-summary(charls_selected$childhood_edu)
-
 charls_selected <- harmonized_long_1518 %>%
   na.omit() %>%
   select(-householdID, -communityID, -pnc) %>%
-  filter(age_y >= 60 & age_y < 90) %>%
-  # filter(age_y >= 60 & age_y < 90 & raeduc_c >= 4 & raeduc_c != 10 &
-  #          hukou != 3 & hukou != 4) %>%
+  filter(age_y >= 45 & age_y < 90 & raeduc_c >= 4 & raeduc_c != 10) %>%
   mutate(treat = case_when(wave == "4" ~ 1,
                            wave == "3" ~ 0),
          work_status = case_when(lbrf_c %in% c(1, 2) ~ 1, # Agriculture employed
@@ -44,6 +43,8 @@ charls_selected <- harmonized_long_1518 %>%
          ),
          unweight = 1) %>%
   mutate(across(c("childhood_edu", "hukou", "work_status"), factor))
+
+summary(charls_selected$childhood_edu)
 
 #---- 2. Generate weights ----
 # Generate weights, to ensure the age/education distributions are the same 
@@ -182,15 +183,13 @@ unw_test <- checkcovbal(charls_covbal, "unweight")
 unw_test$covbal_plot
 
 #---- **pS ----
-pS <- sum(charls_covbal$treat)/sum(charls_covbal$unweight)
-# P(wave 2018): we are not using the survey weight, but still using the unweight
-# variable to make it easier to switch to survey weights
+pS <- sum(charls_covbal$treat)/nrow(charls_covbal)
+# P(wave 2018)
 
 #---- **Weight 1: education + age ----
 charls_covbal %<>% cbind(
   weight_dev(charls_covbal, "treat ~ childhood_edu + age_y", "1"))
 
-# Is this okay? two peaks
 charls_covbal %>%
   ggplot() +
   geom_density(aes(x = pS_Z1, linetype = factor(treat), weight = unweight)) +
@@ -206,7 +205,6 @@ covbal_comp_plot(w1_test$covbal_data, unw_test$covbal_data)
 charls_covbal %<>% cbind(
   weight_dev(charls_covbal, "treat ~ childhood_edu + age_y + work_status", "2"))
 
-# Is this okay? two peaks
 charls_covbal %>%
   ggplot() +
   geom_density(aes(x = pS_Z2, linetype = factor(treat), weight = unweight)) +
@@ -223,7 +221,6 @@ charls_covbal %<>% cbind(
   weight_dev(charls_covbal, 
              "treat ~ childhood_edu + age_y + work_status + female", "3"))
 
-# Is this okay? two peaks
 charls_covbal %>%
   ggplot() +
   geom_density(aes(x = pS_Z3, linetype = factor(treat), weight = unweight)) +
@@ -239,30 +236,6 @@ covbal_comp_plot(w3_test$covbal_data, unw_test$covbal_data) +
 
 ggsave(here::here("output", "figures", "cog_equating_covbal.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
-
-# #---- IPW: remove the covariates' effect ----
-# charls_selected %<>%
-#   mutate(
-#     # Estimate P(A)
-#     p_imrc = predict(glm(imrc_cleaned ~ 1, family = gaussian(link = "identity"), 
-#                          data = charls_selected), type = "response"),
-#     p_dlrc = predict(glm(dlrc_cleaned ~ 1, family = gaussian(link = "identity"), 
-#                          data = charls_selected), type = "response"),
-#     # Estimate P(A|W1, W2)
-#     p_imrc_cov3 = predict(glm(imrc_cleaned ~ 
-#                                 childhood_edu + age_y + work_status + female, 
-#                               family = gaussian(link = "identity"), 
-#                               data = charls_selected), type = "response"),
-#     p_dlrc_cov3 = predict(glm(dlrc_cleaned ~ 
-#                                 childhood_edu + age_y + work_status + female, 
-#                               family = gaussian(link = "identity"), 
-#                               data = charls_selected), type = "response"),
-#     # Get the IPTW for ATE, ATU and ATT
-#     iptw3_imrc = case_when(A == 1 ~ pA/pA_W1W2,
-#                          A == 0 ~ (1 - pA)/(1 - pA_W1W2)),
-#     iptw3_dlrc = case_when(A == 1 ~ pA/pA_W1W2,
-#                           A == 0 ~ (1 - pA)/(1 - pA_W1W2)))
-
 
 #----2a. Check distribution for weighted 2018 and 2015 ----
 # Unweighted 2015
@@ -304,16 +277,19 @@ plot(eqdl_eqp_IOW, eqdl_mean_IOW, eqdl_linear_IOW)
 
 # Plots
 par(mfrow=c(1,2))
-plot(eqim_eqp_IOW)
+plot(eqim_eqp_IOW, xlab = "Original Score (Wave 4)", 
+     ylab = "Equated Score")
+xlab()
 title(main = "Immediate word recall score")
-plot(eqdl_eqp_IOW)
+plot(eqdl_eqp_IOW, xlab = "Original Score (Wave 4)", 
+     ylab = "Equated Score")
 title(main = "Delayed word recall score")
 
-par(mfrow=c(1,2))
-plot(eqim_eqp_IOW, eqim_mean_IOW, eqim_linear_IOW)
-title(main = "Immediate word recall score")
-plot(eqdl_eqp_IOW, eqdl_mean_IOW, eqdl_linear_IOW)
-title(main = "Delayed word recall score")
+# par(mfrow=c(1,2))
+# plot(eqim_eqp_IOW, eqim_mean_IOW, eqim_linear_IOW)
+# title(main = "Immediate word recall score")
+# plot(eqdl_eqp_IOW, eqdl_mean_IOW, eqdl_linear_IOW)
+# title(main = "Delayed word recall score")
 
 # Table 
 rbind(eqim_eqp_IOW$concordance %>% mutate(Score = "Immediate"), 
@@ -323,6 +299,57 @@ rbind(eqim_eqp_IOW$concordance %>% mutate(Score = "Immediate"),
   mutate_if(is.numeric, round, 2) %>%
   writexl::write_xlsx(path = here::here("output", "tables", "table2_equating.xlsx"))
 
+#---- **Checked the distribution in the calibration group! ----
+charls_covbal %<>%
+  left_join(eqim_eqp_IOW$concordance %<>% 
+              dplyr::rename(imrc_cleaned = scale, r4imrc_eqt = yx) %>%
+              select(contains("imrc")) %>%
+              mutate(wave = "4"),
+            by = c("wave", "imrc_cleaned")) %>%
+  left_join(eqdl_eqp_IOW$concordance %>% 
+              dplyr::rename(dlrc_cleaned = scale, r4dlrc_eqt = yx) %>%
+              select(contains("dlrc")) %>%
+              mutate(wave = "4"),
+            by = c("wave", "dlrc_cleaned"))
+
+# top and bottom coded
+charls_covbal %<>%
+  mutate(r4imrc_eqt_adj = case_when(r4imrc_eqt > 10.28 ~ 10,
+                                    TRUE ~ r4imrc_eqt),
+         r4dlrc_eqt_adj = case_when(r4dlrc_eqt < -0.25 ~ 0,
+                                    TRUE ~ r4dlrc_eqt))
+#ee_4
+with(charls_covbal %>%
+       filter(wave == "4"), proc_sum(r4imrc_eqt, more = T))
+#adj_ee_4
+with(charls_covbal %>%
+       filter(wave == "4"), proc_sum(r4imrc_eqt_adj, more = T))
+#raw score 3
+with(charls_covbal %>%
+       filter(wave == "3"), proc_sum(imrc_cleaned, more = T))
+with(charls_covbal %>%
+       filter(wave == "4"), kurtosis(r4imrc_eqt))
+with(charls_covbal %>%
+       filter(wave == "4"), kurtosis(r4imrc_eqt_adj))
+with(charls_covbal %>%
+       filter(wave == "3"), kurtosis(imrc_cleaned))
+
+#ee_4
+with(charls_covbal %>%
+       filter(wave == "4"), proc_sum(r4dlrc_eqt, more = T))
+#adj_ee_4
+with(charls_covbal %>%
+       filter(wave == "4"), proc_sum(r4dlrc_eqt_adj, more = T))
+#raw score 3
+with(charls_covbal %>%
+       filter(wave == "3"), proc_sum(dlrc_cleaned, more = T))
+with(charls_covbal %>%
+       filter(wave == "4"), kurtosis(r4dlrc_eqt))
+with(charls_covbal %>%
+       filter(wave == "4"), kurtosis(r4dlrc_eqt_adj))
+with(charls_covbal %>%
+       filter(wave == "3"), kurtosis(dlrc_cleaned))
+# Do not bottom code dlrc
 
 #---- 4. Apply the equipercentile equating algorithm to the full sample in the focal group -----
 harmonized %<>%
