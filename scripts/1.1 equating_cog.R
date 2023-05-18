@@ -45,6 +45,7 @@ charls_selected <- harmonized_long_1518 %>%
   mutate(across(c("childhood_edu", "hukou", "work_status"), factor))
 
 summary(charls_selected$childhood_edu)
+table(charls_selected$mstat)
 
 #---- 2. Generate weights ----
 # Generate weights, to ensure the age/education distributions are the same 
@@ -80,7 +81,7 @@ checkcovbal <- function(data, weightvar){
       var == "childhood_edu:3" ~ "College & above",
       var == "childhood_edu:1" ~ "Elementary school or less",
       var == "rural" ~ "Rural residence",
-      var == "mstat" ~ "Marital status",
+      var == "mstat" ~ "Married",
       var == "work_status:1" ~ "Agriculture employed",
       var == "work_status:2" ~ "Non-agriculture employed",
       var == "work_status:3" ~ "Unemployed",
@@ -432,11 +433,27 @@ harmonized_empirical_balanced %>%
                                 "Original scores","Original scores")) + 
   theme_classic() +
   labs(x = "Wave",
-       y = "Word recall",
-       title = "Average word recall score +/- 2 SE at different wave
-       balanced data")
+       y = "Word recall")
+       # title = "Average word recall score +/- 2 SE at different wave
+       # balanced data")
 
 ggsave(here::here("output", "figures", "empirical_plot_equated.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
+
+#---- **before equating ----
+harmonized_empirical_balanced %>%
+  filter(type == "cleaned") %>%
+  ggplot(aes(x = wave, y = mean, group = variable, color = variable)) + 
+  geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1) +
+  geom_line() +
+  geom_point() +
+  theme_classic() +
+  labs(x = "Wave",
+       y = "Word recall")
+       # title = "Average word recall score +/- 2 SE at different wave
+       # balanced data")
+
+ggsave(here::here("output", "figures", "empirical_plot_original.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 #---- Save the dataset ----

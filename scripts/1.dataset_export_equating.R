@@ -120,6 +120,13 @@ harmonized %<>%
 harmonized %<>%
   select(-ragender)
 
+#---- Marital status ----
+harmonized %<>%
+  mutate(r3mstat = case_when(r3mstat %in% c(1, 3) ~ 1,
+                             r3mstat %in% c(4, 5, 7, 8) ~ 0),
+         r4mstat = case_when(r4mstat %in% c(1, 3) ~ 1,
+                             r4mstat %in% c(4, 5, 7, 8) ~ 0))
+
 #---- Early life edu ----
 harmonized %<>%
   mutate(
