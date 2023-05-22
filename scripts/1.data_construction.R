@@ -829,6 +829,22 @@ proc_freq(charls, first_occupation)
 # 2011 wave 1 labor force
 # proc_freq(charls, r1lbrf_c)
 
+#---- **occupation at 30 -----
+proc_freq(charls, c_wrkstate30)
+charls %<>%
+  mutate(occupation_30 = case_when(c_wrkstate30 %in% c(4, 5) ~ 4,
+                                   c_wrkstate30 %in% c(6, 7, 9) ~ 7,
+                                   c_wrkstate30 == 10 ~ 6,
+                                   TRUE ~ c_wrkstate30))
+with(charls, table(c_wrkstate30, occupation_30, useNA = "ifany"))
+# 1.Agri employed |
+# 2.Agri self-employed |
+# 3.Non-agri employed |
+# 4.Non-agri self-employed/family business  |
+# 6. Other |
+# 7.Unemployed/Retired/Education
+# 8. Home |
+
 #---- Marital history from harmonized LH ----
 marital_long_mat <- charls %>%
   select(ID, rLHagey, contains("prtnstate")) %>%
@@ -851,7 +867,32 @@ marital_long_mat %>%
        title = paste0("Profile Plot of Marital status across different age")) +
   theme(legend.position = "none")
 
-#---- Marital status ----
+#---- **First non missing marital status ----
+first_marital_mat <- marital_long_mat %>%
+  na.omit() %>%
+  arrange(ID, Age) %>%
+  group_by(ID) %>%
+  slice(1) %>%
+  ungroup() %>%
+  dplyr::rename(first_maritalsts = prtnstate,
+                first_maritalsts_age = Age)
+
+charls %<>%
+  left_join(first_marital_mat %>% select(ID, contains("first_maritalsts")),
+            by = "ID")
+
+#---- **marital status 30 ----
+charls %<>%
+  mutate(marital_30 = prtnstate30  - 1)
+with(charls, table(marital_30, prtnstate30, useNA = "ifany"))
+proc_freq(charls, marital_30)
+
+# with(charls, table(first_maritalsts, prtnstate30, useNA = "ifany"))
+# with(charls %>% filter(is.na(prtnstate30) & !is.na(first_maritalsts)),
+#      table(first_maritalsts_age, useNA = "ifany"))
+
+
+#---- wave 1 Marital status ----
 charls %<>%
   mutate(r1mstat_c = case_when(r1mstat %in% c(1, 2) ~ 1,
                                r1mstat %in% c(4, 5) ~ 2,
@@ -865,7 +906,18 @@ proc_freq(charls, r1mstat_c)
 proc_freq(charls, r1mstat_c_v2)
 
 #---- Residence in adulthood ----
-#---- **Rural v.s.urban ----
+#---- **Rural/urban residence 30 ----
+residence_mat <- charls %>% select(contains(c("t001", "t004")), 
+                                   rabdate_v2)
+residence_mat %<>%
+  mutate(lh_t001_date = 
+           as.Date(paste0(lh_t001b_2_1_, "/1/", lh_t001b_1_1_), "%m/%d/%Y"))
+
+sum(is.na(residence_mat$lh_t001_date))
+sum(is.na(residence_mat$lh_t001b_1_1_))
+sum(is.na(residence_mat$lh_t001b_2_1_))
+
+#---- **Wave 1 Rural v.s.urban ----
 proc_freq(charls, h1rural)
 with(charls, table(h1rural, h2rural, useNA = "ifany"))
 with(charls, table(h1rural, h3rural, useNA = "ifany"))
@@ -893,9 +945,6 @@ charls %<>% mutate(
 proc_freq(charls, region_eng)
 with(charls, table(region_eng, province_eng, useNA = "ifany"))
 
-#---- Pending on birth place ----
-# Pending after SER
-
 #---- Hukou history from harmonized LH ----
 hukou_long_mat <- charls %>%
   select(ID, rLHagey, contains("hkstate")) %>%
@@ -918,6 +967,31 @@ hukou_long_mat %>%
        title = paste0("Profile Plot of Hukou status across different age")) +
   theme(legend.position = "none")
 
+#---- **First hukou type ----
+first_hukou_mat <- hukou_long_mat %>%
+  na.omit() %>%
+  arrange(ID, Age) %>%
+  group_by(ID) %>%
+  slice(1) %>%
+  ungroup() %>%
+  dplyr::rename(first_hukou = hkstate,
+                first_hukou_age = Age)
+
+charls %<>%
+  left_join(first_hukou_mat %>% select(ID, contains("first_hukou")),
+            by = "ID")
+
+proc_freq(first_hukou_mat, first_hukou)
+proc_freq(charls, first_hukou)
+
+#---- ** Hukou status at 30 ----
+proc_freq(charls, hkstate30)
+charls %<>%
+  mutate(hukou_30 = case_when(hkstate30 == 4 ~ NA_real_,
+                                   TRUE ~ hkstate30))
+with(charls, table(hkstate30, hukou_30, useNA = "ifany"))
+proc_freq(charls, hukou_30)
+
 #---- Hukou status ----
 proc_freq(charls, r1hukou)
 proc_freq(charls, lh_hukoutype) # First hukou status
@@ -938,11 +1012,16 @@ charls %<>%
       is.na(r4hukou) & is.na(lh_hukoutype) ~ NA_real_,
     TRUE ~ 1))
 
-# Pending after SER
-
 proc_freq(charls, hukou_flag)
 hukou_mat <- charls %>% select(contains("hukou")) %>% select(-hukou_flag)
 colSums(is.na(hukou_mat))
+
+#---- Number of children at 30 ----
+proc_freq(charls, chldstate30)
+with(charls, table(chldstate15, chldstate30, useNA = "ifany"))
+charls %<>%
+  mutate(child__30 = chldstate30)
+
 
 #---- Dropping people ----
 #---- **1. Dropping those who still missing age and gender ----
@@ -952,9 +1031,10 @@ colSums(is.na(hukou_mat))
 # table(colSums(is.na(test)))
 
 # These 298 people did not have the outcome measures and the eductaion variables
-
+charls %>%
+  filter(is.na(female) & is.na(r1agey_v3)) %>% nrow()
 charls_selected <- charls %>%
-  filter(is.na(female) & is.na(r1agey_v3))
+  filter(!is.na(female) | !is.na(r1agey_v3))
 
 
 
