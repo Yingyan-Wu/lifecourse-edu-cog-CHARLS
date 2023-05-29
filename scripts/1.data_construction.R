@@ -764,8 +764,10 @@ work_history_long_mat <- charls %>%
                names_to = "Age",
                values_to = "wrkstate",
                names_pattern = "c_wrkstate(.*)") %>%
-  filter(Age <= rLHagey) # exclude the records of later age which participants
-# have not reached (exclude the assigned NA records)
+  mutate(Age = as.numeric(Age)) %>%
+  filter(Age <= rLHagey | is.na(rLHagey)) # exclude the records of later age which participants
+# have not reached (exclude the assigned NA records) but keep those who has
+# NAed age at LH questionnaire
 
 # Sanity check
 with(work_history_long_mat, table(Age, useNA = "ifany"))
@@ -797,8 +799,7 @@ work_history_long_mat %>%
 #      table(c_wrkstate25, c_wrkstate26, useNA = "ifany"))
 
 first_work_mat <- work_history_long_mat %>%
-  na.omit() %>%
-  filter(wrkstate != 9 & wrkstate != 7) %>%
+  filter(wrkstate != 9 & wrkstate != 7 & !is.na(wrkstate)) %>%
   arrange(ID, Age) %>%
   group_by(ID) %>%
   slice(1) %>%
@@ -806,6 +807,7 @@ first_work_mat <- work_history_long_mat %>%
   dplyr::rename(first_occupation = wrkstate,
                 first_occupation_age = Age)
 
+# charls %<>% select(-c("first_occupation_age", "first_occupation"))
 charls %<>%
   left_join(first_work_mat %>% select(ID, contains("first_occupation")),
             by = "ID")
@@ -829,14 +831,46 @@ proc_freq(charls, first_occupation)
 # 2011 wave 1 labor force
 # proc_freq(charls, r1lbrf_c)
 
-#---- **occupation at 30 -----
-proc_freq(charls, c_wrkstate30)
+#---- **occupation at 30 (25 - 35 nonmissing closest to 30) -----
+nonmissing_30_work_mat <- work_history_long_mat %>%
+  filter(!is.na(wrkstate)) %>%
+  mutate(age_30_abs = abs(Age - 30)) %>%
+  filter(age_30_abs <= 5) %>%
+  arrange(ID, age_30_abs) %>%
+  group_by(ID) %>%
+  slice(1) %>%
+  ungroup() %>%
+  dplyr::rename(occupation_30 = wrkstate,
+                occupation_30_age = Age)
+
+# Sanity check
+# proc_freq(nonmissing_30_work_mat, occupation_30)
+# proc_freq(nonmissing_30_work_mat, occupation_30_age)
+# with(charls, table(is.na(c_wrkstate30)))
+# OLD
+# test <- nonmissing_30_work_mat %>% filter(occupation_30_age == "30") %>%
+#   select(ID, occupation_30) %>% na.omit()
+# test2 <-  charls %>% select(ID, c_wrkstate30) %>% na.omit()
+# ID_set <- test2$ID[which(!test2$ID %in% test$ID)]
+# view(work_history_long_mat %>% filter(ID %in% ID_set))
+# view(test2 %>% filter(ID %in% ID_set))
+# view(charls %>% filter(ID %in% ID_set) %>%
+#        select(ID, rLHagey, contains("c_wrkstate")))
+
+charls %<>% select(-contains("occupation_30"))
 charls %<>%
-  mutate(occupation_30 = case_when(c_wrkstate30 %in% c(4, 5) ~ 4,
-                                   c_wrkstate30 %in% c(6, 7, 9) ~ 7,
-                                   c_wrkstate30 == 10 ~ 6,
-                                   TRUE ~ c_wrkstate30))
-with(charls, table(c_wrkstate30, occupation_30, useNA = "ifany"))
+  left_join(nonmissing_30_work_mat %>% select(ID, contains("occupation_30")),
+            by = "ID")
+
+proc_freq(charls, occupation_30)
+proc_freq(charls, c_wrkstate30)
+
+charls %<>%
+  mutate(occupation_30 = case_when(occupation_30 %in% c(4, 5) ~ 4,
+                                   occupation_30 %in% c(6, 7, 9) ~ 7,
+                                   occupation_30 == 10 ~ 6,
+                                   TRUE ~ occupation_30))
+proc_freq(charls, occupation_30)
 # 1.Agri employed |
 # 2.Agri self-employed |
 # 3.Non-agri employed |
@@ -852,7 +886,8 @@ marital_long_mat <- charls %>%
                names_to = "Age",
                values_to = "prtnstate",
                names_pattern = "prtnstate(.*)") %>%
-  filter(Age <= rLHagey) # exclude the records of later age which participants
+  mutate(Age = as.numeric(Age)) %>%
+  filter(Age <= rLHagey | is.na(rLHagey)) # exclude the records of later age which participants
 # have not reached (assigned NA records)
 
 # Sanity check
@@ -869,7 +904,7 @@ marital_long_mat %>%
 
 #---- **First non missing marital status ----
 first_marital_mat <- marital_long_mat %>%
-  na.omit() %>%
+  filter(!is.na(prtnstate)) %>%
   arrange(ID, Age) %>%
   group_by(ID) %>%
   slice(1) %>%
@@ -877,22 +912,43 @@ first_marital_mat <- marital_long_mat %>%
   dplyr::rename(first_maritalsts = prtnstate,
                 first_maritalsts_age = Age)
 
+charls %<>% select(-contains("first_maritalsts"))
 charls %<>%
   left_join(first_marital_mat %>% select(ID, contains("first_maritalsts")),
             by = "ID")
 
-#---- **marital status 30 ----
+#---- **marital status 30 (25 - 35 nonmissing closest to 30) -----
+nonmissing_30_marital_mat <- marital_long_mat %>%
+  filter(!is.na(prtnstate)) %>%
+  mutate(age_30_abs = abs(Age - 30)) %>%
+  filter(age_30_abs <= 5) %>%
+  arrange(ID, age_30_abs) %>%
+  group_by(ID) %>%
+  slice(1) %>%
+  ungroup() %>%
+  dplyr::rename(maritalsts_30 = prtnstate,
+                maritalsts_30_age = Age)
+# Sanity check
+# proc_freq(nonmissing_30_marital_mat, maritalsts_30)
+# proc_freq(nonmissing_30_marital_mat, maritalsts_30_age)
+# with(charls, table(is.na(prtnstate30)))
+
 charls %<>%
-  mutate(marital_30 = prtnstate30  - 1)
-with(charls, table(marital_30, prtnstate30, useNA = "ifany"))
+  left_join(nonmissing_30_marital_mat %>% select(ID, contains("maritalsts_30")),
+            by = "ID")
+
+charls %<>%
+  mutate(marital_30 = maritalsts_30  - 1)
+with(charls, table(marital_30, maritalsts_30, useNA = "ifany"))
 proc_freq(charls, marital_30)
 
+# OLD
 # with(charls, table(first_maritalsts, prtnstate30, useNA = "ifany"))
 # with(charls %>% filter(is.na(prtnstate30) & !is.na(first_maritalsts)),
 #      table(first_maritalsts_age, useNA = "ifany"))
 
 
-#---- wave 1 Marital status ----
+#---- **wave 1 Marital status ----
 charls %<>%
   mutate(r1mstat_c = case_when(r1mstat %in% c(1, 2) ~ 1,
                                r1mstat %in% c(4, 5) ~ 2,
@@ -1018,7 +1074,8 @@ hukou_long_mat <- charls %>%
                names_to = "Age",
                values_to = "hkstate",
                names_pattern = "hkstate(.*)") %>%
-  filter(Age <= rLHagey) # exclude the records of later age which participants
+  mutate(Age = as.numeric(Age)) %>%
+  filter(Age <= rLHagey |is.na(rLHagey)) # exclude the records of later age which participants
 # have not reached (assigned NA records)
 
 # Sanity check
@@ -1035,7 +1092,7 @@ hukou_long_mat %>%
 
 #---- **First hukou type ----
 first_hukou_mat <- hukou_long_mat %>%
-  na.omit() %>%
+  filter(!is.na(hkstate)) %>%
   arrange(ID, Age) %>%
   group_by(ID) %>%
   slice(1) %>%
@@ -1043,21 +1100,50 @@ first_hukou_mat <- hukou_long_mat %>%
   dplyr::rename(first_hukou = hkstate,
                 first_hukou_age = Age)
 
+# charls %<>% select(-contains("first_hukou"))
 charls %<>%
   left_join(first_hukou_mat %>% select(ID, contains("first_hukou")),
             by = "ID")
 
+# Sanity check
 proc_freq(first_hukou_mat, first_hukou)
 proc_freq(charls, first_hukou)
 
-#---- ** Hukou status at 30 ----
-proc_freq(charls, hkstate30)
+#---- ** Hukou status at 30 (25 - 35 nonmissing closest to 30) -----
+nonmissing_30_hukou_mat <- hukou_long_mat %>%
+  filter(!is.na(hkstate)) %>%
+  mutate(age_30_abs = abs(Age - 30)) %>%
+  filter(age_30_abs <= 5) %>%
+  arrange(ID, age_30_abs) %>%
+  group_by(ID) %>%
+  slice(1) %>%
+  ungroup() %>%
+  dplyr::rename(hukou_30 = hkstate,
+                hukou_30_age = Age)
+# # Sanity check
+# proc_freq(nonmissing_30_hukou_mat, hukou_30)
+# proc_freq(nonmissing_30_hukou_mat, hukou_30_age)
+# with(charls, table(is.na(hkstate30)))
+
+# charls %<>% select(-contains("hukou_30"))
 charls %<>%
-  mutate(hukou_30 = case_when(hkstate30 == 4 ~ NA_real_,
-                              TRUE ~ hkstate30))
+  left_join(nonmissing_30_hukou_mat %>% select(ID, contains("hukou_30")),
+            by = "ID")
+
+charls %<>%
+  mutate(hukou_30 = case_when(hukou_30 == 4 ~ NA_real_,
+                              TRUE ~ hukou_30))
 with(charls, table(hkstate30, hukou_30, useNA = "ifany"))
 proc_freq(charls, hukou_30)
 
+
+
+
+
+charls %<>%
+  mutate(marital_30 = maritalsts_30  - 1)
+with(charls, table(marital_30, maritalsts_30, useNA = "ifany"))
+proc_freq(charls, marital_30)
 #---- Hukou status ----
 proc_freq(charls, r1hukou)
 proc_freq(charls, lh_hukoutype) # First hukou status
