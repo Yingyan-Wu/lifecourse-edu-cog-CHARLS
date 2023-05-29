@@ -906,21 +906,18 @@ proc_freq(charls, r1mstat_c)
 proc_freq(charls, r1mstat_c_v2)
 
 #---- Residence in adulthood ----
-#---- **Rural/urban residence 30 ----
-residence_mat <- charls %>% select(contains(c("t001", "t004")), 
-                                   rabdate_v2)
-residence_mat %<>%
-  mutate(lh_t001_date = 
-           as.Date(paste0(lh_t001b_2_1_, "/1/", lh_t001b_1_1_), "%m/%d/%Y"))
-
-sum(is.na(residence_mat$lh_t001_date))
-sum(is.na(residence_mat$lh_t001b_1_1_))
-sum(is.na(residence_mat$lh_t001b_2_1_))
-
 #---- **Wave 1 Rural v.s.urban ----
 proc_freq(charls, h1rural)
 with(charls, table(h1rural, h2rural, useNA = "ifany"))
 with(charls, table(h1rural, h3rural, useNA = "ifany"))
+
+charls %<>%
+  mutate(hrural_v2 = case_when(
+    !is.na(h1rural) ~ h1rural,
+    is.na(h1rural) & !is.na(h2rural) ~ h2rural,
+    is.na(h1rural) & is.na(h2rural) & !is.na(h3rural) ~ h3rural,
+    is.na(h1rural) & is.na(h2rural) & is.na(h3rural) & is.na(h4rural) ~ h4rural
+  ))
 
 # Sanity check
 with(charls %>% filter(is.na(h1rural) & !is.na(h2rural)), 
@@ -944,6 +941,75 @@ charls %<>% mutate(
 # Sanity check
 proc_freq(charls, region_eng)
 with(charls, table(region_eng, province_eng, useNA = "ifany"))
+
+#---- **Rural/urban residence 30 ----
+residence_mat <- charls %>% select(contains(c("t001", "t002","t004")), 
+                                   rabyear_v2, contains("rural")) %>%
+  mutate(rayear_30 = rabyear_v2 + 30) %>%
+  mutate(across(paste0("lh_t004_", 1:25, "_"),
+                ~ case_when(. %in% c(1, 3, 5) ~ 1,
+                            . %in% c(2, 4) ~ 0)))
+# Sanity check
+# table(residence_mat$lh_t004_1_, useNA = "ifany")
+# table(charls$lh_t004_1_, useNA = "ifany")
+# with(residence_mat, table(abs(rabyear_v2 - lh_t001b_1_10_) <= 5, useNA = "ifany"))
+
+residence_mat %<>%
+  mutate(rural_30 = case_when(
+    # residence at 25 - 35 (2nd reported residence)
+    abs(rabyear_v2 - lh_t001b_1_1_) <= 5 ~ lh_t004_1_,
+    # residence at 25 - 35 (3nd reported residence)
+    abs(rabyear_v2 - lh_t001b_1_2_) <= 5 ~ lh_t004_2_,
+    # residence at 25 - 35 (4th reported residence)
+    abs(rabyear_v2 - lh_t001b_1_3_) <= 5 ~ lh_t004_3_,
+    # residence at 25 - 35 (5th reported residence)
+    abs(rabyear_v2 - lh_t001b_1_4_) <= 5 ~ lh_t004_4_,
+    # residence at 25 - 35 (6th reported residence)
+    abs(rabyear_v2 - lh_t001b_1_5_) <= 5 ~ lh_t004_5_,
+    # residence at 25 - 35 (7th reported residence)
+    abs(rabyear_v2 - lh_t001b_1_6_) <= 5 ~ lh_t004_6_,
+    lh_t001b_1_ == 2 | lh_t001b_2_ == 2 | lh_t001b_3_ == 2 | lh_t001b_4_ == 2 |
+      lh_t001b_5_ == 2 | lh_t001b_6_ == 2 ~ hrural_v2))
+
+# Sanity check
+# proc_freq(residence_mat, rural_30)
+# with(residence_mat, table(rural_30, hrural_v2, useNA = "ifany"))
+# with(residence_mat, table(rural_30, h1rural, useNA = "ifany"))
+# with(residence_mat, table(rural_30, lh_t004_1_, useNA = "ifany"))
+
+
+# residence_mat %<>%
+#   mutate(lh_t001_date = case_when(
+#     !is.na(lh_t001b_2_1_) ~ 
+#       as.Date(paste0(lh_t001b_2_1_, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+#     # Season
+#     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 1 ~ # Spring
+#       as.Date(paste0(3, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+#     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 2 ~ # Summer
+#       as.Date(paste0(6, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+#     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 3 ~ # Fall
+#       as.Date(paste0(9, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+#     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 4 ~ # Winter
+#       as.Date(paste0(12, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+#     # first half or second half of a year
+#     is.na(lh_t001b_2_1_) & is.na(lh_t001b_3_1_) & lh_t001b_4_1_ == 1 ~ # 1st half
+#       as.Date(paste0(4, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+#     is.na(lh_t001b_2_1_) & is.na(lh_t001b_3_1_) & lh_t001b_4_1_ == 2 ~ # 2nd half
+#       as.Date(paste0(9, "/1/", lh_t001b_1_1_), "%m/%d/%Y")))
+
+# with(residence_mat %>% filter(is.na(lh_t001_date)), 
+#      table(lh_t001b_1_, useNA = "ifany")) # 13425 participants didn't move
+# with(residence_mat %>% filter(lh_t001b_1_ == 2),
+#      table(hrural_v2, useNA = "ifany")) # 13244 
+
+# with(residence_mat, table(lh_t001b_1_, useNA = "ifany"))
+
+# with(residence_mat %>% filter(is.na(lh_t001_date)),
+#      table(lh_t002e_1_1_, useNA = "ifany"))
+# with(residence_mat %>% filter(!is.na(lh_t001_date)), 
+#      table(lh_t001b_1_, useNA = "ifany"))
+
+charls$rural_30 <- residence_mat$rural_30
 
 #---- Hukou history from harmonized LH ----
 hukou_long_mat <- charls %>%
@@ -988,7 +1054,7 @@ proc_freq(charls, first_hukou)
 proc_freq(charls, hkstate30)
 charls %<>%
   mutate(hukou_30 = case_when(hkstate30 == 4 ~ NA_real_,
-                                   TRUE ~ hkstate30))
+                              TRUE ~ hkstate30))
 with(charls, table(hkstate30, hukou_30, useNA = "ifany"))
 proc_freq(charls, hukou_30)
 
@@ -1039,6 +1105,8 @@ charls_selected <- charls %>%
 
 
 #---- Save the data ----
+save(charls, 
+     file = here::here("data", "analysis_data", "charls_cleaned.RData"))
 save(charls_selected, 
      file = here::here("data", "analysis_data", "charls_selected.RData"))
 
