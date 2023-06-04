@@ -516,21 +516,21 @@ results_for_figure <- rbind(results_Y_x, results_Y_x2_cond) %>%
                         TRUE ~ Outcome),
     contrast = case_when(
       Exposure == "childhood_edu10" ~ 
-        "Elementary school or less vs.\nNo Formal Education",
+        "Elementary school or less [n = 3503(41.0%)] vs.\nNo Formal Education [n = 2146(25.1%)]",
       Exposure == "childhood_edu20" ~ 
-        "Middle school level vs.\nNo Formal Education",
+        "Middle school level [n = 2765(32.3%)] vs.\nNo Formal Education",
       Exposure == "childhood_edu21" ~ 
         "Middle school level vs.\nElementary school or less",
       Exposure == "childhood_edu30" ~ 
-        "College & above vs.\nNo Formal Education",
+        "College & above [n = 135(1.6%)] vs.\nNo Formal Education",
       Exposure == "childhood_edu31" ~ 
         "College & above vs.\nElementary school or less",
       Exposure == "childhood_edu32" ~ 
         "College & above vs.\nMiddle school level",
       Exposure == "continuing_edu10" ~
-        "Continuing education w/o a diploma vs.\nno continuing education",
+        "Continuing education w/o a diploma [n = 458(5.4%)] vs.\nno continuing education [n = 7866(93.0%)]",
       Exposure == "continuing_edu20" ~
-        "Continuing education w/ a diploma vs.\nno continuing education"),
+        "Continuing education w/ a diploma [n = 225(2.6%)] vs.\nno continuing education"),
     comparison = case_when(str_detect(Exposure, "childhood_edu") ~ "Early life edu",
                            str_detect(Exposure, "continuing_edu") ~ "Continuing edu")) %>%
   # Exposure == "continuing_edu210" ~
@@ -538,15 +538,15 @@ results_for_figure <- rbind(results_Y_x, results_Y_x2_cond) %>%
   mutate(contrast = factor(
     contrast, 
     levels = 
-      rev(c("Elementary school or less vs.\nNo Formal Education",
-            "Middle school level vs.\nNo Formal Education",
-            "College & above vs.\nNo Formal Education",
+      rev(c("Elementary school or less [n = 3503(41.0%)] vs.\nNo Formal Education [n = 2146(25.1%)]",
+            "Middle school level [n = 2765(32.3%)] vs.\nNo Formal Education",
+            "College & above [n = 135(1.6%)] vs.\nNo Formal Education",
             "Middle school level vs.\nElementary school or less",
             "College & above vs.\nMiddle school level",
             "College & above vs.\nElementary school or less",
-            "Continuing education w/o a diploma vs.\nno continuing education",
+            "Continuing education w/o a diploma [n = 458(5.4%)] vs.\nno continuing education [n = 7866(93.0%)]",
             # "Continuing education with/w/o a diploma vs.\nno continuing education\n(conditioning on early life education level)",
-            "Continuing education w/ a diploma vs.\nno continuing education"))))
+            "Continuing education w/ a diploma [n = 225(2.6%)] vs.\nno continuing education"))))
 
 results_for_figure %>%
   ggplot(aes(x = Mean,
@@ -569,7 +569,7 @@ results_for_figure %>%
         plot.background = element_rect(fill='transparent', color=NA))
   # ggtitle("The Estimated Effect of Education Level on Cognition")
 
-ggsave(here::here("output", "figures", "figure_poster.png"),
+ggsave(here::here("output", "figures", "figure_poster_06042023.png"),
        bg='transparent',
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
@@ -596,6 +596,6 @@ results_for_figure %>%
         plot.background = element_rect(fill='transparent', color=NA))
 # ggtitle("The Estimated Effect of Education Level on Cognition")
 
-ggsave(here::here("output", "figures", "figure_poster_dlrc.png"),
+ggsave(here::here("output", "figures", "figure_poster_dlrc_06042023.png"),
        bg='transparent',
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
