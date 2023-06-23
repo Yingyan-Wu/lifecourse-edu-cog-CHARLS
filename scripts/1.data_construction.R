@@ -362,30 +362,6 @@ with(charls %>% filter(is.na(r2agey_v3)),
 with(charls %>% filter(is.na(r4agey_v3) & !is.na(rLHagey)),
      table(!is.na(r4iwd_v2), !is.na(rLHiwm)))
 
-# missingage_id <- harmonized %>% 
-#   filter(is.na(r1agey) & is.na(r2agey) & is.na(r3agey) & is.na(r4agey)) %>% 
-#   pull(ID)
-# charls_missingage <- charls %>% filter(ID %in% missingage_id) %>%
-#   select(paste0("w", 1:4, "_ba002_1"),
-#          paste0("w", 1:4, "_ba002_2"),
-#          paste0("w", 1:4, "_ba003"),
-#          paste0("w", 1:4, "_iyear"),
-#          paste0("w", 1:4, "_imonth"),
-#          "rabyear", "rabmonth", "rabday",
-#          paste0("r", 1:4, "agey"),
-#          "radyear", "radmonth", contains("lh_r"))
-# table(charls_missingage$w1_ba002_2, useNA = "ifany") # 72 of them can't remember their birth month
-# 
-# view(charls_missingage %>% filter(w1_ba002_2 == 0) %>%
-#        select(paste0("w", 1:4, "_ba002_1"),
-#               paste0("w", 1:4, "_ba002_2"),
-#               paste0("w", 1:4, "_ba003"),
-#               paste0("w", 1:4, "_iyear"),
-#               paste0("w", 1:4, "_imonth"),
-#               "rabyear", "rabmonth", "rabday",
-#               paste0("r", 1:4, "agey"),
-#               "radyear", "radmonth", contains("lh_r")))
-
 missingage_id <- charls%>%
   filter(is.na(r1agey_v3) & is.na(r2agey_v3) & is.na(r3agey_v3) & 
            is.na(r4agey_v3)) %>%
@@ -393,7 +369,7 @@ missingage_id <- charls%>%
 
 charls_missingage <- charls %>%
   filter(ID %in% missingage_id) %>%
-  select("ID", 
+  select("ID", paste0("r", 1:4, "iwd_v2"), rabdate_v2, 
          # Weights
          paste0("r", 1:4, "wtrespb"),
          "ragender",
@@ -406,7 +382,8 @@ charls_missingage <- charls %>%
          # parent's edu & occupation
          "rameduc_c", "rafeduc_c", "ramomoccup_c", 
          "radadoccup_c")
-
+view(charls_missingage)
+# Will have to drop these people
 
 #---- Gender ----
 charls %<>% 
