@@ -19,8 +19,7 @@ p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "labelled",
 source(here::here("scripts", "functions.R"))
 
 #---- Load the datasets ----
-load(here::here("data", "analysis_data", 
-                "charls_equating_samp.RData"))
+load(here::here("data", "analysis_data", "charls_equating_samp.RData"))
 
 #---- 1. Restrict to a calibration group ----
 # Restrict to a “calibration group” that has a common age range, 
@@ -434,8 +433,8 @@ harmonized_empirical_balanced %>%
   theme_classic() +
   labs(x = "Wave",
        y = "Word recall")
-       # title = "Average word recall score +/- 2 SE at different wave
-       # balanced data")
+# title = "Average word recall score +/- 2 SE at different wave
+# balanced data")
 
 ggsave(here::here("output", "figures", "empirical_plot_equated.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
@@ -450,8 +449,8 @@ harmonized_empirical_balanced %>%
   theme_classic() +
   labs(x = "Wave",
        y = "Word recall")
-       # title = "Average word recall score +/- 2 SE at different wave
-       # balanced data")
+# title = "Average word recall score +/- 2 SE at different wave
+# balanced data")
 
 ggsave(here::here("output", "figures", "empirical_plot_original.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
@@ -461,21 +460,21 @@ r4rc_eqt_tib <- harmonized %>%
   select(ID, r4imrc_eqt, r4dlrc_eqt)
 save(r4rc_eqt_tib, file = here::here("data", "analysis_data", "eqt_r4_rc.RData"))
 
-#---- OLD ----
-#---- **Table 1 ----
-table1_1518 <- harmonized_long_1518 %>%
-  select(age_y, female, raeduc_c, childhood_edu, rural,
+#---- Table 1 ----
+table1_1518 <- charls_selected %>%
+  select(age_y, female, childhood_edu, rural, work_status,
          hukou, imrc_cleaned, dlrc_cleaned, wave) %>%
+  mutate(across(c("childhood_edu", "hukou", "work_status"), as.numeric)) %>%
   na.omit() %>%
   labelled::set_variable_labels(
     age_y = "Age at waves",
     female = "Female (%)",
-    raeduc_c = "Early life education level (%)",
     childhood_edu = "Early life education level (simplified) (%)",
     rural = "Rural residence (%)",
     hukou = "Hukou status (%)",
     imrc_cleaned = "Immediate word recall", 
-    dlrc_cleaned = "Delayed word recall") %>%
+    dlrc_cleaned = "Delayed word recall",
+    work_status = "Work status") %>%
   labelled::drop_unused_value_labels() %>%
   labelled::set_value_labels(
     female = c("Yes" = 1, "No" = 0),
@@ -485,21 +484,26 @@ table1_1518 <- harmonized_long_1518 %>%
       "Elementary school or less" = 1,
       "Vocational school/middle school/high school" = 2,
       "College & above" = 3),
-    wave = c("2015" = "3", "2018" = "4")) %>%
+    wave = c("2015" = "3", "2018" = "4"),
+    hukou = c("Agricultual hukou" = 1, "Non-agricultural hukou" = 2, 
+              "Unified residence hukou" = 3, "Do not have hukou" = 4),
+    work_status = c("Agriculture employed" = 1,
+                    "Non-agriculture employed" = 2,
+                    "Unemployed" = 3,
+                    "Retired" = 4,
+                    "Never work" = 5)) %>%
   modify_if(is.labelled, to_factor) %>%
-  modify_if(is.factor,
-            function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
+  # modify_if(is.factor,
+  # function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
   tbl_summary(
-    statistic = list(all_categorical() ~ "{n} ({p}%)",
-                     all_continuous() ~ c("{mean} ({sd})",
-                                          "({min}, {max})")),
+    statistic = list(all_categorical() ~ "{n} ({p})",
+                     all_continuous() ~ c("{mean} ({sd})")),
     type = all_continuous() ~ "continuous2",
     by = wave,
     digits = list(all_continuous() ~ 1,
                   all_categorical() ~ c(0, 1)),
     missing = "ifany",
     missing_text = "Missing") %>%
-  add_p() %>%
   bold_labels() %>%
   modify_footnote(
     update = list(
@@ -507,7 +511,7 @@ table1_1518 <- harmonized_long_1518 %>%
         "Mean (SD) for continuous variables; n (%) for categorical variables")
   )
 
-table1_1518 %>%  as_flex_table()
-# flextable::save_as_docx(path = here::here("output", "tables",
-#                                           "table1_equating_calibrate_sample_15_18.docx"))
+table1_1518 %>%  as_flex_table() %>%
+  flextable::save_as_docx(path = here::here("output", "tables",
+                                            "table1_equating_calibrate_sample_15_18.docx"))
 

@@ -222,10 +222,12 @@ table1_1518 <- harmonized_long_1518 %>%
       "Elementary school or less" = 1,
       "Vocational school/middle school/high school" = 2,
       "College & above" = 3),
-    wave = c("2015" = "3", "2018" = "4")) %>%
+    wave = c("2015" = "3", "2018" = "4"),
+    hukou = c("Agricultual hukou" = 1, "Non-agricultural hukou" = 2, 
+              "Unified residence hukou" = 3, "Do not have hukou" = 4)) %>%
   modify_if(is.labelled, to_factor) %>%
-  modify_if(is.factor,
-            function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
+  # modify_if(is.factor,
+  #           function(x) {forcats::fct_na_value_to_level(x, na_level = "Missing")}) %>%
   tbl_summary(
     statistic = list(all_categorical() ~ "{n} ({p}%)",
                      all_continuous() ~ c("{mean} ({sd})",
