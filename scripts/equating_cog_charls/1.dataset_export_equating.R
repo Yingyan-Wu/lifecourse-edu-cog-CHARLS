@@ -39,8 +39,8 @@ harmonized_variables <- c("ID", "householdID", "pnc", "communityID",
 )
 
 harmonized <- read_dta(here::here("data", "raw_data", "harmonized",
-                                    "H_CHARLS_D_Data.dta"),
-                        col_select = all_of(harmonized_variables))
+                                  "H_CHARLS_D_Data.dta"),
+                       col_select = all_of(harmonized_variables))
 
 # harmonized <- read.dta13(here::here("data", "raw_data", "harmonized",
 #                                     "H_CHARLS_D_Data.dta"),
@@ -135,6 +135,18 @@ harmonized %<>%
                               raeduc_c %in% c(5, 6, 7) ~ 2,
                               raeduc_c %in% c(8, 9, 10) ~ 3))
 
+#---- hukou ----
+harmonized %<>%
+  mutate(r2hukou_impute = case_when(is.na(r2hukou) ~ r1hukou,
+                                    !is.na(r2hukou) ~ r2hukou),
+         r3hukou_impute = case_when(is.na(r3hukou) ~ r2hukou_impute,
+                                    !is.na(r3hukou) ~ r3hukou),
+         r4hukou_impute = case_when(is.na(r4hukou) ~ r3hukou_impute,
+                                    !is.na(r4hukou) ~ r4hukou))
+# # sanity check
+# with(harmonized, table(r4hukou, r4hukou_impute, useNA = "ifany"))
+# with(harmonized, table(r3hukou, r3hukou_impute, useNA = "ifany"))
+
 #---- imrc and dlrc cleaning ----
 harmonized %<>%
   left_join(charls %>% select(ID, w3_dc006s11, w3_dc006s12,
@@ -186,8 +198,8 @@ with(harmonized %>% filter(r4age_y < 60),
 with(harmonized %>% filter(r4age_y < 60),
      table(r4dlrc_cleaned, useNA = "ifany"))
 with(harmonized %>%
-  filter(!is.na(r4imrc_cleaned)),
-  proc_sum(r4age_y, more = T))
+       filter(!is.na(r4imrc_cleaned)),
+     proc_sum(r4age_y, more = T))
 # Weirdly enough, we do have participants with age < 60 answered these questions
 # Though, in HCAP, only particiants with age >= 60 were asked to finish it.
 
@@ -200,17 +212,23 @@ harmonized_long_1518 <- harmonized %>%
                names_to = c("wave", ".value"),
                names_pattern = ("r(.)(.*)"))
 
+# Check hukou
+with(harmonized_long_1518, table(hukou, hukou_impute, useNA = "ifany"))
+
 #---- ** Table 1 ----
 table1_1518 <- harmonized_long_1518 %>%
   select(age_y, female, raeduc_c, childhood_edu, rural,
-         hukou, imrc_cleaned, dlrc_cleaned, wave) %>%
+         hukou_impute, imrc_cleaned, dlrc_cleaned, wave) %>%
+  filter(!is.na(imrc_cleaned) & 
+           age_y >= 45) %>%
+  # filter(!is.na(dlrc_cleaned)) %>%
   labelled::set_variable_labels(
     age_y = "Age at waves",
     female = "Female (%)",
     raeduc_c = "Early life education level (%)",
     childhood_edu = "Early life education level (simplified) (%)",
     rural = "Rural residence (%)",
-    hukou = "Hukou status (%)",
+    hukou_impute = "Hukou status (%)",
     imrc_cleaned = "Immediate word recall", 
     dlrc_cleaned = "Delayed word recall") %>%
   labelled::drop_unused_value_labels() %>%
@@ -223,7 +241,7 @@ table1_1518 <- harmonized_long_1518 %>%
       "Vocational school/middle school/high school" = 2,
       "College & above" = 3),
     wave = c("2015" = "3", "2018" = "4"),
-    hukou = c("Agricultual hukou" = 1, "Non-agricultural hukou" = 2, 
+    hukou_impute = c("Agricultual hukou" = 1, "Non-agricultural hukou" = 2, 
               "Unified residence hukou" = 3, "Do not have hukou" = 4)) %>%
   modify_if(is.labelled, to_factor) %>%
   # modify_if(is.factor,
@@ -249,7 +267,8 @@ table1_1518 <- harmonized_long_1518 %>%
 
 table1_1518 %>%  as_flex_table() %>%
   flextable::save_as_docx(path = here::here("output", "tables", 
-                                            "table1_equating_sample_15_18.docx"))
+                                            "table1_equating_imrc_15_18.docx"))
+                                            # "table1_equating_dlrc_15_18.docx"))
 
 #---- Save the dataset ----
 save(harmonized, harmonized_long_1518, file = here::here("data", "analysis_data", 
