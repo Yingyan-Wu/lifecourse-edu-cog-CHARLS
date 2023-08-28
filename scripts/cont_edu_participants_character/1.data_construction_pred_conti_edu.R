@@ -403,6 +403,10 @@ with(charls, table(is.na(rabdate_v3)))
 with(charls %>% filter(!is.na(r1agey_v3) & is.na(rabdate_v2) & !is.na(r1iwd_v2)),
      table(rabdate_v3, useNA = "ifany"))
 
+charls %<>%
+  mutate(rabyear_v3 = as.numeric(format(rabdate_v3,'%Y')))
+proc_sum(charls$rabyear_v3)
+
 #---- Gender ----
 charls %<>% 
   mutate(female = case_when(ragender == 1 ~ 0,
@@ -1184,19 +1188,16 @@ charls_selected <- charls %>%
   filter(!is.na(female) | !is.na(r1agey_v3))
 
 proc_sum(charls_selected$r1agey_v3)
+
+#---- **2. Dropping people who's younger than 45 years old at each wave ----
 charls_selected %>% filter(r1agey_v3 < 45 & r2agey_v3 < 45 &
                              r3agey_v3 < 45 & r4agey_v3 < 45) %>%
   proc_freq(., r1agey_v3) %>% print(n = Inf)
+# n = 368 age less than 45 at each wave
 charls_selected %>% filter(r1agey_v3 < 45 & r2agey_v3 < 45 &
                              r3agey_v3 < 45 & r4agey_v3 < 45) %>%
   nrow()
-view(charls_selected %>% filter(r1agey_v3 < 45))
-
-#---- **2. Dropping people who's younger than 45 years old at each wave ----
-# n = 368 age less than 45 at each wave
-charls_selected %>%
-  filter(r1agey_v3 < 45 & r2agey_v3 < 45 & r3agey_v3 < 45 & r4agey_v3 < 45) %>%
-  nrow()
+# view(charls_selected %>% filter(r1agey_v3 < 45))
 
 charls_selected %<>%
   filter(r1agey_v3 >= 45 | r2agey_v3 >= 45 | r3agey_v3 >= 45 | r4agey_v3 >= 45)
@@ -1206,6 +1207,9 @@ charls_selected %>%
   filter(is.na(continuing_edu)) %>% nrow() # 319
 charls_selected %<>%
   filter(!is.na(continuing_edu))
+
+#---- descrip ----
+with(charls_selected, proc_sum(rabyear_v3))
 
 #---- Save the data ----
 save(charls, 
