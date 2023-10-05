@@ -18,7 +18,7 @@ p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "glue",
 source(here::here("scripts", "functions.R"))
 
 #---- Load the datasets ----
-#---- **harmonized ----
+##---- harmonized ----
 harmonized_variables <- c("ID", "householdID", "pnc", "communityID",
                           "ID_w1", "householdID_w1", 
                           paste0("inw", 1:4),
@@ -52,11 +52,11 @@ harmonized <- haven::read_dta(here::here("data", "raw_data", "harmonized",
 
 # harmonized_selected <- harmonized %>% filter(ID_w1 != "")
 
-#---- **harmonized life history ----
+##---- harmonized life history ----
 harmonized_lh <- haven::read_dta(here::here("data", "raw_data", "harmonized",
                                             "H_CHARLS_LH_a.dta"))
 
-#---- **psu ----
+##---- psu ----
 # psuw1 <- haven::read_dta(here::here("data", "raw_data", "2011", 
 #                                     "chinese_characters_clean", "psu.dta"))
 # colnames(psuw1)
@@ -76,7 +76,7 @@ harmonized %<>% left_join(psuw1 %>% select(communityID, province_eng),
 table(harmonized$province_eng,useNA = "ifany")
 
 #---- Reading core data ----
-#---- **main datasets ----
+##---- main datasets ----
 # Adapted from Mingfei Dong's data reading script, 
 # Crystal's reading result snippet from make_figures.R in exposure_trajectories
 # and the IDRE website
@@ -156,7 +156,7 @@ rm(list)
 
 gc()
 
-#---- **life history datasets ----
+##---- life history datasets ----
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("residence", "demographic_background", "education_history", 
@@ -244,7 +244,7 @@ charls_w1 %<>% dplyr::rename("ID" = "ID_w234")
 
 rm(harmonized_id)
 
-#---- ** join to a single dataset (wave 1 baseline) ----
+##----  join to a single dataset (wave 1 baseline) ----
 # Merge all the waves (All the participants!)
 charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4,
                           charls_lh)),
@@ -410,7 +410,7 @@ with(charls, table(female_v2, useNA = "ifany")) # 6 missing gender
 # charls %<>% dplyr::select(-ragender)
 
 #---- Education variables ----
-#---- **Adult Education ----
+##---- Adult Education ----
 charls %<>%
   mutate_at(vars(starts_with("w4_bd007_w4_1_s")), 
             function(x) ifelse(x == 0, NA, x)) %>%
@@ -493,7 +493,7 @@ charls %<>%
 
 with(charls, table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 
-#---- **Edu + adult edu ----
+##---- Edu + adult edu ----
 charls %<>%
   mutate(
     childhood_edu = case_when(raeduc_c == 1 ~ 0,
@@ -536,7 +536,7 @@ with(charls, table(continuing_edu, adult_edu_dplm, useNA = "ifany"))
 with(charls %>% filter(is.na(edu_cat) & raeduc_c == 1), 
      table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 
-#---- **Education interruption 1967 - 1977 ----
+##---- Education interruption 1967 - 1977 ----
 # For sensitivity analysis
 # Pending
 with(charls %>% filter(r1agey_v3 >= 45), 
@@ -764,7 +764,7 @@ work_history_long_mat %>%
                       "\nA random sample of 100 people")) +
   theme(legend.position = "none")
 
-#---- **First occupation type ----
+##---- First occupation type ----
 # # First occupation mat
 # work_history_wide_mat <- charls %>%
 #   select(ID, rLHagey, contains("c_wrkstate"))
@@ -808,7 +808,7 @@ proc_freq(charls, first_occupation)
 # 2011 wave 1 labor force
 # proc_freq(charls, r1lbrf_c)
 
-#---- **occupation at 30 (25 - 35 nonmissing closest to 30) -----
+##---- occupation at 30 (25 - 35 nonmissing closest to 30) -----
 nonmissing_30_work_mat <- work_history_long_mat %>%
   filter(!is.na(wrkstate)) %>%
   mutate(age_30_abs = abs(Age - 30)) %>%
@@ -879,7 +879,7 @@ marital_long_mat %>%
        title = paste0("Profile Plot of Marital status across different age")) +
   theme(legend.position = "none")
 
-#---- **First non missing marital status ----
+##---- First non missing marital status ----
 first_marital_mat <- marital_long_mat %>%
   filter(!is.na(prtnstate)) %>%
   arrange(ID, Age) %>%
@@ -894,7 +894,7 @@ charls %<>%
   left_join(first_marital_mat %>% select(ID, contains("first_maritalsts")),
             by = "ID")
 
-#---- **marital status 30 (25 - 35 nonmissing closest to 30) -----
+##---- marital status 30 (25 - 35 nonmissing closest to 30) -----
 nonmissing_30_marital_mat <- marital_long_mat %>%
   filter(!is.na(prtnstate)) %>%
   mutate(age_30_abs = abs(Age - 30)) %>%
@@ -925,7 +925,7 @@ proc_freq(charls, marital_30)
 #      table(first_maritalsts_age, useNA = "ifany"))
 
 
-#---- **wave 1 Marital status ----
+##---- wave 1 Marital status ----
 charls %<>%
   mutate(r1mstat_c = case_when(r1mstat %in% c(1, 2) ~ 1,
                                r1mstat %in% c(4, 5) ~ 2,
@@ -939,7 +939,7 @@ proc_freq(charls, r1mstat_c)
 proc_freq(charls, r1mstat_c_v2)
 
 #---- Residence in adulthood ----
-#---- **Wave 1 Rural v.s.urban ----
+##---- Wave 1 Rural v.s.urban ----
 proc_freq(charls, h1rural)
 with(charls, table(h1rural, h2rural, useNA = "ifany"))
 with(charls, table(h1rural, h3rural, useNA = "ifany"))
@@ -960,7 +960,7 @@ with(charls %>% filter(is.na(h1rural) & !is.na(h3rural)),
 with(charls %>% filter(is.na(h1rural) & !is.na(h4rural)), 
      table(inw1, inw4, useNA = "ifany"))
 
-#---- **Province、region ----
+##---- Province、region ----
 proc_freq(charls, province_eng) %>% print(n = Inf)
 charls %<>% mutate(
   region_eng = case_when(
@@ -975,7 +975,7 @@ charls %<>% mutate(
 proc_freq(charls, region_eng)
 with(charls, table(region_eng, province_eng, useNA = "ifany"))
 
-#---- **Rural/urban residence 30 ----
+##---- Rural/urban residence 30 ----
 residence_mat <- charls %>% select(contains(c("t001", "t002","t004")), 
                                    rabyear_v2, contains("rural")) %>%
   mutate(rayear_30 = rabyear_v2 + 30) %>%
@@ -1067,7 +1067,7 @@ hukou_long_mat %>%
        title = paste0("Profile Plot of Hukou status across different age")) +
   theme(legend.position = "none")
 
-#---- **First hukou type ----
+##---- First hukou type ----
 first_hukou_mat <- hukou_long_mat %>%
   filter(!is.na(hkstate)) %>%
   arrange(ID, Age) %>%
@@ -1086,7 +1086,7 @@ charls %<>%
 proc_freq(first_hukou_mat, first_hukou)
 proc_freq(charls, first_hukou)
 
-#---- ** Hukou status at 30 (25 - 35 nonmissing closest to 30) -----
+##----  Hukou status at 30 (25 - 35 nonmissing closest to 30) -----
 nonmissing_30_hukou_mat <- hukou_long_mat %>%
   filter(!is.na(hkstate)) %>%
   mutate(age_30_abs = abs(Age - 30)) %>%
@@ -1153,7 +1153,7 @@ charls %<>%
 
 
 #---- Dropping people ----
-#---- **1. Dropping those who still missing age and gender ----
+##---- 1. Dropping those who still missing age and gender ----
 # test <- charls %>%
 #   filter(is.na(female) & is.na(r1agey_v3)) %>%
 #   select(contains("edu"), contains("imrc"), contains("dlrc"))
@@ -1165,7 +1165,23 @@ charls %>%
 charls_selected <- charls %>%
   filter(!is.na(female) | !is.na(r1agey_v3))
 
+##---- 2. Droping those who did not have any word recall scores ----
+# n = 1935
+charls_selected %>% 
+  filter((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc) & is.na(r4imrc))|
+           (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc) & is.na(r4dlrc))) %>% 
+  nrow()
+charls_selected %<>% 
+  filter(!((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc) & is.na(r4imrc))|
+             (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc) & is.na(r4dlrc))))
 
+# Check the previous saved dataset
+# test <- charls_selected
+# load(here::here("data", "analysis_data", "charls_selected.RData"))
+# colnames(test)[!colnames(test) %in% colnames(charls_selected)]
+# table(test$ID %in% charls_selected$ID)
+# table(charls_selected$ID %in% test$ID)
+# charls_selected <- test
 
 #---- Save the data ----
 save(charls, 
@@ -1208,7 +1224,7 @@ save(charls_selected,
 # # Sanity check
 # with(charls, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
 # with(charls, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
-# #---- **Adult edu time ----
+# ##---- Adult edu time ----
 # proc_univariate(charls$w1_bd010)
 # with(charls %>% filter(adult_edu == 1), 
 #      table(w1_bd011, adult_edu_dplm,useNA = "ifany"))
@@ -1255,11 +1271,11 @@ save(charls_selected,
 # #   select(ID, adult_edu, adult_edu_dplm, adult_edu_dplm_year,
 # #          contains(c("bd011", "bd010", "bd009"))) %>%
 # #   filter(adult_edu_dplm == 1 & adult_edu_dplm_year > 2011))
-#---- ** Edu level cleaning ----
+##----  Edu level cleaning ----
 # # Build the final version of highest education
 # with(charls, table(w2_bd001_w2_4, w1_bd001, useNA = "ifany"))
 
-# #---- ****Adult education exclusion ----
+# ###---- Adult education exclusion ----
 # # w1 edu level * w1 level contains adult edu
 # with(charls, table(w1_bd001, w2_bd001_w2_1, useNA = "ifany"))
 # # w1 edu level * w1 edu level (without adult edu, collected at w2)
@@ -1294,7 +1310,7 @@ save(charls_selected,
 #   theme(legend.position = "none")
 
 
-#---- **** build the variable ----
+###----  build the variable ----
 # mutate(edu_highest = case_when(
 #   # Using w1 education level,
 #   # if w2 confirm w1's response is correct and
