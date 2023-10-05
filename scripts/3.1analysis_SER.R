@@ -588,14 +588,14 @@ results_for_figure %>%
   facet_grid(fct_rev(comparison) ~ ., scales = "free", space = "free") +
   # scale_y_discrete(limits = rev(levels(results_for_figure$contrast))) +
   # cols = vars(contrast)) +
-  theme_bw() +
-  theme(axis.text.y = element_text(color = "black", size = 11),
+  theme_bw(base_size = 16) +
+  theme(axis.text.y = element_text(color = "black", size = 12),
         axis.title.y = element_blank(),
         strip.text.y = element_text(size = 10.5),
         strip.text.x = element_text(size = 10.5),
         plot.background = element_rect(fill='transparent', color=NA))
 # ggtitle("The Estimated Effect of Education Level on Cognition")
 
-ggsave(here::here("output", "figures", "figure_poster_dlrc_06052023.png"),
+ggsave(here::here("output", "figures", "figure_poster_dlrc_06052023_larger_font.png"),
        bg='transparent',
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
