@@ -554,7 +554,7 @@ with(charls %>% filter(!is.na(rLHiwm)),
 
 #---- Outcome ----
 # The outcome was cleaned in another script (equipercentile equating method)
-
+# PENDING
 #---- Region of residence Childhood ----
 # psu2011_nbs <- readxl::read_xlsx(here::here("data", "analysis_data", 
 #                                             "psu2011_nbs.xlsx"))
@@ -1155,18 +1155,18 @@ charls %<>%
 #---- Dropping people ----
 ##---- 1. Dropping those who still missing age and gender ----
 # test <- charls %>%
-#   filter(is.na(female) & is.na(r1agey_v3)) %>%
+#   filter(is.na(female_v2) & is.na(r1agey_v3)) %>%
 #   select(contains("edu"), contains("imrc"), contains("dlrc"))
 # table(colSums(is.na(test)))
 
-# These 298 people did not have the outcome measures and the eductaion variables
+# These 6 people did not have the outcome measures and the eductaion variables
 charls %>%
-  filter(is.na(female) & is.na(r1agey_v3)) %>% nrow()
+  filter(is.na(female_v2) & is.na(r1agey_v3)) %>% nrow()
 charls_selected <- charls %>%
-  filter(!is.na(female) | !is.na(r1agey_v3))
+  filter(!is.na(female_v2) | !is.na(r1agey_v3))
 
-##---- 2. Droping those who did not have any word recall scores ----
-# n = 1935
+##---- 2. Dropping those who did not have any word recall scores ----
+# n = 2227
 charls_selected %>% 
   filter((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc) & is.na(r4imrc))|
            (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc) & is.na(r4dlrc))) %>% 
