@@ -415,12 +415,10 @@ harmonized_empirical_balanced %>%
   ggplot(aes(x = wave, y = mean,
              group = interaction(variable, type),
              color = interaction(variable, type))) +
-  geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1) +
-                # size = 1) +
-  geom_line(aes(linetype = interaction(variable, type))) +
-  # , size = 1) +
-  geom_point(aes(shape = interaction(variable, type))) +
-             # , size = 1) +
+  geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1,
+                size = 1) +
+  geom_line(aes(linetype = interaction(variable, type)), size = 1) +
+  geom_point(aes(shape = interaction(variable, type)), size = 1) +
   scale_color_manual(name = "Variable",
                      values = c("salmon", "cyan3", "salmon", "cyan3"),
                      labels = c("Equated w4 dlrc", "Equated w4 imrc",
@@ -434,15 +432,16 @@ harmonized_empirical_balanced %>%
                      labels = c("Equated w4 dlrc", "Equated w4 imrc",
                                 "Original scores","Original scores")) + 
   theme_classic() +
-  # theme_classic(base_size = 20) +
+  theme_classic(base_size = 26) +
+  theme(legend.position = "none") +
   labs(x = "Wave",
        y = "Word recall scores")
   
 # title = "Average word recall score +/- 2 SE at different wave
 # balanced data")
 # 
-# ggsave(here::here("output", "figures", "empirical_plot_equated_larger_font.png"),
-#        device = "png", dpi = 300, width = 7, height = 5, units = "in")
+ggsave(here::here("output", "figures", "empirical_plot_equated_larger_font.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 #---- **before equating ----
 harmonized_empirical_balanced %>%
