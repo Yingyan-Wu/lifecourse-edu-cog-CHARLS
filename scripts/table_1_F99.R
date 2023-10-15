@@ -119,39 +119,49 @@ table_1 %>% as_flex_table() %>% flextable::save_as_docx(
 #---- Table 1 for weighted ----
 charls_selected_svy <- charls_selected %>%
   filter(r1agey_v3 >= 45 & !is.na(r1wtrespb)) %>%
-  select(r1agey_v3, female_v2, edu_cat, h1rural,
-         rameduc_c, rafeduc_c, ramomoccup_c_v2, radadoccup_c_v2,
+  select(r1agey_v3, female_v2, h1rural, continuing_edu,
+         childhood_edu,
+         # edu_cat, rameduc_c, rafeduc_c, ramomoccup_c_v2, radadoccup_c_v2,
          r1imrc, r1dlrc, r1wtrespb) %>%
   labelled::set_variable_labels(
     r1agey_v3 = "Baseline age in years",
     female_v2 = "Female (%)",
-    edu_cat = "Education level (%)",
+    # edu_cat = "Education level (%)",
+    continuing_edu = "Continuing education (%)",
+    childhood_edu = "Early life education",
     h1rural = "Rural residence (%)",
-    rameduc_c = "Mother's education level (%)", 
-    rafeduc_c = "Father's education level (%)", 
-    ramomoccup_c_v2 = "Mother's occupation (%)", 
-    radadoccup_c_v2 = "Father's occupation (%)",
+    # rameduc_c = "Mother's education level (%)", 
+    # rafeduc_c = "Father's education level (%)", 
+    # ramomoccup_c_v2 = "Mother's occupation (%)", 
+    # radadoccup_c_v2 = "Father's occupation (%)",
     r1imrc = "Baseline Immediate word recall", 
     r1dlrc = "Baseline delayed word recall") %>%
   labelled::drop_unused_value_labels() %>%
   labelled::set_value_labels(
     female_v2 = c("Yes" = 1, "No" = 0),
     h1rural = c("Yes" = 1, "No" = 0),
-    rameduc_c = c(
-      "No formal education" = 0,
-      "Elementary school or less" = 1,
-      "Vocational school/middle school/high school" = 2,
-      "College & above" = 3), 
-    rafeduc_c = c(
-      "No formal education" = 0,
-      "Elementary school or less" = 1,
-      "Vocational school/middle school/high school" = 2,
-      "College & above" = 3) , 
-    ramomoccup_c_v2 = c("Farming" = 1,
-                        "Non-Agricultural" = 2), 
-    radadoccup_c_v2 = c("Farming" = 1,
-                        "Non-Agricultural" = 2)) %>%
-  modify_if(is.labelled, to_factor) %>%
+    continuing_edu = c("No continuing education" = 0, 
+                       "Continuing education without a diploma" = 1, 
+                       "Continuing education with a diploma" = 2),
+    childhood_edu = c("No Formal Education (Illiterate)" = 0, 
+                      "Elementary school or less" = 1, 
+                      "Vocational school/middle school/high school" = 2, 
+                      "College & above" = 3)) %>%
+  # rameduc_c = c(
+  #   "No formal education" = 0,
+  #   "Elementary school or less" = 1,
+  #   "Vocational school/middle school/high school" = 2,
+  #   "College & above" = 3), 
+  # rafeduc_c = c(
+  #   "No formal education" = 0,
+  #   "Elementary school or less" = 1,
+  #   "Vocational school/middle school/high school" = 2,
+  #   "College & above" = 3) , 
+  # ramomoccup_c_v2 = c("Farming" = 1,
+#                     "Non-Agricultural" = 2), 
+# radadoccup_c_v2 = c("Farming" = 1,
+#                     "Non-Agricultural" = 2)) %>%
+modify_if(is.labelled, to_factor) %>%
   modify_if(is.factor,
             function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
   survey::svydesign(~1, data = ., weights = ~r1wtrespb)
@@ -162,15 +172,21 @@ table1 <- tbl_svysummary(
                    all_continuous() ~ c("{mean} ({sd})")),
   type = all_continuous() ~ "continuous",
   digits = list(all_continuous() ~ 1,
-                all_categorical() ~ c(0, 1))) %>% 
+                all_categorical() ~ c(0, 1)),
+  by = "childhood_edu") %>% 
   bold_labels() %>%
   modify_footnote(
     update = list(
       starts_with("stat_") ~
         "Mean (SD) for continuous variables; n (%) for categorical variables")
-  )  
+  )  %>%
+  modify_header(
+    list(stat_1	 ~ "**No Formal Education (Illiterate)**, N = {n_unweighted} ({style_percent(p,digits = 1)}%)",
+         stat_2 ~ "**Elementary school or less**, N = {n_unweighted} ({style_percent(p,digits = 1)}%)",
+         stat_3 ~ "**Vocational school/middle school/high school**, N = {n_unweighted} ({style_percent(p,digits = 1)}%)",
+         stat_4 ~ "**College & above**, N = {n_unweighted} ({style_percent(p,digits = 1)}%)"))
 
 table1 %>% as_flex_table() 
 
 table1 %>% as_flex_table() %>% flextable::save_as_docx(
-  path = here::here("output", "tables", "table1_F99.docx"))
+  path = here::here("output", "tables", "table1_F99_Oct15.docx"))
