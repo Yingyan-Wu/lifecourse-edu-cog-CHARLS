@@ -591,8 +591,8 @@ results_for_figure %>%
   theme_bw(base_size = 16) +
   theme(axis.text.y = element_text(color = "black", size = 12),
         axis.title.y = element_blank(),
-        strip.text.y = element_text(size = 10.5),
-        strip.text.x = element_text(size = 10.5),
+        strip.text.y = element_text(size = 12),
+        strip.text.x = element_text(size = 12),
         plot.background = element_rect(fill='transparent', color=NA))
 # ggtitle("The Estimated Effect of Education Level on Cognition")
 
