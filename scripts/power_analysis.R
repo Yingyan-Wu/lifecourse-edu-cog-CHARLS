@@ -6,6 +6,8 @@ load(here::here("data", "analysis_data", "charls_selected.RData"))
 # longitudinal mixed effect
 p_load("lme4")
 charls_long <- charls_selected %>%
+  mutate(continuing_edu = case_when(continuing_edu == 0 ~ 0,
+                                    continuing_edu %in% c(1, 2) ~ 1)) %>%
   select(ID, continuing_edu, childhood_edu, contains("imrc"), contains("dlrc"),
          -contains("r4")) %>%
   pivot_longer(cols = !ID:childhood_edu,
@@ -54,15 +56,16 @@ ct <- poly(x, degree=1)*sqrt(sum((x-mean(x))^2))
 C <- sum(ct[1:length(x),]^2)
 C
 
-# power.long(19912, 0.000215/0.005, C, seu^2*6, seu^2, 0.05)
-# power.long(19912, 0.000215/0.005, C, seu^2*7, seu^2, 0.05)
-# power.long(19912, 0.000217/0.005, C, seu^2*8, seu^2, 0.05)
-# power.long(19912, 0.00022/0.005, C, seu^2*9, seu^2, 0.05)
-# power.long(19912, 0.000225/0.005, C, seu^2*11, seu^2, 0.05)
-power.long(19912, 0.000228/0.005, C, seu^2*12, seu^2, 0.05)
+power.long(276, 0.00181/0.005, C, seu^2*6, seu^2, 0.05)
+power.long(276, 0.00183/0.005, C, seu^2*7, seu^2, 0.05)
+power.long(276, 0.00185/0.005, C, seu^2*8, seu^2, 0.05)
+power.long(276, 0.00187/0.005, C, seu^2*9, seu^2, 0.05)
+power.long(276, 0.00189/0.005, C, seu^2*10, seu^2, 0.05)
+power.long(276, 0.00191/0.005, C, seu^2*11, seu^2, 0.05)
+power.long(276, 0.00192/0.005, C, seu^2*12, seu^2, 0.05)
 # The values for beta comes from various round of running the power.long
 aim1 <- tibble(
-  beta = c(0.000213, 0.000215, 0.000217, 0.00022, 0.000221, 0.000225, 0.000227),
+  beta = c(0.00181, 0.00183, 0.00185, 0.00187, 0.00189, 0.00191, 0.00192),
   # beta = seq(0.0002, 0.00025, by = 0.00001),
   d = beta/seu, # from a study
   varratio = 6:12,
