@@ -478,7 +478,7 @@ table1_1518 <- charls_selected %>%
     hukou = "Hukou status (%)",
     imrc_cleaned = "Immediate word recall", 
     dlrc_cleaned = "Delayed word recall",
-    work_status = "Work status") %>%
+    work_status = "Work status (%)") %>%
   labelled::drop_unused_value_labels() %>%
   labelled::set_value_labels(
     female = c("Yes" = 1, "No" = 0),
