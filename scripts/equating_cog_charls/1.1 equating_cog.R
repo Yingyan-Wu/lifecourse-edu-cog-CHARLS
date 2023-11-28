@@ -412,13 +412,18 @@ harmonized_empirical_balanced %<>%
   print()
 
 harmonized_empirical_balanced %>%
-  ggplot(aes(x = wave, y = mean,
+  mutate(year = case_when(wave == 1 ~ 2011,
+                          wave == 2 ~ 2013,
+                          wave == 3 ~ 2015,
+                          wave == 4 ~ 2018)) %>%
+  ggplot(aes(x = year, y = mean,
              group = interaction(variable, type),
              color = interaction(variable, type))) +
   geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1,
                 size = 1) +
   geom_line(aes(linetype = interaction(variable, type)), size = 2) +
   geom_point(aes(shape = interaction(variable, type)), size = 2) +
+  scale_x_continuous(breaks = c(2011, 2013, 2015, 2018)) +
   scale_color_manual(name = "Variable",
                      values = c("salmon", "cyan3", "salmon", "cyan3"),
                      labels = c("Equated w4 dlrc", "Equated w4 imrc",
@@ -434,8 +439,8 @@ harmonized_empirical_balanced %>%
   theme_classic() +
   theme_classic(base_size = 20) +
   theme(legend.position = "none") +
-  labs(x = "Wave",
-       y = "Word recall scores")
+  labs(x = "Year", y = "")
+       # y = "Word recall scores")
   
 # title = "Average word recall score +/- 2 SE at different wave
 # balanced data")
