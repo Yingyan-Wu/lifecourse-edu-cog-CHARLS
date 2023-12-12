@@ -37,7 +37,7 @@ harmonized <- haven::read_dta(here::here("data", "raw_data", "harmonized",
 
 harmonized_selected <- harmonized %>% filter(ID_w1 != "")
 
-#---- **Age distribution at each wave ----
+##---- Age distribution at each wave ----
 harmonized_selected %>%
   select(contains("agey")) %>%
   apply(., 2, function(x) proc_sum(x, more = T))
@@ -57,7 +57,7 @@ harmonized_selected %>%
   facet_wrap(~ wave, scales = "free_x") +
   theme_minimal()
 
-#---- **Word recall ----
+##---- Word recall ----
 # Missingness
 round(colSums(is.na(harmonized_selected %>%
                       select(contains("agey"), contains("imrc"),
@@ -104,7 +104,7 @@ harmonized_long %>%
   theme(legend.position = "none")
 
 
-#---- ****empirical plot ----
+###---- empirical plot ----
 harmonized_empirical_all <- harmonized_long %>%
   filter(!is.na(imrc)) %>%
   group_by(wave) %>%
@@ -163,7 +163,7 @@ harmonized_empirical_balanced %>%
 view(harmonized_long %>%
        filter(dlrc_balanced == 1 & wave == 4))
 
-#---- **Check wave 4 delay word recall ----
+##---- Check wave 4 delay word recall ----
 with(harmonized %>%
        mutate(r4rc_flag = case_when(r4imrc < r4dlrc ~ "immediate < delay",
                                     r4imrc == r4dlrc ~ "immediate = delay",
@@ -178,7 +178,7 @@ with(harmonized %>%
 with(harmonized,
      table(r4imrc < r4dlrc, useNA = "ifany"))
 
-#---- **Check the word recall time ----
+##---- Check the word recall time ----
 # This can be used after loading in core data in the data_construction script
 
 # immediate word recall ends
@@ -221,7 +221,7 @@ view(word_recall_time %>%
        select(contains("time_diff")))
 
 #---- Core data ----
-#---- **main datasets ----
+##---- main datasets ----
 # Adapted from Mingfei Dong's data reading script, 
 # Crystal's reading result snippet from make_figures.R in exposure_trajectories
 # and the IDRE website
@@ -229,7 +229,7 @@ view(word_recall_time %>%
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("health_status_and_functioning", "cognition")
-folder_index <- c(1:length(folders))[-c(1, 3, 5, 8)] # main waves only
+folder_index <- c(1:length(folders))[-c(1, 3, 5, 9)] # main waves only
 
 # Read in function
 # read_charls <- function(paths){
@@ -274,7 +274,7 @@ for (i in folder_index){
 
 rm(list)
 
-# ---- **join the datasets ----
+##---- join the datasets ----
 # Waves
 charls_w1 <- join_all(wave1, 
                       # by = c("ID", "householdID", "communityID"),
@@ -304,6 +304,12 @@ charls_w4 <- join_all(wave4,
               function(x){paste0("w4_", x)})
 # colnames(charls_w4)
 
+charls_w5 <- join_all(wave5, 
+                      # by = c("ID", "householdID", "communityID"),
+                      type = "left", match = "all") %>%
+  rename_with(.cols = !c("ID", "householdID", "communityID"), 
+              function(x){paste0("w5_", x)})
+
 harmonized_id <- harmonized %>% 
   select(ID, ID_w1) %>%
   dplyr::rename("ID_w234" = "ID")
@@ -314,9 +320,9 @@ charls_w1 %<>%
 
 charls_w1 %<>% dplyr::rename("ID" = "ID_w234")
 
-#---- ** join to a single dataset (wave 1 baseline) ----
+##----  join to a single dataset (wave 1 baseline) ----
 # Merge all the waves (All the participants!)
-charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4)),
+charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4, charls_w5)),
                    by = c("ID"), # "ID_w234" = "ID", # somehow it didn't work anymore. Rename the ID_w234 in w1 above
                    # "householdID", "communityID"),# Pending: needs to figure out this later
                    type = "full") %>% 
@@ -483,7 +489,7 @@ with(harmonized, table(r4imrc, useNA = "ifany"))
 # There are 1877 participants with non responses (can't recall any of the words)
 # But the rest 653 participants seem to be NAed
 
-#---- **Wave 4: 3 trials ----
+##---- Wave 4: 3 trials ----
 charls %<>%
   mutate(
     w4_imrc_trial2 = case_when(
