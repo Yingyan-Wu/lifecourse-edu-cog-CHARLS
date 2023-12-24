@@ -117,29 +117,40 @@ proc_univariate <- function(variable){
 # adpated from Crystal Shaw's code
 # https://github.com/Mayeda-Research-Group/exposure-trajectories/blob/master/RScripts/functions/impute_ages.R
 
-impute_ages <- function(vector){
+impute_ages <- function(vector, survey_years){
   #For complete vectors or vectors missing every value, do nothing
   if(sum(is.na(vector)) == 0 | sum(is.na(vector)) == length(vector)){
     return(vector)
   } else{
+    gap <- diff(survey_years)
     last_age <- max(which(!is.na(vector)))
     missing_age <- which(is.na(vector))
     
-    for(slot in missing_age){
+    for (slot in missing_age){
       if(slot < last_age){
-        vector[slot] <- vector[last_age] - 2*(last_age - slot)
-      } else{
-        vector[slot] <- vector[last_age] + 2*(slot - last_age)
+        vector[slot] <- vector[last_age] - sum(gap[slot:(last_age - 1)])
+      } else {
+        vector[slot] <- vector[last_age] + sum(gap[last_age:(slot - 1)])
       }
     }
+    
+    # for(slot in missing_age){
+    #   if(slot < last_age){
+    #     vector[slot] <- vector[last_age] - 2*(last_age - slot)
+    #   } else{
+    #     vector[slot] <- vector[last_age] + 2*(slot - last_age)
+    #   }
+    # }
     return(vector)
   }
 }
 
-# Test
-# vector <- c(NA, 75, 77, 79, 81)
-# impute_ages(vector)
-# vector <- c(75, 77, 79, 81, NA)
-# impute_ages(vector)
-# vector <- c(75, NA, NA, 81, 83)
-# impute_ages(vector)
+# # Test
+# # 2011, 2013, 2015, 2018, 2020
+# survey_yrs <- c(2011, 2013, 2015, 2018, 2020)
+# vector <- c(NA, 75, 77, 80, 82)
+# impute_ages(vector, survey_yrs)
+# vector <- c(75, 77, 79, 82, NA)
+# impute_ages(vector, survey_yrs)
+# vector <- c(75, NA, NA, 82, 84)
+# impute_ages(vector, survey_yrs)
