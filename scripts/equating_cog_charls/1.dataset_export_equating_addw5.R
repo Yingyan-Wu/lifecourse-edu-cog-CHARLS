@@ -97,16 +97,6 @@ charls_w5 <- join_all(wave5,
               function(x){paste0("w5_", x)})
 # colnames(charls_w5)
 
-##---- join to a single dataset (wave 1 baseline) ----
-# Merge all the waves (All the participants!)
-charls <- join_all(c(list(charls_w3, charls_w4, charls_w5)),
-                   by = c("ID"), # "ID_w234" = "ID", # somehow it didn't work anymore. Rename the ID_w234 in w1 above
-                   # "householdID", "communityID"),# Pending: needs to figure out this later
-                   type = "full") %>% 
-  as_tibble()
-
-gc()
-
 #---- New harmonized dataset ----
 harmonized_addw5 <- harmonized %>%
   full_join(charls_w5 %>% select(ID), by = "ID")
@@ -157,8 +147,9 @@ harmonized_addw5 %>% select(contains("age_y")) %>%
 # wave 5 gender
 gender_w5 <- charls_w5 %>%
   select(ID, w5_ba001, w5_ba002) %>%
-  mutate(w5_gender = case_when(w5_ba001 == w5_ba002|is.na(w5_ba002) ~ w5_ba001,
-                               w5_ba001 != w5_ba002 ~ NA))
+  mutate(w5_gender = 
+           case_when(w5_ba001 == w5_ba002|is.na(w5_ba002) ~ as.numeric(w5_ba001),
+                     w5_ba001 != w5_ba002 ~ NA))
 
 harmonized_addw5 %<>% 
   left_join(gender_w5, by = "ID")
@@ -322,9 +313,10 @@ harmonized_addw5 %<>%
 
 ##---- Immediate word recall ----
 harmonized_addw5 %<>%
-  left_join(charls %>% select(ID, w3_dc006s11, w3_dc006s12,
-                              w4_dc028_w4_s11, w4_dc028_w4_s12,
-                              w3_dc027s11, w3_dc027s12,
+  left_join(charls_w3 %>% select(ID, w3_dc006s11, w3_dc006s12,
+                              w3_dc027s11, w3_dc027s12),
+            by = "ID") %>%
+  left_join(charls_w4 %>% select(ID, w4_dc028_w4_s11, w4_dc028_w4_s12,
                               w4_dc047_w4_s11, w4_dc047_w4_s12),
             by = "ID")
 
