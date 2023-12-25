@@ -341,9 +341,10 @@ charls %>% select(contains("agey_v2")) %>%
   apply(., 2, proc_sum, more = T)
 
 # For those who are still missing ages, since interview dates were missing, 
-# impute them using the closest nonmissing values of age +/- 2
+# impute them using the closest nonmissing values of age +/- 2 or +/-3 
+# depending on waves: 2011, 2013, 2015, 2018, 2020
 age_y <- charls %>% dplyr::select(contains("agey_v2"), -contains("LHagey")) %>% 
-  apply(., 1, impute_ages) %>% t()
+  apply(., 1, impute_ages, survey_years = c(2011, 2013, 2015, 2018)) %>% t()
 
 charls[, paste0("r", 1:4, "agey_v3")] <- age_y
 rm(age_y)
