@@ -55,7 +55,7 @@ harmonized <- read_dta(here::here("data", "raw_data", "harmonized",
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("health_status_and_functioning", "cognition",
-              "demographic_background", "sample_infor")
+              "demographic_background", "sample_infor", "weights")
 
 folder_index <- c(6, 7, 8) # 2015, 2018, 2020 waves only
 
@@ -255,6 +255,18 @@ harmonized_addw5 %<>%
 # with(harmonized_addw5, table(r4hukou, r4hukou_impute, useNA = "ifany"))
 # with(harmonized_addw5, table(r3hukou, r3hukou_impute, useNA = "ifany"))
 
+#---- rural ----
+# wave 5
+with(charls_w5, table(w5_ba008, useNA = "ifany"))
+# special area included mine, farm ....
+
+harmonized_addw5 %<>%
+  left_join(charls_w5 %>% mutate(h5rural = case_when(w5_ba008 %in% c(3, 4) ~ 1,
+                                                     !is.na(w5_ba008) ~ 0)) %>%
+              select(ID, h5rural) , by = "ID")
+
+harmonized_addw5 %>% select(contains("rural")) %>% apply(., 2, table, useNA = "ifany")
+
 #---- imrc and dlrc cleaning ----
 ##---- Wave 5 imrc and dlrc ----
 with(charls_w5, table(w5_dc012_s11, w5_dc012_s12, useNA = "ifany"))
@@ -325,10 +337,11 @@ with(harmonized_addw5 %>% filter(r4imrc == 0),
 # But the rest 653 participants refused to recall (needs to be NAed)
 
 harmonized_addw5 %<>% 
-  mutate(r3imrc_cleaned = case_when(
-    r3imrc == 0 & w3_dc006s12 == 12 ~ NA_real_,
-    # Note: if using read.dta13, the value will be "12 Refuse to Recall" for dc006s12s
-    TRUE ~ as.numeric(r3imrc)),
+  mutate(
+    r3imrc_cleaned = case_when(
+      r3imrc == 0 & w3_dc006s12 == 12 ~ NA_real_,
+      # Note: if using read.dta13, the value will be "12 Refuse to Recall" for dc006s12s
+      TRUE ~ as.numeric(r3imrc)),
     r4imrc_cleaned = case_when(
       r4imrc == 0 & w4_dc028_w4_s12 == 12 ~ NA_real_,
       TRUE ~ as.numeric(r4imrc)))
@@ -354,17 +367,18 @@ charls_w4 %<>%
       w4_dc029_w4_s11 == 11 ~ 0,
       w4_dc029_w4_s12 == 12 ~ NA_real_,
       is.na(w4_dc029_w4_s11) & is.na(w4_dc029_w4_s12) ~ NA_real_,
-      TRUE ~ rowSums(imrc_mat %>% select(
+      TRUE ~ rowSums(w4rc_mat %>% select(
         contains("dc029_w4_s"), -contains(c("s12", "s11"))), na.rm = T)),
     r4imrc_trial3 = case_when(
       w4_dc030_w4_s11 == 11 ~ 0,
       w4_dc030_w4_s12 == 12 ~ NA_real_,
       is.na(w4_dc030_w4_s11) & is.na(w4_dc030_w4_s12) ~ NA_real_,
-      TRUE ~ rowSums(imrc_mat %>% select(
+      TRUE ~ rowSums(w4rc_mat %>% select(
         contains("dc030_w4_s"), -contains(c("s12", "s11"))), na.rm = T)))
-with(charls, table(w4_imrc, useNA = "ifany"))
-with(charls, table(w4_imrc_trial2, useNA = "ifany"))
-with(charls, table(w4_imrc_trial3, useNA = "ifany"))
+
+with(harmonized_addw5, table(r4imrc_cleaned, useNA = "ifany"))
+summary(harmonized_addw5$r4imrc_cleaned)
+charls_w4 %>% select(contains("r4imrc")) %>% summary()
 
 ##---- Delayed word recall ----
 with(harmonized_addw5 %>% filter(r3dlrc == 0),
@@ -382,6 +396,7 @@ harmonized_addw5 %<>%
 # Sanity check
 with(harmonized_addw5, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
 with(harmonized_addw5, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
+with(harmonized_addw5, table(r5dlrc_cleaned, useNA = "ifany"))
 
 # Checking for wave 4, if any participants with age < 60 answered these questions
 with(harmonized_addw5 %>% filter(r4age_y < 60),
@@ -391,23 +406,22 @@ with(harmonized_addw5 %>% filter(r4age_y < 60),
 with(harmonized_addw5 %>%
        filter(!is.na(r4imrc_cleaned)),
      proc_sum(r4age_y, more = T))
-# Weirdly enough, we do have participants with age < 60 answered these questions
-# Though, in HCAP, only particiants with age >= 60 were asked to finish it.
 
-#---- 2015 to 2018 long dataset ----
-harmonized_long_1518 <- harmonized %>%
+#---- 2015, 2018, 2020 long dataset ----
+harmonized_long_151820 <- harmonized_addw5 %>%
   select(ID:pnc, female, childhood_edu, 
-         contains("ra"), contains(c("3", "4")), -contains(c("1", "2"))) %>%
-  dplyr::rename_at(c("h3rural", "h4rural"), function(x) sub("h", "r", x)) %>%
+         contains("ra"), contains(c("3", "4", "5")), -contains(c("1", "2"))) %>%
+  dplyr::rename_at(c("h3rural", "h4rural", "h5rural"), 
+                   function(x) sub("h", "r", x)) %>%
   pivot_longer(cols = !ID:raeduc_c,
                names_to = c("wave", ".value"),
                names_pattern = ("r(.)(.*)"))
 
 # Check hukou
-with(harmonized_long_1518, table(hukou, hukou_impute, useNA = "ifany"))
+with(harmonized_long_151820, table(hukou, hukou_impute, useNA = "ifany"))
 
 ##---- Table 1 ----
-table1_1518 <- harmonized_long_1518 %>%
+table1_151820 <- harmonized_long_151820 %>%
   select(age_y, female, raeduc_c, childhood_edu, rural,
          hukou_impute, imrc_cleaned, dlrc_cleaned, wave) %>%
   filter(!is.na(imrc_cleaned) & 
@@ -431,7 +445,7 @@ table1_1518 <- harmonized_long_1518 %>%
       "Elementary school or less" = 1,
       "Vocational school/middle school/high school" = 2,
       "College & above" = 3),
-    wave = c("2015" = "3", "2018" = "4"),
+    wave = c("2015" = "3", "2018" = "4", "2020" = "5"),
     hukou_impute = c("Agricultual hukou" = 1, "Non-agricultural hukou" = 2, 
                      "Unified residence hukou" = 3, "Do not have hukou" = 4)) %>%
   modify_if(is.labelled, to_factor) %>%
@@ -456,14 +470,14 @@ table1_1518 <- harmonized_long_1518 %>%
         "Mean (SD) for continuous variables; n (%) for categorical variables")
   )
 
-table1_1518 %>%  as_flex_table() %>%
-  flextable::save_as_docx(path = here::here("output", "tables", 
-                                            "table1_equating_imrc_15_18.docx"))
+table1_151820 %>%  as_flex_table()
+# flextable::save_as_docx(path = here::here("output", "tables", 
+#                                           "table1_equating_imrc_151820.docx"))
 # "table1_equating_dlrc_15_18.docx"))
 
 #---- Save the dataset ----
-save(harmonized, harmonized_long_1518, file = here::here("data", "analysis_data", 
-                                                         "charls_equating_samp.RData"))
+save(harmonized_addw5, harmonized_long_151820, file = 
+       here::here("data", "analysis_data", "charls_equating_samp_151820.RData"))
 
 #---- OLD ----
 # #---- Baseline Table 1 ----
