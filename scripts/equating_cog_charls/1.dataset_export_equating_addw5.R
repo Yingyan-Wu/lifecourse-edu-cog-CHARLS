@@ -274,13 +274,25 @@ w5rc_mat %<>%
                                               .x == 11 ~ 0)))
 
 charls_w5 %<>%
-  mutate(w5_imrc = case_when(
+  mutate(r5imrc_cleaned = case_when(
     w5_dc012_s11 == 11 ~ 0,
     w5_dc012_s12 == 12 ~ NA_real_,
     is.na(w5_dc012_s11) & is.na(w5_dc012_s12) ~ NA_real_,
     TRUE ~ rowSums(w5rc_mat %>% select(
       contains("w5_dc012_s"), -contains(c("s12", "s11"))), na.rm = T)),
-    w5_dlrc = case_when(
+    r5imrc_trial2 = case_when(
+      w5_dc013_s11 == 11 ~ 0,
+      w5_dc013_s12 == 12 ~ NA_real_,
+      is.na(w5_dc013_s11) & is.na(w5_dc013_s12) ~ NA_real_,
+      TRUE ~ rowSums(w5rc_mat %>% select(
+        contains("w5_dc013_s"), -contains(c("s12", "s11"))), na.rm = T)),
+    r5imrc_trial3 = case_when(
+      w5_dc014_s11 == 11 ~ 0,
+      w5_dc014_s12 == 12 ~ NA_real_,
+      is.na(w5_dc014_s11) & is.na(w5_dc014_s12) ~ NA_real_,
+      TRUE ~ rowSums(w5rc_mat %>% select(
+        contains("w5_dc014_s"), -contains(c("s12", "s11"))), na.rm = T)),
+    r5dlrc_cleaned = case_when(
       w5_dc028_s11 == 11 ~ 0,
       w5_dc028_s12 == 12 ~ NA_real_,
       is.na(w5_dc028_s11) & is.na(w5_dc028_s12) ~ NA_real_,
@@ -288,9 +300,13 @@ charls_w5 %<>%
         w5rc_mat %>% 
           select(contains("dc028_s"), -contains(c("s12", "s11"))), na.rm = T))
   )
-with(charls_w5, table(w5_imrc, useNA = "ifany"))
-with(charls_w5, table(w5_dlrc, useNA = "ifany"))
 
+with(charls_w5, table(r5imrc_cleaned, useNA = "ifany"))
+charls_w5 %>% select(contains(c("imrc", "dlrc"))) %>% summary()
+with(charls_w5, table(r5dlrc_cleaned, useNA = "ifany"))
+
+harmonized_addw5 %<>%
+  left_join(charls_w5 %>% select(ID, r5imrc_cleaned, r5dlrc_cleaned), by = "ID")
 
 ##---- Immediate word recall ----
 harmonized_addw5 %<>%
@@ -299,9 +315,6 @@ harmonized_addw5 %<>%
                               w3_dc027s11, w3_dc027s12,
                               w4_dc047_w4_s11, w4_dc047_w4_s12),
             by = "ID")
-
-with(charls, table(w5_imrc, useNA = "ifany"))
-with(charls, table(w5_dc012_s11, useNA = "ifany"))
 
 # immediate word recall
 with(harmonized_addw5 %>% filter(r3imrc == 0),
@@ -324,21 +337,31 @@ with(harmonized_addw5, table(r3imrc_cleaned, r3imrc, useNA = "ifany"))
 with(harmonized_addw5, table(r4imrc_cleaned, w4_dc028_w4_s12, useNA = "ifany"))
 
 ##---- Wave 4: 3 trials ----
-charls %<>%
+w4rc_mat <- charls_w4 %>% select(
+  ID, contains(c("w4_dc028_w4_", "w4_dc029_w4_", "w4_dc030_w4_")))
+colnames(w4rc_mat)
+
+# put every non missing and non zero value to be 1 besides s12
+w4rc_mat[w4rc_mat != 0 & !is.na(w4rc_mat)] <- 1
+
+w4rc_mat %<>%
+  mutate(across(ends_with("s11"), ~ case_when(.x == 0 ~ NA_real_,
+                                              .x == 11 ~ 0)))
+
+charls_w4 %<>%
   mutate(
-    w4_imrc_trial2 = case_when(
+    r4imrc_trial2 = case_when(
       w4_dc029_w4_s11 == 11 ~ 0,
       w4_dc029_w4_s12 == 12 ~ NA_real_,
       is.na(w4_dc029_w4_s11) & is.na(w4_dc029_w4_s12) ~ NA_real_,
       TRUE ~ rowSums(imrc_mat %>% select(
         contains("dc029_w4_s"), -contains(c("s12", "s11"))), na.rm = T)),
-    w4_imrc_trial3 = case_when(
+    r4imrc_trial3 = case_when(
       w4_dc030_w4_s11 == 11 ~ 0,
       w4_dc030_w4_s12 == 12 ~ NA_real_,
       is.na(w4_dc030_w4_s11) & is.na(w4_dc030_w4_s12) ~ NA_real_,
       TRUE ~ rowSums(imrc_mat %>% select(
         contains("dc030_w4_s"), -contains(c("s12", "s11"))), na.rm = T)))
-
 with(charls, table(w4_imrc, useNA = "ifany"))
 with(charls, table(w4_imrc_trial2, useNA = "ifany"))
 with(charls, table(w4_imrc_trial3, useNA = "ifany"))
