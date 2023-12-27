@@ -55,7 +55,7 @@ harmonized <- read_dta(here::here("data", "raw_data", "harmonized",
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("health_status_and_functioning", "cognition",
-              "demographic_background", "sample_infor", "weights")
+              "demographic_background", "work_retirement","sample_infor", "weights")
 
 folder_index <- c(6, 7, 8) # 2015, 2018, 2020 waves only
 
@@ -153,12 +153,12 @@ gender_w5 <- charls_w5 %>%
 
 harmonized_addw5 %<>% 
   left_join(gender_w5, by = "ID")
-# Check harmonized ragender and w5_gender
-with(harmonized_addw5, table(w5_gender == ragender, useNA = "ifany"))
-harmonized_addw5 %>%
-  filter(w5_gender != ragender) %>% 
-  select(ID, contains("age"), contains("gender"), w5_ba001, w5_ba002) %>%
-  view()
+# # Check harmonized ragender and w5_gender
+# with(harmonized_addw5, table(w5_gender == ragender, useNA = "ifany"))
+# harmonized_addw5 %>%
+#   filter(w5_gender != ragender) %>% 
+#   select(ID, contains("age"), contains("gender"), w5_ba001, w5_ba002) %>%
+#   view()
 # Use harmonized version of gender
 harmonized_addw5 %<>%
   mutate(ragender_v2 = case_when(!is.na(ragender) ~ as.numeric(ragender),
@@ -175,7 +175,7 @@ harmonized_addw5 %<>%
   mutate(female = case_when(ragender_v2 == 1 ~ 0,
                             ragender_v2 == 2 ~ 1))
 harmonized_addw5 %<>%
-  select(-ragender, -w5_ba001, -w5_ba002)
+  select(-ragender, -w5_ba001, -w5_ba002, -ragender_v2)
 
 #---- Marital status ----
 with(charls_w5, table(w5_ba011, w5_ba012, useNA = "ifany"))
@@ -225,6 +225,99 @@ harmonized_addw5 %<>%
                                    raeduc_c_v2 %in% c(2, 3, 4) ~ 1,
                                    raeduc_c_v2 %in% c(5, 6, 7) ~ 2,
                                    raeduc_c_v2 %in% c(8, 9, 10) ~ 3))
+harmonized_addw5 %<>%
+  select(-raeduc_c, -r5educ_c)
+
+#---- labor force ----
+# Adapted the harmonized code from wave1-wave4 harmonized data by g2aging
+w5_labor_force_mat <- charls_w5 %>%
+  select(ID, contains(c("w5_fa", "w5_fb", "w5_fc", "w5_fd", "w5_ff", "w5_fg", 
+                        "w5_fh")), 
+         w5_zworking, w5_xworking, w5_zrretired, w5_xgetjob, w5_xquitjob) %>%
+  left_join(harmonized_addw5 %>% select(ID, contains("lbrf_c")), 
+            by = "ID")
+w5_labor_force_mat[w5_labor_force_mat == 999 | w5_labor_force_mat == 997 |
+                     w5_labor_force_mat == 995 |
+                     w5_labor_force_mat == -1] <- NA
+summary(w5_labor_force_mat)
+
+w5_labor_force_mat %<>%
+  mutate(r5nowork = case_when(
+    w5_fa001 == 2 & w5_fa004 == 2 & 
+      (w5_fa005 == 2| (w5_fa005 == 1 & w5_fa007 == 2 & w5_fa008 == 2)) ~ 1,
+    is.na(w5_fa001) & is.na(w5_fa004) & is.na(w5_fa005) &
+      is.na(w5_fa007) & is.na(w5_fa008) ~ NA_real_,
+    TRUE ~ 0),
+    r5lbrf_c = case_when(
+      # agricultural, employed
+      w5_fa001 == 1 & w5_fa002_s2 == 2 ~ 1, 
+      # agricultural, self-employed
+      w5_fa001 == 1 & w5_fa002_s1 == 1 ~ 2, 
+      # non-agricultural, employed
+      w5_fa010 == 1 | w5_fa011 == 1 | w5_fg004 != 1 ~ 3, 
+      # non-agricultural, self-employed
+      w5_fa010 == 2 | w5_fa011 == 2 ~ 4, 
+      # non-agricultural, family business
+      w5_fa010 == 3 | w5_fa011 == 3 ~ 5,
+      # unemployed: not working, stopped working and looking for work
+      (r5nowork == 1 & 
+         (((w5_fa019 != 6 | is.na(w5_fa019)) & w5_ff003 == 1) | w5_ff004 == 3)) |
+        w5_xquitjob == 1 | (w5_zworking == 1 & w5_zrretired == 0) ~ 6, 
+      # retired: # not working, has worked, and not looking for work
+      (r5nowork == 1 & 
+         ((w5_fa019 == 6 | w5_fa005 == 1 | !is.na(w5_fa019) | w5_ff001 > 0 | 
+             !is.na(w5_fa016_1) | w5_fh001 == 1) | w5_ff005 == 3)) |
+        w5_zrretired == 1 ~ 7,
+      # never worked: no work currently and no recreational work, not looking for work, 
+      # not retired in previous wave, never work in previous wave
+      w5_zworking == 2 | 
+        (w5_zrretired == 0 & (r5nowork == 1 & w5_ff002 == 2 & w5_ff003 == 2 & 
+                                is.na(w5_fh001))) ~ 8, 
+      # Supplement values from other related variables
+      # employed: add recreational work and last year worked to employed
+      w5_ff002 == 1 | (!is.na(w5_ff001_min) | !is.na(w5_ff001_max)) ~ 3, 
+      # Supplement values from previous waves
+      # unemployed: previous unemployed, currently not working
+      r5nowork == 1 & (r4lbrf_c == 6 | (is.na(r4lbrf_c) & r3lbrf_c == 6) |
+                         (is.na(r4lbrf_c) & is.na(r3lbrf_c) & r2lbrf_c == 6) |
+                         (is.na(r4lbrf_c) & is.na(r3lbrf_c) & is.na(r2lbrf_c) &
+                            r1lbrf_c == 6)) ~ 6, 
+      # retired: previous retired, currently not working
+      r5nowork == 1 & (r4lbrf_c == 7 | (is.na(r4lbrf_c) & r3lbrf_c == 7) |
+                         (is.na(r4lbrf_c) & is.na(r3lbrf_c) & r2lbrf_c == 7) |
+                         (is.na(r4lbrf_c) & is.na(r3lbrf_c) & is.na(r2lbrf_c) &
+                            r1lbrf_c == 7)) ~ 7, 
+      # never worked: previous never worked, currently not working
+      r5nowork == 1 & (r4lbrf_c == 8 | (is.na(r4lbrf_c) & r3lbrf_c == 8) |
+                         (is.na(r4lbrf_c) & is.na(r3lbrf_c) & r2lbrf_c == 8) |
+                         (is.na(r4lbrf_c) & is.na(r3lbrf_c) & is.na(r2lbrf_c) &
+                            r1lbrf_c == 8)) ~ 8,
+      # unemployed: currently not working, retirement not proceed, previous employed
+      r5nowork == 1 & w5_fh001 == 2 & 
+        (r4lbrf_c < 6| r3lbrf_c < 6 | r2lbrf_c < 6 | r1lbrf_c < 6) ~ 6,
+      # never worked: all the auxiliary variables implemented they were not working
+      # missing r1-r4 labor force harmonized values
+      r5nowork == 1 & 
+        ((w5_zworking == 0 | is.na(w5_zworking)) & 
+           w5_xworking == 0 & (w5_zrretired == 0 | is.na(w5_zrretired)) &
+           w5_xgetjob == 0 & w5_xquitjob == 0) ~ 8,
+      TRUE ~ NA_real_))
+
+# # Sanity check
+# with(w5_labor_force_mat, table(r5lbrf_c, useNA = "ifany"))
+# # Check never work people
+# a <- w5_labor_force_mat %>% filter(r5lbrf_c == 8)
+# colSums(!is.na(a))[colSums(!is.na(a)) != 0]
+# view(a)
+# 
+# b <- w5_labor_force_mat %>% filter(is.na(r5lbrf_c) & r5nowork == 1)
+# colSums(!is.na(b))[colSums(!is.na(b)) != 0]
+# view(b)
+
+harmonized_addw5 %<>%
+  left_join(w5_labor_force_mat %>% select(ID, r5lbrf_c), by = "ID")
+harmonized_addw5 %>% select(contains("lbrf_c")) %>%
+  apply(., 2, table, useNA = "ifany")
 
 #---- hukou ----
 # Wave 5 hukou
@@ -257,6 +350,11 @@ harmonized_addw5 %<>%
               select(ID, h5rural) , by = "ID")
 
 harmonized_addw5 %>% select(contains("rural")) %>% apply(., 2, table, useNA = "ifany")
+
+#---- Add wave 5 weights ----
+harmonized_addw5 %<>%
+  left_join(charls_w5 %>% select(ID, w5_INDV_weight_ad2) %>% 
+              dplyr::rename(r5wtrespb = w5_INDV_weight_ad2), by = "ID")
 
 #---- imrc and dlrc cleaning ----
 ##---- Wave 5 imrc and dlrc ----
@@ -309,15 +407,16 @@ charls_w5 %>% select(contains(c("imrc", "dlrc"))) %>% summary()
 with(charls_w5, table(r5dlrc_cleaned, useNA = "ifany"))
 
 harmonized_addw5 %<>%
-  left_join(charls_w5 %>% select(ID, r5imrc_cleaned, r5dlrc_cleaned), by = "ID")
+  left_join(charls_w5 %>% select(ID, r5imrc_cleaned, r5dlrc_cleaned,
+                                 r5imrc_trial2, r5imrc_trial3), by = "ID")
 
 ##---- Immediate word recall ----
 harmonized_addw5 %<>%
   left_join(charls_w3 %>% select(ID, w3_dc006s11, w3_dc006s12,
-                              w3_dc027s11, w3_dc027s12),
+                                 w3_dc027s11, w3_dc027s12),
             by = "ID") %>%
   left_join(charls_w4 %>% select(ID, w4_dc028_w4_s11, w4_dc028_w4_s12,
-                              w4_dc047_w4_s11, w4_dc047_w4_s12),
+                                 w4_dc047_w4_s11, w4_dc047_w4_s12),
             by = "ID")
 
 # immediate word recall
@@ -340,6 +439,35 @@ harmonized_addw5 %<>%
 # Sanity check
 with(harmonized_addw5, table(r3imrc_cleaned, r3imrc, useNA = "ifany"))
 with(harmonized_addw5, table(r4imrc_cleaned, w4_dc028_w4_s12, useNA = "ifany"))
+
+##---- Delayed word recall ----
+with(harmonized_addw5 %>% filter(r3dlrc == 0),
+     table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
+with(harmonized_addw5 %>% filter(r4dlrc == 0),
+     table(w4_dc047_w4_s11, w4_dc047_w4_s12, useNA = "ifany"))
+# There are 2334 participants with non responses (can't recall any of the words)
+# But the rest 505 participants seem to be NAed
+
+harmonized_addw5 %<>% 
+  mutate(r3dlrc_cleaned = case_when(r3dlrc == 0 & w3_dc027s12 == 12 ~ NA_real_,
+                                    TRUE ~ r3dlrc),
+         r4dlrc_cleaned = case_when(r4dlrc == 0 & w4_dc047_w4_s12 == 12 ~ NA_real_,
+                                    TRUE ~ r4dlrc))
+# Sanity check
+with(harmonized_addw5, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
+with(harmonized_addw5, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
+with(harmonized_addw5, table(r5dlrc_cleaned, useNA = "ifany"))
+
+# Checking for wave 4, if any participants with age < 60 answered these questions
+with(harmonized_addw5 %>% filter(r4age_y < 60),
+     table(r4imrc_cleaned, useNA = "ifany"))
+with(harmonized_addw5 %>% filter(r4age_y < 60),
+     table(r4dlrc_cleaned, useNA = "ifany"))
+with(harmonized_addw5 %>% filter(r5age_y < 60),
+     table(r5dlrc_cleaned, useNA = "ifany"))
+with(harmonized_addw5 %>%
+       filter(!is.na(r4imrc_cleaned)),
+     proc_sum(r4age_y, more = T))
 
 ##---- Wave 4: 3 trials ----
 w4rc_mat <- charls_w4 %>% select(
@@ -368,53 +496,39 @@ charls_w4 %<>%
       TRUE ~ rowSums(w4rc_mat %>% select(
         contains("dc030_w4_s"), -contains(c("s12", "s11"))), na.rm = T)))
 
+harmonized_addw5 %<>%
+  left_join(charls_w4 %>% select(ID, r4imrc_trial2, r4imrc_trial3), by = "ID")
+
+harmonized_addw5 %>%
+  select(contains("r4imrc"), contains("r4dlrc")) %>% summary()
 with(harmonized_addw5, table(r4imrc_cleaned, useNA = "ifany"))
 summary(harmonized_addw5$r4imrc_cleaned)
 charls_w4 %>% select(contains("r4imrc")) %>% summary()
 
-##---- Delayed word recall ----
-with(harmonized_addw5 %>% filter(r3dlrc == 0),
-     table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
-with(harmonized_addw5 %>% filter(r4dlrc == 0),
-     table(w4_dc047_w4_s11, w4_dc047_w4_s12, useNA = "ifany"))
-# There are 2334 participants with non responses (can't recall any of the words)
-# But the rest 505 participants seem to be NAed
+#---- Select variables ----
+harmonized_addw5_selected <- harmonized_addw5 %>%
+  select(-contains(as.vector(outer(c("r", "h"), c(1, 2), FUN = "paste0"))),
+         -contains(paste0("w", 3:5)),
+         -householdID, -communityID, -pnc, -ID_w1, -householdID_w1,
+         # use cleaned or imputed variables only
+         -paste0("r", 3:4, "dlrc"),
+         -paste0("r", 3:4, "imrc"),
+         -paste0("r", 3:4, "hukou"))
+harmonized_addw5_selected %>% colnames() %>% sort()
 
-harmonized_addw5 %<>% 
-  mutate(r3dlrc_cleaned = case_when(r3dlrc == 0 & w3_dc027s12 == 12 ~ NA_real_,
-                                    TRUE ~ r3dlrc),
-         r4dlrc_cleaned = case_when(r4dlrc == 0 & w4_dc047_w4_s12 == 12 ~ NA_real_,
-                                    TRUE ~ r4dlrc))
-# Sanity check
-with(harmonized_addw5, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
-with(harmonized_addw5, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
-with(harmonized_addw5, table(r5dlrc_cleaned, useNA = "ifany"))
-
-# Checking for wave 4, if any participants with age < 60 answered these questions
-with(harmonized_addw5 %>% filter(r4age_y < 60),
-     table(r4imrc_cleaned, useNA = "ifany"))
-with(harmonized_addw5 %>% filter(r4age_y < 60),
-     table(r4dlrc_cleaned, useNA = "ifany"))
-with(harmonized_addw5 %>%
-       filter(!is.na(r4imrc_cleaned)),
-     proc_sum(r4age_y, more = T))
-
-#---- 2015, 2018, 2020 long dataset ----
-harmonized_long_151820 <- harmonized_addw5 %>%
-  select(ID:pnc, female, childhood_edu, 
-         contains("ra"), contains(c("3", "4", "5")), -contains(c("1", "2"))) %>%
+#---- Long dataset ----
+harmonized_long_151820 <- harmonized_addw5_selected %>%
+  select(ID, female, childhood_edu, 
+         contains("ra"), contains(c("3", "4", "5")), -contains(c("trial"))) %>%
   dplyr::rename_at(c("h3rural", "h4rural", "h5rural"), 
                    function(x) sub("h", "r", x)) %>%
-  pivot_longer(cols = !ID:raeduc_c,
+  pivot_longer(cols = starts_with(paste0("r", 3:5)),
                names_to = c("wave", ".value"),
                names_pattern = ("r(.)(.*)"))
 
-# Check hukou
-with(harmonized_long_151820, table(hukou, hukou_impute, useNA = "ifany"))
-
 ##---- Table 1 ----
 table1_151820 <- harmonized_long_151820 %>%
-  select(age_y, female, raeduc_c, childhood_edu, rural,
+  select(age_y, female, raeduc_c_v2, childhood_edu, rural,
          hukou_impute, imrc_cleaned, dlrc_cleaned, wave) %>%
   filter(!is.na(imrc_cleaned) & 
            age_y >= 45) %>%
@@ -422,7 +536,7 @@ table1_151820 <- harmonized_long_151820 %>%
   labelled::set_variable_labels(
     age_y = "Age at waves",
     female = "Female (%)",
-    raeduc_c = "Early life education level (%)",
+    raeduc_c_v2 = "Early life education level (%)",
     childhood_edu = "Early life education level (simplified) (%)",
     rural = "Rural residence (%)",
     hukou_impute = "Hukou status (%)",
@@ -468,7 +582,7 @@ table1_151820 %>%  as_flex_table()
 # "table1_equating_dlrc_15_18.docx"))
 
 #---- Save the dataset ----
-save(harmonized_addw5, harmonized_long_151820, file = 
+save(harmonized_addw5_selected, harmonized_long_151820, file = 
        here::here("data", "analysis_data", "charls_equating_samp_151820.RData"))
 
 #---- OLD ----
