@@ -49,6 +49,9 @@ charls_selected <- harmonized_long_151820 %>%
 table(charls_selected$childhood_edu, useNA = "ifany")
 table(charls_selected$mstat, useNA = "ifany")
 
+# # save the dataset
+# save(charls_selected, file = here::here("data", "analysis_data",
+#                                         "charls_eqt_selected.RData"))
 #---- 2a. Generate weights ----
 # Generate weights, to ensure the age/education distributions are the same 
 # in each study wave. This will remove the aging and education effects from the 
