@@ -507,10 +507,7 @@ charls_w4 %>% select(contains("r4imrc")) %>% summary()
 
 #---- Select variables ----
 harmonized_addw5_selected <- harmonized_addw5 %>%
-  select(-contains(as.vector(outer(c("r", "h"), c(1, 2), FUN = "paste0"))),
-         -contains(paste0("w", 3:5)),
-         -householdID, -communityID, -pnc, -ID_w1, -householdID_w1,
-         # use cleaned or imputed variables only
+  select(# use cleaned or imputed variables only
          -paste0("r", 3:4, "dlrc"),
          -paste0("r", 3:4, "imrc"),
          -paste0("r", 3:4, "hukou"))
@@ -519,7 +516,10 @@ harmonized_addw5_selected %>% colnames() %>% sort()
 #---- Long dataset ----
 harmonized_long_151820 <- harmonized_addw5_selected %>%
   select(ID, female, childhood_edu, 
-         contains("ra"), contains(c("3", "4", "5")), -contains(c("trial"))) %>%
+         -householdID, -communityID, -pnc, -ID_w1, -householdID_w1,
+         contains("ra"), contains(c("3", "4", "5")), -contains(c("trial")),
+         -contains(paste0("w", 3:5)),
+         -contains(as.vector(outer(c("r", "h"), c(1, 2), FUN = "paste0")))) %>%
   dplyr::rename_at(c("h3rural", "h4rural", "h5rural"), 
                    function(x) sub("h", "r", x)) %>%
   pivot_longer(cols = starts_with(paste0("r", 3:5)),
@@ -577,9 +577,6 @@ table1_151820 <- harmonized_long_151820 %>%
   )
 
 table1_151820 %>%  as_flex_table()
-# flextable::save_as_docx(path = here::here("output", "tables", 
-#                                           "table1_equating_imrc_151820.docx"))
-# "table1_equating_dlrc_15_18.docx"))
 
 #---- Save the dataset ----
 save(harmonized_addw5_selected, harmonized_long_151820, file = 
