@@ -1,9 +1,9 @@
-# 1.1 equating method for memory scores
+# 2 equating method for memory scores
 # Created by Yingyan Wu and Yuan Zhang
 # Mar.14.2023
 # Covariate balance and weight development code was adapted from 
-# Eleanor Hayes-Larson's Khandle weighting code and 
-# Yingyan Wu's sample selection code
+# Eleanor Hayes-Larson's KHANDLE weighting code (https://github.com/Mayeda-Research-Group/KHANDLE-weighting) and 
+# Yingyan Wu's sample selection code (not published on Github yet when this was published)
 
 #---- Package loading + options ----
 rm(list = ls())
@@ -49,21 +49,22 @@ charls_selected <- harmonized_long_151820 %>%
 table(charls_selected$childhood_edu, useNA = "ifany")
 table(charls_selected$mstat, useNA = "ifany")
 
-#---- 2. Generate weights ----
+#---- 2a. Generate weights ----
 # Generate weights, to ensure the age/education distributions are the same 
 # in each study wave. This will remove the aging and education effects from the 
-# equating algorithm. You can generate weights using any approach; 
-# AG uses IPW but other options work.
+# equating algorithm. You can generate weights using any approach, here
+# we used IOW, IPW also works.
 
-#---- IOW ----
-##---- functions ----
+##---- IOW ----
+###---- functions ----
 checkcovbal <- function(data, weightvar, treatvar){
-  # data = charls_covbal
+  # data = charls_covbal_1518
   # weightvar = "unweight"
+  # treatvar = "treat_18"
   temp <- twang::bal.stat(data = data, 
                           vars = selected_vars,
                           w.all = data[, weightvar],
-                          treat.var = "treatvar", # 1 = 2018
+                          treat.var = treatvar, # 1 = 2018 or 2020
                           sampw = data$unweight, 
                           estimand = "ATT", 
                           na.action = "exclude",
@@ -101,7 +102,7 @@ checkcovbal <- function(data, weightvar, treatvar){
     ggplot(aes(x = std.eff.sz, y = label)) +
     geom_point(size = 2, color = "#0072B2") +
     geom_vline(xintercept = 0) +
-    xlab("Standardized mean diff Mean(Wave 3) - Mean(Wave 4)/SD(Wave 3)") +
+    xlab("Standardized mean diff Mean(Ref) - Mean(Index)/SD(Ref)") +
     theme_bw() +
     geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed",
                color = "dark grey") +
@@ -112,10 +113,10 @@ checkcovbal <- function(data, weightvar, treatvar){
           legend.position = "none")
   
   return(list("covbal_data" = covbal_toplot, "covbal_plot" = covbal_plot))
-  
 }
 
-covbal_comp_plot <- function(weighted_covbal_data, unweighted_covbal_data){
+covbal_comp_plot <- function(weighted_covbal_data, unweighted_covbal_data,
+                             ref, index){
   covbal_toplot <- weighted_covbal_data %>% select("label", "std.eff.sz") %>%
     mutate(IOW = "1") %>%
     full_join(unweighted_covbal_data %>% select(label, std.eff.sz) %>%
@@ -126,7 +127,8 @@ covbal_comp_plot <- function(weighted_covbal_data, unweighted_covbal_data){
     geom_point(aes(shape = IOW), size = 2, color = "#0072B2") +
     scale_shape_manual(values = c(21, 16)) +
     geom_vline(xintercept = 0) +
-    xlab("Standardized mean diff Mean(Wave 3) - Mean(Wave 4)/SD(Wave 3)") +
+    xlab(paste0("Standardized mean diff Mean(Wave ",ref, ") - Mean(Wave ", index,
+                ")/SD(Wave ", ref, ")")) +
     theme_bw() +
     geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed",
                color = "dark grey") +
@@ -139,7 +141,12 @@ covbal_comp_plot <- function(weighted_covbal_data, unweighted_covbal_data){
   return(plot)
 }
 
-weight_dev <- function(dataset, pS_Z_formula, index){
+weight_dev <- function(dataset, pS_Z_formula, index, treatvar, pS_wave){
+  # dataset = charls_covbal_1518
+  # pS_Z_formula = "treat_18 ~ childhood_edu + age_y" 
+  # index = "1"
+  # treatvar = "treat_18"
+  # pS_wave = "pS_18"
   pS_Z_model <- glm(as.formula(pS_Z_formula),
                     family = binomial(link = logit),
                     weights = unweight,
@@ -152,26 +159,38 @@ weight_dev <- function(dataset, pS_Z_formula, index){
              (1 - !!sym(paste0("pS_Z", index)))/!!sym(paste0("pS_Z", index)),
            # SW = W*PS/(1-PS)
            !!paste0("SW", index) := case_when(
-             !!sym(treatvar) == 1 ~ !!sym(paste0("W", index))*pS/(1-pS),
+             !!sym(treatvar) == 1 ~ 
+               !!sym(paste0("W", index))*get(pS_wave)/(1-get(pS_wave)),
              !!sym(treatvar) == 0 ~ 1),
            # SW_twang = SW*samplingwt
            !!paste0("SW", index, "_twang") := 
              !!sym(paste0("SW", index))*unweight)
   
-  # Truncation pending
+  # Truncate SW*samplingwt at 99% for those in treatment group
+  sw_99th <- quantile(dataset %>% filter(!!sym(treatvar) == 1) %>% 
+                        pull(!!sym(paste0("SW", index, "_twang"))), 0.99)
+  dataset %<>%
+    mutate(!!paste0("SW", index, "_twang_trunc99") := 
+             case_when(!!sym(treatvar) == 1 & 
+                         !!sym(paste0("SW", index, "_twang")) > sw_99th ~ sw_99th,
+                       TRUE ~ !!sym(paste0("SW", index, "_twang"))))
   
+  # Truncation pending
   return(dataset %>%
            select(paste0("pS_Z", index), paste0("W", index),
-                  paste0("SW", index), paste0("SW", index, "_twang")))
-  # paste0("SW", index, "_twang_trunc99"),
-  # paste0("pS_Z", index, "_trunc99")))
+                  paste0("SW", index), paste0("SW", index, "_twang"),
+                  paste0("SW", index, "_twang_trunc99")))
 }
 
-##---- setup ----
+###---- Setup ----
 charls_covbal <- charls_selected %>%
   remove_labels() %>%
   remove_val_labels() %>%
   as.data.frame()
+charls_covbal_1518 <- charls_covbal %>%
+  filter(!is.na(treat_18)) %>% select(-treat_20)
+charls_covbal_1520 <- charls_covbal %>%
+  filter(!is.na(treat_20)) %>% select(-treat_18)
 
 selected_vars <- colnames(charls_covbal %>% 
                             select(female, childhood_edu, rural, mstat,
@@ -181,103 +200,278 @@ order_var <- c("age_y", "rural", "female", "mstat",
                "work_status:1", "work_status:2", "work_status:3", 
                "work_status:4", "work_status:5")
 
-##---- Unweighted ----
-unw_test <- checkcovbal(charls_covbal %>% filter(is.na()), "unweight")
-unw_test$covbal_plot
+###---- Unweighted ----
+unw_test_1518 <- checkcovbal(charls_covbal_1518, "unweight", "treat_18")
+unw_test_1518$covbal_plot
 
-##---- pS ----
-pS_2018 <- sum(charls_covbal$treat)/nrow(charls_covbal)
-pS_2020 <- sum(charls_covbal$treat)/nrow(charls_covbal)
+unw_test_1520 <- checkcovbal(charls_covbal_1520, "unweight", "treat_20")
+unw_test_1520$covbal_plot
+
+###---- pS ----
+pS_18 <- sum(charls_covbal_1518$treat_18)/nrow(charls_covbal_1518)
+pS_20 <- sum(charls_covbal_1520$treat_20)/nrow(charls_covbal_1520)
 # P(wave 2018)
 
-##---- Weight 1: education + age ----
-charls_covbal %<>% cbind(
-  weight_dev(charls_covbal, "treat ~ childhood_edu + age_y", "1"))
+##---- 2015, 2018 weight ----
+###---- Weight 1: education + age ----
+charls_covbal_1518 %<>% cbind(
+  weight_dev(charls_covbal_1518, "treat_18 ~ childhood_edu + age_y", "1",
+             "treat_18", "pS_18"))
 
-charls_covbal %>%
+charls_covbal_1518 %>%
   ggplot() +
-  geom_density(aes(x = pS_Z1, linetype = factor(treat), weight = unweight)) +
+  geom_density(aes(x = pS_Z1, linetype = factor(treat_18), weight = unweight)) +
   scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
                         labels = c("Wave 2015", "Wave 2018")) +
   labs(x = "Propensity score", y = "Density") + theme_bw()
 
 # Covbalance plot
-w1_test <- checkcovbal(charls_covbal, "SW1_twang")
-covbal_comp_plot(w1_test$covbal_data, unw_test$covbal_data)
+w1_test_1518 <- checkcovbal(charls_covbal_1518, "SW1_twang_trunc99", "treat_18")
+covbal_comp_plot(w1_test_1518$covbal_data, unw_test_1518$covbal_data,
+                 "2015", "2018")
 
-##---- Weight 2: education + age + work ----
-charls_covbal %<>% cbind(
-  weight_dev(charls_covbal, "treat ~ childhood_edu + age_y + work_status", "2"))
+###---- Weight 2: education + age + work ----
+charls_covbal_1518 %<>% cbind(
+  weight_dev(charls_covbal_1518, 
+             "treat_18 ~ childhood_edu + age_y + work_status", "2",
+             "treat_18", "pS_18"))
 
-charls_covbal %>%
+charls_covbal_1518 %>%
   ggplot() +
-  geom_density(aes(x = pS_Z2, linetype = factor(treat), weight = unweight)) +
+  geom_density(aes(x = pS_Z2, linetype = factor(treat_18), weight = unweight)) +
   scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
                         labels = c("Wave 2015", "Wave 2018")) +
   labs(x = "Propensity score", y = "Density") + theme_bw()
 
 # Covbalance plot
-w2_test <- checkcovbal(charls_covbal, "SW2_twang")
-covbal_comp_plot(w2_test$covbal_data, unw_test$covbal_data)
+w2_test_1518 <- checkcovbal(charls_covbal_1518, "SW2_twang_trunc99", "treat_18")
+covbal_comp_plot(w2_test_1518$covbal_data, unw_test_1518$covbal_data,
+                 "2015", "2018")
 
-##---- Weight 3: education + age + work + female ----
-charls_covbal %<>% cbind(
-  weight_dev(charls_covbal, 
-             "treat ~ childhood_edu + age_y + work_status + female", "3"))
+###---- Weight 3: education + age + work + female ----
+charls_covbal_1518 %<>% cbind(
+  weight_dev(charls_covbal_1518, 
+             "treat_18 ~ childhood_edu + age_y + work_status + female", "3",
+             "treat_18", "pS_18"))
 
-charls_covbal %>%
+charls_covbal_1518 %>%
   ggplot() +
-  geom_density(aes(x = pS_Z3, linetype = factor(treat), weight = unweight)) +
+  geom_density(aes(x = pS_Z3, linetype = factor(treat_18), weight = unweight)) +
   scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
                         labels = c("Wave 2015", "Wave 2018")) +
   labs(x = "Propensity score", y = "Density") + theme_bw()
 
 # Covbalance plot
-w3_test <- checkcovbal(charls_covbal, "SW3_twang")
-covbal_comp_plot(w3_test$covbal_data, unw_test$covbal_data) +
+w3_test_1518 <- checkcovbal(charls_covbal_1518, "SW3_twang_trunc99", "treat_18")
+covbal_comp_plot(w3_test_1518$covbal_data, unw_test_1518$covbal_data,
+                 "2015", "2018") +
   scale_shape_manual(values = c(21, 16), labels = c("Unweighted", "Weighted")) +
   theme(legend.position = "right")
 
-ggsave(here::here("output", "figures", "cog_equating_covbal.png"),
-       device = "png", dpi = 300, width = 7, height = 5, units = "in")
+# ggsave(here::here("output", "figures", "cog_equating_covbal.png"),
+#        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
-#----2a. Check distribution for weighted 2018 and 2015 ----
+##---- 2015, 2020 weight ----
+###---- Weight 1: education + age ----
+charls_covbal_1520 %<>% cbind(
+  weight_dev(charls_covbal_1520, "treat_20 ~ childhood_edu + age_y", "1",
+             "treat_20", "pS_20"))
+
+charls_covbal_1520 %>%
+  ggplot() +
+  geom_density(aes(x = pS_Z1, linetype = factor(treat_20), weight = unweight)) +
+  scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
+                        labels = c("Wave 2015", "Wave 2020")) +
+  labs(x = "Propensity score", y = "Density") + theme_bw()
+
+# Covbalance plot
+w1_test_1520 <- checkcovbal(charls_covbal_1520, "SW1_twang_trunc99", "treat_20")
+covbal_comp_plot(w1_test_1520$covbal_data, unw_test_1520$covbal_data,
+                 "2015", "2020")
+
+###---- Weight 2: education + age + work ----
+charls_covbal_1520 %<>% cbind(
+  weight_dev(charls_covbal_1520, 
+             "treat_20 ~ childhood_edu + age_y + work_status", "2",
+             "treat_20", "pS_20"))
+
+charls_covbal_1520 %>%
+  ggplot() +
+  geom_density(aes(x = pS_Z2, linetype = factor(treat_20), weight = unweight)) +
+  scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
+                        labels = c("Wave 2015", "Wave 2020")) +
+  labs(x = "Propensity score", y = "Density") + theme_bw()
+
+# Covbalance plot
+w2_test_1520 <- checkcovbal(charls_covbal_1520, "SW2_twang_trunc99", "treat_20")
+covbal_comp_plot(w2_test_1520$covbal_data, unw_test_1520$covbal_data,
+                 "2015", "2020")
+
+###---- Weight 3: education + age + work + female ----
+charls_covbal_1520 %<>% cbind(
+  weight_dev(charls_covbal_1520, 
+             "treat_20 ~ childhood_edu + age_y + work_status + female", "3",
+             "treat_20", "pS_20"))
+
+charls_covbal_1520 %>%
+  ggplot() +
+  geom_density(aes(x = pS_Z3, linetype = factor(treat_20), weight = unweight)) +
+  scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
+                        labels = c("Wave 2015", "Wave 2020")) +
+  labs(x = "Propensity score", y = "Density") + theme_bw()
+
+# Covbalance plot
+w3_test_1520 <- checkcovbal(charls_covbal_1520, "SW3_twang_trunc99", "treat_20")
+covbal_comp_plot(w3_test_1520$covbal_data, unw_test_1520$covbal_data,
+                 "2015", "2020")
+
+###---- Weight 4: education + age + work + female*rural ----
+charls_covbal_1520 %<>% cbind(
+  weight_dev(charls_covbal_1520, 
+             "treat_20 ~ childhood_edu + age_y + work_status + female*rural", "4",
+             "treat_20", "pS_20"))
+
+charls_covbal_1520 %>%
+  ggplot() +
+  geom_density(aes(x = pS_Z4, linetype = factor(treat_20), weight = unweight)) +
+  scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
+                        labels = c("Wave 2015", "Wave 2020")) +
+  labs(x = "Propensity score", y = "Density") + theme_bw()
+
+# Covbalance plot
+w4_test_1520 <- checkcovbal(charls_covbal_1520, "SW4_twang_trunc99", "treat_20")
+covbal_comp_plot(w4_test_1520$covbal_data, unw_test_1520$covbal_data,
+                 "2015", "2020")
+
+###---- Weight 4b: education + age + work_status*rural + female*rural----
+charls_covbal_1520 %<>% cbind(
+  weight_dev(charls_covbal_1520, 
+             "treat_20 ~ childhood_edu + age_y + work_status*rural + female*rural", 
+             "4b", "treat_20", "pS_20"))
+
+charls_covbal_1520 %>%
+  ggplot() +
+  geom_density(aes(x = pS_Z4b, linetype = factor(treat_20), weight = unweight)) +
+  scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
+                        labels = c("Wave 2015", "Wave 2020")) +
+  labs(x = "Propensity score", y = "Density") + theme_bw()
+
+# Covbalance plot
+w4b_test_1520 <- checkcovbal(charls_covbal_1520, "SW4b_twang_trunc99", "treat_20")
+covbal_comp_plot(w4b_test_1520$covbal_data, unw_test_1520$covbal_data,
+                 "2015", "2020")
+
+###---- Weight 4c: education*age + work*rural + female*rural ----
+charls_covbal_1520 %<>% cbind(
+  weight_dev(charls_covbal_1520, 
+             "treat_20 ~ childhood_edu*age_y + work_status*rural + female*rural", 
+             "4c", "treat_20", "pS_20"))
+
+charls_covbal_1520 %>%
+  ggplot() +
+  geom_density(aes(x = pS_Z4c, linetype = factor(treat_20), weight = unweight)) +
+  scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
+                        labels = c("Wave 2015", "Wave 2020")) +
+  labs(x = "Propensity score", y = "Density") + theme_bw()
+
+# Covbalance plot
+w4c_test_1520 <- checkcovbal(charls_covbal_1520, "SW4c_twang_trunc99", "treat_20")
+covbal_comp_plot(w4c_test_1520$covbal_data, unw_test_1520$covbal_data,
+                 "2015", "2020")
+
+###---- Weight 4d: education*age + work*rural + female*rural + age*rural ----
+charls_covbal_1520 %<>% cbind(
+  weight_dev(charls_covbal_1520, 
+             "treat_20 ~ childhood_edu*age_y + work_status*rural + female*rural +
+             age_y*rural", "4d",
+             "treat_20", "pS_20"))
+
+charls_covbal_1520 %>%
+  ggplot() +
+  geom_density(aes(x = pS_Z4d, linetype = factor(treat_20), weight = unweight)) +
+  scale_linetype_manual(name = "Sample", values = c("0" = 1, "1" = 2),
+                        labels = c("Wave 2015", "Wave 2020")) +
+  labs(x = "Propensity score", y = "Density") + theme_bw()
+
+# Covbalance plot
+w4d_test_1520 <- checkcovbal(charls_covbal_1520, "SW4d_twang_trunc99", "treat_20")
+covbal_comp_plot(w4d_test_1520$covbal_data, unw_test_1520$covbal_data,
+                 "2015", "2020") +
+  scale_shape_manual(values = c(21, 16), labels = c("Unweighted", "Weighted")) +
+  theme(legend.position = "right")
+
+#----2b. Check distribution for weighted 2018 and 2015 ----
 # Unweighted 2015
 r3freqim_IOW <- freqtab(charls_covbal[charls_covbal$wave == "3", "imrc_cleaned"])
 r3freqdl_IOW <- freqtab(charls_covbal[charls_covbal$wave == "3", "dlrc_cleaned"])
 # Weighted 2018
-r4freqim_IOW <- charls_covbal %>%
+r4freqim_IOW <- charls_covbal_1518 %>%
   filter(wave == "4") %>%
-  dplyr::count(imrc_cleaned, wt = SW3_twang) %>%
+  dplyr::count(imrc_cleaned, wt = SW3_twang_trunc99) %>%
   as.freqtab()
 
-r4freqdl_IOW <- charls_covbal %>%
+r4freqdl_IOW <- charls_covbal_1518 %>%
   filter(wave == "4") %>%
-  dplyr::count(dlrc_cleaned, wt = SW3_twang) %>%
+  dplyr::count(dlrc_cleaned, wt = SW3_twang_trunc99) %>%
+  as.freqtab()
+
+# Weighted 2020
+r5freqim_IOW <- charls_covbal_1520 %>%
+  filter(wave == "5") %>%
+  dplyr::count(imrc_cleaned, wt = SW4d_twang_trunc99) %>%
+  as.freqtab()
+
+r5freqdl_IOW <- charls_covbal_1520 %>%
+  filter(wave == "5") %>%
+  dplyr::count(dlrc_cleaned, wt = SW4d_twang_trunc99) %>%
   as.freqtab()
 
 #---- 3. Perform the equating ----
 ##---- Immediate recall ----
-eqim_linear_IOW <- equate(r4freqim_IOW, r3freqim_IOW, type = "l")
-eqim_mean_IOW <- equate(r4freqim_IOW, r3freqim_IOW, type = "mean")
-eqim_eqp_IOW <- equate(r4freqim_IOW, r3freqim_IOW, type = "equipercentile")
+# Wave 4
+eqim_linear_IOW_1518 <- equate(r4freqim_IOW, r3freqim_IOW, type = "l")
+eqim_mean_IOW_1518 <- equate(r4freqim_IOW, r3freqim_IOW, type = "mean")
+eqim_eqp_IOW_1518 <- equate(r4freqim_IOW, r3freqim_IOW, type = "equipercentile")
 
-eqim_linear_IOW
-eqim_mean_IOW
-eqim_eqp_IOW$concordance
+eqim_linear_IOW_1518
+eqim_mean_IOW_1518
+eqim_eqp_IOW_1518$concordance
 
-plot(eqim_eqp_IOW, eqim_mean_IOW, eqim_linear_IOW)
+plot(eqim_eqp_IOW_1518, eqim_mean_IOW_1518, eqim_linear_IOW_1518)
+
+# Wave 5
+eqim_linear_IOW_1520 <- equate(r5freqim_IOW, r3freqim_IOW, type = "l")
+eqim_mean_IOW_1520 <- equate(r5freqim_IOW, r3freqim_IOW, type = "mean")
+eqim_eqp_IOW_1520 <- equate(r5freqim_IOW, r3freqim_IOW, type = "equipercentile")
+
+eqim_linear_IOW_1520
+eqim_mean_IOW_1520
+eqim_eqp_IOW_1520$concordance
+
+plot(eqim_eqp_IOW_1520, eqim_mean_IOW_1520, eqim_linear_IOW_1520)
 
 ##---- Delayed recall ----
-eqdl_linear_IOW <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "l")
-eqdl_mean_IOW <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "mean")
-eqdl_eqp_IOW <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "equipercentile")
+# Wave 4
+eqdl_linear_IOW_1518 <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "l")
+eqdl_mean_IOW_1518 <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "mean")
+eqdl_eqp_IOW_1518 <- equate(r4freqdl_IOW, r3freqdl_IOW, type = "equipercentile")
 
-eqdl_linear_IOW
-eqdl_mean_IOW
-eqdl_eqp_IOW$concordance
+eqdl_linear_IOW_1518
+eqdl_mean_IOW_1518
+eqdl_eqp_IOW_1518$concordance
 
-plot(eqdl_eqp_IOW, eqdl_mean_IOW, eqdl_linear_IOW)
+plot(eqdl_eqp_IOW_1518, eqdl_mean_IOW_1518, eqdl_linear_IOW_1518)
+
+# Wave 5
+eqdl_linear_IOW_1520 <- equate(r5freqdl_IOW, r3freqdl_IOW, type = "l")
+eqdl_mean_IOW_1520 <- equate(r5freqdl_IOW, r3freqdl_IOW, type = "mean")
+eqdl_eqp_IOW_1520 <- equate(r5freqdl_IOW, r3freqdl_IOW, type = "equipercentile")
+
+eqdl_linear_IOW_1520
+eqdl_mean_IOW_1520
+eqdl_eqp_IOW_1520$concordance
+
+plot(eqdl_eqp_IOW_1520, eqdl_mean_IOW_1520, eqdl_linear_IOW_1520)
 
 # Plots
 par(mfrow=c(1,2))
@@ -296,235 +490,93 @@ title(main = "Delayed word recall score")
 # title(main = "Delayed word recall score")
 
 # Table 
-rbind(eqim_eqp_IOW$concordance %>% mutate(Score = "Immediate"), 
-      eqdl_eqp_IOW$concordance %>% mutate(Score = "Delayed")) %>%
+equated_score_table <- 
+  rbind(eqim_eqp_IOW_1518$concordance %>% mutate(Score = "Immediate"), 
+      eqdl_eqp_IOW_1518$concordance %>% mutate(Score = "Delayed")) %>%
   select(Score, scale, yx) %>%
-  set_colnames(c("Score", "Original score", "Equated score")) %>%
+  left_join(rbind(eqim_eqp_IOW_1520$concordance %>% mutate(Score = "Immediate"), 
+                  eqdl_eqp_IOW_1520$concordance %>% mutate(Score = "Delayed")) %>%
+              select(Score, scale, yx) %>% dplyr::rename(yx_r5 = yx),
+            by = c("Score", "scale")) %>%
+  set_colnames(c("Score", "Original score", "Wave 2018 Equated score",
+                 "Wave 2020 Equated score")) %>%
   mutate_if(is.numeric, round, 2)
-# writexl::write_xlsx(path = here::here("output", "tables", "table2_equating.xlsx"))
+
+# writexl::write_xlsx(
+#   equated_score_table,
+#   path = here::here("output", "tables", "table3_equating.xlsx"))
 
 ##---- Checked the distribution in the calibration group! ----
 charls_covbal %<>%
-  left_join(eqim_eqp_IOW$concordance %<>% 
+  # Wave 2018
+  left_join(eqim_eqp_IOW_1518$concordance %>% 
               dplyr::rename(imrc_cleaned = scale, r4imrc_eqt = yx) %>%
               select(contains("imrc")) %>%
               mutate(wave = "4"),
             by = c("wave", "imrc_cleaned")) %>%
-  left_join(eqdl_eqp_IOW$concordance %>% 
+  left_join(eqdl_eqp_IOW_1518$concordance %>% 
               dplyr::rename(dlrc_cleaned = scale, r4dlrc_eqt = yx) %>%
               select(contains("dlrc")) %>%
               mutate(wave = "4"),
+            by = c("wave", "dlrc_cleaned")) %>%
+  # Wave 2020
+  left_join(eqim_eqp_IOW_1520$concordance %>% 
+              dplyr::rename(imrc_cleaned = scale, r5imrc_eqt = yx) %>%
+              select(contains("imrc")) %>%
+              mutate(wave = "5"),
+            by = c("wave", "imrc_cleaned")) %>%
+  left_join(eqdl_eqp_IOW_1520$concordance %>% 
+              dplyr::rename(dlrc_cleaned = scale, r5dlrc_eqt = yx) %>%
+              select(contains("dlrc")) %>%
+              mutate(wave = "5"),
             by = c("wave", "dlrc_cleaned"))
 
 # top and bottom coded
 charls_covbal %<>%
-  mutate(r4imrc_eqt_adj = case_when(r4imrc_eqt > 10.28 ~ 10,
-                                    TRUE ~ r4imrc_eqt),
-         r4dlrc_eqt_adj = case_when(r4dlrc_eqt < -0.25 ~ 0,
-                                    TRUE ~ r4dlrc_eqt))
-#ee_4
-with(charls_covbal %>%
-       filter(wave == "4"), proc_sum(r4imrc_eqt, more = T))
-#adj_ee_4
-with(charls_covbal %>%
-       filter(wave == "4"), proc_sum(r4imrc_eqt_adj, more = T))
-#raw score 3
-with(charls_covbal %>%
-       filter(wave == "3"), proc_sum(imrc_cleaned, more = T))
-with(charls_covbal %>%
-       filter(wave == "4"), kurtosis(r4imrc_eqt))
-with(charls_covbal %>%
-       filter(wave == "4"), kurtosis(r4imrc_eqt_adj))
-with(charls_covbal %>%
-       filter(wave == "3"), kurtosis(imrc_cleaned))
+  mutate(across(contains("eqt"), 
+                function(x) case_when(x > 10 ~ 10, x < 0 ~ 0, TRUE ~ x),
+                .names = "{sub('eqt', 'eqt_adj', col)}"))
 
-#ee_4
-with(charls_covbal %>%
-       filter(wave == "4"), proc_sum(r4dlrc_eqt, more = T))
-#adj_ee_4
-with(charls_covbal %>%
-       filter(wave == "4"), proc_sum(r4dlrc_eqt_adj, more = T))
 #raw score 3
-with(charls_covbal %>%
-       filter(wave == "3"), proc_sum(dlrc_cleaned, more = T))
-with(charls_covbal %>%
-       filter(wave == "4"), kurtosis(r4dlrc_eqt))
-with(charls_covbal %>%
-       filter(wave == "4"), kurtosis(r4dlrc_eqt_adj))
-with(charls_covbal %>%
-       filter(wave == "3"), kurtosis(dlrc_cleaned))
-# Do not bottom code dlrc
+charls_covbal %>% filter(wave == "3") %>%
+  select(contains("_cleaned")) %>%
+  apply(., 2, function(x) list(proc_sum(x, more = T), kurtosis(x)))
+# kurtosis: r3imrc: 3.343741; r3dlrc: 2.614592
+
+# ee wave 4
+charls_covbal %>% filter(wave == "4") %>% 
+  select(contains(c("r4imrc", "r4dlrc"))) %>%
+  apply(., 2, function(x) list(proc_sum(x, more = T), kurtosis(x)))
+# distribution very similar between ee and top/bottom coded ee scores
+# unadjusted (top/bottom coded) closer to the raw score 3
+# Do not top/bottom code dlrc
 
 #---- 4. Apply the equipercentile equating algorithm to the full sample in the focal group -----
-harmonized_addw5_selected %<>%
-  left_join(eqim_eqp_IOW$concordance %>% 
-              dplyr::rename(r4imrc_cleaned = scale, r4imrc_eqt = yx),
-            by = "r4imrc_cleaned") %>%
-  left_join(eqdl_eqp_IOW$concordance %>% 
-              dplyr::rename(r4dlrc_cleaned = scale, r4dlrc_eqt = yx),
-            by = "r4dlrc_cleaned")
+for (w in 4:5){
+  for (test in c("im", "dl")){
+    w_year <- case_when(w == 4 ~ 18,
+                        w == 5 ~ 20)
+    temp <- get(paste0("eq", test, "_eqp_IOW_15", w_year))$concordance %>%
+      dplyr::rename(!!paste0("r", w, test, "rc_cleaned") := scale, 
+                    !!paste0("r", w, test, "rc_eqt") := yx) %>%
+        select(-se)
+    assign(paste0("eqt_", w, "_", test), temp)
+  }
+}
 
+harmonized_addw5_selected %<>%
+  left_join(eqt_4_im, by = "r4imrc_cleaned") %>%
+  left_join(eqt_4_dl, by = "r4dlrc_cleaned") %>%
+  left_join(eqt_5_im, by = "r5imrc_cleaned") %>%
+  left_join(eqt_5_dl, by = "r5dlrc_cleaned")
+
+# Sanity check
 with(harmonized_addw5_selected, table(r4imrc_cleaned, r4imrc_eqt, useNA = "ifany"))
 with(harmonized_addw5_selected, table(r4dlrc_cleaned, r4dlrc_eqt, useNA = "ifany"))
-
-##----  Empirical plot ----
-harmonized_addw5_selected %<>%
-  mutate(imrc_balanced = case_when(!is.na(r1imrc) & !is.na(r2imrc) & 
-                                     !is.na(r3imrc_cleaned) & 
-                                     !is.na(r4imrc_cleaned) ~ 1,
-                                   TRUE ~ 0),
-         dlrc_balanced = case_when(!is.na(r1dlrc) & !is.na(r2dlrc) & 
-                                     !is.na(r3dlrc_cleaned) & 
-                                     !is.na(r4dlrc_cleaned) ~ 1,
-                                   TRUE ~ 0))
-with(harmonized_addw5_selected, table(imrc_balanced, useNA = "ifany"))
-with(harmonized_addw5_selected, table(dlrc_balanced, useNA = "ifany"))
-
-harmonized_long <- harmonized_addw5_selected %>%
-  select(ID, contains("imrc"), contains("dlrc"), 
-         -c("r3dlrc", "r4dlrc", "r3imrc", "r4imrc"),
-         imrc_balanced, dlrc_balanced) %>%
-  dplyr::rename_with(.cols = c(paste0("r", c(1, 2), "dlrc"),
-                               paste0("r", c(1, 2), "imrc")), 
-                     function(x){paste0(x, "_cleaned")}) %>%
-  pivot_longer(cols = -c(ID, imrc_balanced, dlrc_balanced),
-               names_to = c("wave", ".value", "type"),
-               names_pattern = "r(\\d+)(.*)_(.*)") %>%
-  print()
-
-harmonized_empirical_balanced <- harmonized_long %>%
-  filter(imrc_balanced == 1) %>%
-  group_by(wave, type) %>%
-  summarise_at(vars(imrc), 
-               funs(n(), mean, sd)) %>%
-  mutate(se = sd/sqrt(n),
-         variable = paste0("Immediate word recall\n(n = ", n, ")")) %>%
-  rbind(harmonized_long %>%
-          filter(dlrc_balanced == 1) %>%
-          group_by(wave, type) %>%
-          summarise_at(vars(dlrc), 
-                       funs(n(), mean, sd)) %>%
-          mutate(se = sd/sqrt(n),
-                 variable = paste0("Delayed word recall\n(n = ", n, ")"))) 
-
-harmonized_empirical_balanced %<>%
-  rbind(harmonized_empirical_balanced %>% 
-          filter(type == "cleaned" & wave != 4) %>%
-          mutate(type = "eqt")) %>%
-  mutate(type = factor(type, levels = c("eqt", "cleaned"))) %>%
-  arrange(type, wave) %>%
-  print()
-
-harmonized_empirical_balanced %>%
-  mutate(year = case_when(wave == 1 ~ 2011,
-                          wave == 2 ~ 2013,
-                          wave == 3 ~ 2015,
-                          wave == 4 ~ 2018)) %>%
-  ggplot(aes(x = year, y = mean,
-             group = interaction(variable, type),
-             color = interaction(variable, type))) +
-  geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1,
-                size = 1) +
-  geom_line(aes(linetype = interaction(variable, type)), size = 2) +
-  geom_point(aes(shape = interaction(variable, type)), size = 2) +
-  scale_x_continuous(breaks = c(2011, 2013, 2015, 2018)) +
-  scale_color_manual(name = "Variable",
-                     values = c("salmon", "cyan3", "salmon", "cyan3"),
-                     labels = c("Equated w4 dlrc", "Equated w4 imrc",
-                                "Original scores","Original scores")) +
-  scale_linetype_manual(name = "Variable",
-                        values = c(2, 2, 1, 1),
-                        labels = c("Equated w4 dlrc", "Equated w4 imrc",
-                                   "Original scores","Original scores")) +
-  scale_shape_manual(name = "Variable",
-                     values = c(17, 17, 19, 19),
-                     labels = c("Equated w4 dlrc", "Equated w4 imrc",
-                                "Original scores","Original scores")) + 
-  theme_classic() +
-  theme_classic(base_size = 20) +
-  theme(legend.position = "none") +
-  labs(x = "Year", y = "")
-# y = "Word recall scores")
-
-# title = "Average word recall score +/- 2 SE at different wave
-# balanced data")
-# 
-ggsave(here::here("output", "figures", "empirical_plot_equated_larger_font_thicker.png"),
-       device = "png", dpi = 300, width = 7, height = 5, units = "in")
-
-##---- before equating ----
-harmonized_empirical_balanced %>%
-  filter(type == "cleaned") %>%
-  ggplot(aes(x = wave, y = mean, group = variable, color = variable)) + 
-  geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1) +
-  geom_line() +
-  geom_point() +
-  theme_classic() +
-  labs(x = "Wave",
-       y = "Word recall")
-# title = "Average word recall score +/- 2 SE at different wave
-# balanced data")
-
-ggsave(here::here("output", "figures", "empirical_plot_original.png"),
-       device = "png", dpi = 300, width = 7, height = 5, units = "in")
+with(harmonized_addw5_selected, table(r5imrc_cleaned, r5imrc_eqt, useNA = "ifany"))
+with(harmonized_addw5_selected, table(r5dlrc_cleaned, r5dlrc_eqt, useNA = "ifany"))
 
 #---- Save the dataset ----
-r4rc_eqt_tib <- harmonized_addw5_selected %>%
-  select(ID, r4imrc_eqt, r4dlrc_eqt)
-save(r4rc_eqt_tib, file = here::here("data", "analysis_data", "eqt_r4_rc.RData"))
-
-#---- Table 1 ----
-table1_1518 <- charls_selected %>%
-  select(age_y, female, childhood_edu, rural, work_status,
-         hukou, imrc_cleaned, dlrc_cleaned, wave) %>%
-  mutate(across(c("childhood_edu", "hukou", "work_status"), as.numeric)) %>%
-  na.omit() %>%
-  labelled::set_variable_labels(
-    age_y = "Age at waves",
-    female = "Female (%)",
-    childhood_edu = "Early life education level (simplified) (%)",
-    rural = "Rural residence (%)",
-    hukou = "Hukou status (%)",
-    imrc_cleaned = "Immediate word recall", 
-    dlrc_cleaned = "Delayed word recall",
-    work_status = "Work status (%)") %>%
-  labelled::drop_unused_value_labels() %>%
-  labelled::set_value_labels(
-    female = c("Yes" = 1, "No" = 0),
-    rural = c("Yes" = 1, "No" = 0),
-    childhood_edu = c(
-      "No formal education" = 0,
-      "Elementary school or less" = 1,
-      "Vocational school/middle school/high school" = 2,
-      "College & above" = 3),
-    wave = c("2015" = "3", "2018" = "4"),
-    hukou = c("Agricultual hukou" = 1, "Non-agricultural hukou" = 2, 
-              "Unified residence hukou" = 3, "Do not have hukou" = 4),
-    work_status = c("Agriculture employed" = 1,
-                    "Non-agriculture employed" = 2,
-                    "Unemployed" = 3,
-                    "Retired" = 4,
-                    "Never work" = 5)) %>%
-  modify_if(is.labelled, to_factor) %>%
-  # modify_if(is.factor,
-  # function(x) {forcats::fct_explicit_na(x, na_level = "Missing")}) %>%
-  tbl_summary(
-    statistic = list(all_categorical() ~ "{n} ({p})",
-                     all_continuous() ~ c("{mean} ({sd})")),
-    type = all_continuous() ~ "continuous2",
-    by = wave,
-    digits = list(all_continuous() ~ 1,
-                  all_categorical() ~ c(0, 1)),
-    missing = "ifany",
-    missing_text = "Missing") %>%
-  bold_labels() %>%
-  modify_footnote(
-    update = list(
-      starts_with("stat_") ~
-        "Mean (SD) for continuous variables; n (%) for categorical variables")
-  )
-
-table1_1518 %>%  as_flex_table() %>%
-  flextable::save_as_docx(path = here::here("output", "tables",
-                                            "table1_equating_calibrate_sample_15_18.docx"))
-
+eqt_tib <- harmonized_addw5_selected %>%
+  select(ID, contains("eqt"))
+save(eqt_tib, file = here::here("data", "analysis_data", "eqt_rc.RData"))
