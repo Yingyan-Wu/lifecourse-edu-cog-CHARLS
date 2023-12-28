@@ -348,7 +348,7 @@ eqdl_eqp_IOW_1520$concordance
 
 plot(eqdl_eqp_IOW_1520, eqdl_mean_IOW_1520, eqdl_linear_IOW_1520)
 
-# Plots
+# Plots pending
 par(mfrow=c(1,2))
 plot(eqim_eqp_IOW, xlab = "Original Score (Wave 4)", 
      ylab = "Equated Score")
@@ -456,3 +456,6 @@ with(harmonized_addw5_selected, table(r5dlrc_cleaned, r5dlrc_eqt, useNA = "ifany
 eqt_tib <- harmonized_addw5_selected %>%
   select(ID, contains("eqt"))
 save(eqt_tib, file = here::here("data", "analysis_data", "eqt_rc.RData"))
+# Save harmonized_addw5_selected
+save(harmonized_addw5_selected, 
+     file = here::here("data", "analysis_data", "charls_equating_samp_eqt_151820.RData"))
