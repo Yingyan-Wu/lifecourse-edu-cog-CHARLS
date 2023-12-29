@@ -78,10 +78,11 @@ covbal_comp_plot <- function(weighted_covbal_data, unweighted_covbal_data,
     theme_bw() +
     geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed",
                color = "dark grey") +
-    # sclae_x_continuous
     theme(aspect.ratio = 5/3, panel.grid.minor.x = element_blank(),
           axis.title.y = element_blank(),
-          axis.text.y = element_text(size = 10, face = "bold"),
+          text = element_text(size = 10, color = "black"),
+          axis.text.x = element_text(size = 10, color = "black"),
+          axis.text.y = element_text(size = 10, color = "black", face = "bold"),
           legend.position = "none")
   
   return(plot)
