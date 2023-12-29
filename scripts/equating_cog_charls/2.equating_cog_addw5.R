@@ -372,7 +372,7 @@ plot(eqdl_eqp_IOW_1520, xlab = "Original Score (Wave 2020)",
      ylab = "Equated Score")
 mtext("D", side = 3, line = 0.5, cex = 1, adj = -0.28, font = 2)
 dev.off()
-
+graphics.off()
 # Table 
 equated_score_table <- 
   rbind(eqim_eqp_IOW_1518$concordance %>% mutate(Score = "Immediate"), 
