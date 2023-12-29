@@ -63,27 +63,27 @@ checkcovbal <- function(data, weightvar, treatvar){
 
 covbal_comp_plot <- function(weighted_covbal_data, unweighted_covbal_data,
                              ref, index){
-  covbal_toplot <- weighted_covbal_data %>% select("label", "std.eff.sz") %>%
-    mutate(IOW = "1") %>%
-    full_join(unweighted_covbal_data %>% select(label, std.eff.sz) %>%
-                mutate(IOW = "0"), by = c("label", "IOW", "std.eff.sz"))
+  covbal_toplot <- weighted_covbal_data %>% mutate(IOW = "1") %>%
+    rbind(unweighted_covbal_data %>% mutate(IOW = "0"))
   
   plot <- covbal_toplot %>%
     ggplot(aes(x = std.eff.sz, y = label)) +
     geom_point(aes(shape = IOW), size = 2, color = "#0072B2") +
     scale_shape_manual(values = c(21, 16)) +
     geom_vline(xintercept = 0) +
-    xlab(paste0("Standardized mean diff Mean(Wave ",ref, ") - Mean(Wave ", index,
+    xlab(paste0("Standardized mean diff\nmean(Wave ",ref, ") - mean(Wave ", index,
                 ")/SD(Wave ", ref, ")")) +
     theme_bw() +
     geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed",
                color = "dark grey") +
-    theme(aspect.ratio = 5/3, panel.grid.minor.x = element_blank(),
-          axis.title.y = element_blank(),
-          text = element_text(size = 10, color = "black"),
-          axis.text.x = element_text(size = 10, color = "black"),
-          axis.text.y = element_text(size = 10, color = "black", face = "bold"),
-          legend.position = "none")
+    theme(
+      aspect.ratio = 5/3,
+      panel.grid.minor.x = element_blank(),
+      axis.title.y = element_blank(),
+      text = element_text(size = 10, color = "black"),
+      axis.text.x = element_text(size = 10, color = "black"),
+      axis.text.y = element_text(size = 10, color = "black", face = "bold"),
+      legend.position = "none")
   
   return(plot)
 }
