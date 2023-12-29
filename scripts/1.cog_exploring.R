@@ -424,7 +424,8 @@ charls %>% select(contains("w1_dc006s")) %>%
 imrc_mat<- charls %>% select(
   contains(c("dc006s", # for wave 1 and 3
              "w2_dc006_1_s", "w2_dc006_2_s", "w2_dc006_3_s",
-             "dc028_w4_s", "dc029_w4_s", "dc030_w4_s")))
+             "dc028_w4_s", "dc029_w4_s", "dc030_w4_s", 
+             "w5_dc012_", "w5_dc028_")))
 colnames(imrc_mat)
 
 imrc_mat %<>%
@@ -470,7 +471,14 @@ charls %<>%
            w4_dc028_w4_s12 == 12 ~ NA_real_,
            is.na(w4_dc028_w4_s11) & is.na(w4_dc028_w4_s12) ~ NA_real_,
            TRUE ~ rowSums(imrc_mat %>% select(
-             contains("dc028_w4_s"), -contains(c("s12", "s11"))), na.rm = T)))
+             contains("dc028_w4_s"), -contains(c("s12", "s11"))), na.rm = T)),
+         w5_imrc = case_when(
+           w5_dc012_s11 == 11 ~ 0,
+           w5_dc012_s12 == 12 ~ NA_real_,
+           is.na(w5_dc012_s11) & is.na(w5_dc012_s12) ~ NA_real_,
+           TRUE ~ rowSums(imrc_mat %>% select(
+             contains("w5_dc012_s"), -contains(c("s12", "s11"))), na.rm = T))
+  )
 
 with(charls, table(w1_imrc, useNA = "ifany"))
 with(harmonized, table(r1imrc, useNA = "ifany"))
@@ -489,15 +497,19 @@ with(harmonized, table(r4imrc, useNA = "ifany"))
 # There are 1877 participants with non responses (can't recall any of the words)
 # But the rest 653 participants seem to be NAed
 
+with(charls, table(w5_imrc, useNA = "ifany"))
+with(charls, table(w5_dc012_s11, useNA = "ifany"))
+
+
 ##---- Wave 4: 3 trials ----
 charls %<>%
   mutate(
     w4_imrc_trial2 = case_when(
-    w4_dc029_w4_s11 == 11 ~ 0,
-    w4_dc029_w4_s12 == 12 ~ NA_real_,
-    is.na(w4_dc029_w4_s11) & is.na(w4_dc029_w4_s12) ~ NA_real_,
-    TRUE ~ rowSums(imrc_mat %>% select(
-      contains("dc029_w4_s"), -contains(c("s12", "s11"))), na.rm = T)),
+      w4_dc029_w4_s11 == 11 ~ 0,
+      w4_dc029_w4_s12 == 12 ~ NA_real_,
+      is.na(w4_dc029_w4_s11) & is.na(w4_dc029_w4_s12) ~ NA_real_,
+      TRUE ~ rowSums(imrc_mat %>% select(
+        contains("dc029_w4_s"), -contains(c("s12", "s11"))), na.rm = T)),
     w4_imrc_trial3 = case_when(
       w4_dc030_w4_s11 == 11 ~ 0,
       w4_dc030_w4_s12 == 12 ~ NA_real_,
@@ -515,9 +527,12 @@ with(charls, table(w4_dc047_w4_s11, useNA = "ifany"))
 with(harmonized, table(r1dlrc, useNA = "ifany"))
 with(harmonized, table(r4dlrc, useNA = "ifany"))
 
-dlrc_mat<- charls %>% select(contains("dc027s"), contains("dc047_w4_s"))
+dlrc_mat <- charls %>% select(contains("dc027s"), contains("dc047_w4_s"),
+                              contains("dc028_s"))
+colnames(dlrc_mat)
+
 dlrc_mat%<>%
-  mutate(across(c(w1_dc027s11, w2_dc027s11, w3_dc027s11, w4_dc047_w4_s11),
+  mutate(across(ends_with("s11"),
                 ~ case_when(. == 0 ~ NA_real_,
                             . == 11 ~ 0)))
 
@@ -525,29 +540,50 @@ dlrc_mat[dlrc_mat!= 0 & !is.na(dlrc_mat)] <- 1
 
 with(dlrc_mat, table(w3_dc027s12, useNA = "ifany"))
 with(dlrc_mat, table(w4_dc047_w4_s12, useNA = "ifany"))
+with(dlrc_mat, table(w5_dc028_s12, useNA = "ifany"))
 
 charls %<>%
   mutate(w1_dlrc = 
            case_when(
+             w1_dc027s11 == 11 ~ 0,
              rowSums(is.na(dlrc_mat %>% 
                              select(contains("w1_dc027s"), 
                                     -contains("s11")))) == 10 ~ NA_real_,
-             TRUE ~ rowSums(dlrc_mat %>% select(contains("w1_dc027s")), 
+             TRUE ~ rowSums(dlrc_mat %>% select(contains("w1_dc027s"), 
+                                                -contains(c("s12", "s11"))), 
                             na.rm = T)),
          w2_dlrc = case_when(
+           w2_dc027s11 == 11 ~ 0,
            rowSums(is.na(dlrc_mat%>% 
                            select(contains("w2_dc027s"), 
                                   -contains("s11")))) == 10 ~ NA_real_,
-           TRUE ~ rowSums(dlrc_mat%>% select(contains("w2_dc027s")), 
+           TRUE ~ rowSums(dlrc_mat%>% select(contains("w2_dc027s"),
+                                             -contains(c("s12", "s11"))), 
                           na.rm = T)),
          w3_dlrc = 
-           case_when(w3_dc027s12 == 12 ~ NA_real_,
-                     TRUE ~ rowSums(dlrc_mat%>% 
-                                      select(contains("w3_dc027s")), na.rm = T)),
-         w4_dlrc = case_when(w4_dc047_w4_s12 == 12 ~ NA_real_,
-                             TRUE ~ rowSums(
-                               dlrc_mat%>% 
-                                 select(contains("dc047_w4_s")), na.rm = T)))
+           case_when(
+             w3_dc027s11 == 11 ~ 0,
+             w3_dc027s12 == 12 ~ NA_real_,
+             rowSums(is.na(dlrc_mat%>% 
+                             select(contains("w3_dc027s"), 
+                                    -contains(c("s11", "s12"))))) == 10 ~ NA_real_,
+             TRUE ~ rowSums(dlrc_mat%>% 
+                              select(contains("w3_dc027s"),
+                                     -contains(c("s12", "s11"))), na.rm = T)),
+         w4_dlrc = case_when(
+           w4_dc047_w4_s11 == 11 ~ 0,
+           w4_dc047_w4_s12 == 12 ~ NA_real_,
+           is.na(w4_dc047_w4_s11) & is.na(w4_dc047_w4_s12) ~ NA_real_,
+           TRUE ~ rowSums(
+             dlrc_mat%>% 
+               select(contains("dc047_w4_s"), -contains(c("s12", "s11"))), na.rm = T)),
+         w5_dlrc = case_when(
+           w5_dc028_s11 == 11 ~ 0,
+           w5_dc028_s12 == 12 ~ NA_real_,
+           is.na(w5_dc028_s11) & is.na(w5_dc028_s12) ~ NA_real_,
+           TRUE ~ rowSums(
+             dlrc_mat%>% 
+               select(contains("dc028_s"), -contains(c("s12", "s11"))), na.rm = T)))
 
 with(charls, table(w1_dlrc, useNA = "ifany"))
 with(harmonized, table(r1dlrc, useNA = "ifany"))
@@ -556,7 +592,62 @@ with(charls, table(w2_dlrc, useNA = "ifany"))
 with(harmonized, table(r2dlrc, useNA = "ifany"))
 
 with(charls, table(w3_dlrc, useNA = "ifany"))
+# with(charls, table(w3_dc027s11, useNA = "ifany"))
+# with(charls, table(w3_dc027s12, useNA = "ifany"))
+# with(charls, table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
 with(harmonized, table(r3dlrc, useNA = "ifany"))
 
 with(charls, table(w4_dlrc, useNA = "ifany"))
 with(harmonized, table(r4dlrc, useNA = "ifany"))
+
+with(charls, table(w5_dlrc, useNA = "ifany"))
+
+#---- empirical plot wave 5 ----
+wordrecall_long <- harmonized_selected %>%
+  left_join(charls %>% select(ID, w5_imrc, w5_dlrc), by = "ID") %>%
+  dplyr::rename(r5imrc = w5_imrc, r5dlrc = w5_dlrc) %>%
+  mutate(imrc_balanced = case_when(!is.na(r1imrc) & !is.na(r2imrc) & 
+                                !is.na(r3imrc) & !is.na(r4imrc) & !is.na(r5imrc) ~ 1,
+                              TRUE ~ 0),
+    dlrc_balanced = case_when(!is.na(r1dlrc) & !is.na(r2dlrc) & 
+                                !is.na(r3dlrc) & !is.na(r4dlrc) & !is.na(r5dlrc) ~ 1,
+                              TRUE ~ 0)) %>%
+  select(ID, contains("agey"), contains("imrc"),
+         contains("dlrc"), imrc_balanced, dlrc_balanced) %>%
+  pivot_longer(cols = -c(ID, imrc_balanced, dlrc_balanced),
+               names_to = c("wave", ".value"),
+               names_pattern = "r(\\d+)(.*)") %>%
+  print()
+
+with(wordrecall_long %>%
+  group_by(ID) %>% slice(1), table(imrc_balanced, dlrc_balanced), useNA = "ifany")
+
+harmonized_empirical_balanced <- wordrecall_long %>%
+  filter(imrc_balanced == 1) %>%
+  group_by(wave) %>%
+  summarise_at(vars(imrc), 
+               funs(n(), mean, sd)) %>%
+  mutate(se = sd/sqrt(n),
+         variable = "Immediate word recall\n(n = 7063)") %>%
+  rbind(wordrecall_long %>%
+          filter(dlrc_balanced == 1) %>%
+          group_by(wave) %>%
+          summarise_at(vars(dlrc), 
+                       funs(n(), mean, sd)) %>%
+          mutate(se = sd/sqrt(n),
+                 variable = "Delayed word recall\n(n = 6486)")) %>%
+  print()
+
+harmonized_empirical_balanced %>%
+  ggplot(aes(x = wave, y = mean, group = variable, color = variable)) + 
+  geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1) +
+  geom_line() +
+  geom_point() +
+  theme_classic() +
+  labs(x = "Wave",
+       y = "Word recall",
+       title = "Average word recall score +/- 2 SE at different wave
+       balanced data")
+
+view(harmonized_long %>%
+       filter(dlrc_balanced == 1 & wave == 4))
