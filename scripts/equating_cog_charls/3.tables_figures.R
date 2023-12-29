@@ -263,13 +263,13 @@ rc_long <- harmonized_addw5_selected %>%
   mutate(year = case_when(wave == 4 ~ "Wave 2018",
                           wave == 5 ~ "Wave 2020"),
          measure = case_when(
-           construct == "imrc" & trial == "cleaned" ~ "Original: trial 1",
+           construct == "imrc" & trial == "cleaned" ~ "Original trial 1",
            construct == "dlrc" & trial == "cleaned" ~ "Original",
-           trial == "trial2" ~ "Original: trial 2",
-           trial == "trial3" ~ "Original: trial 3",
+           trial == "trial2" ~ "Original trial 2",
+           trial == "trial3" ~ "Original trial 3",
            trial == "eqt" ~ "Equated"),
          measure = factor(measure, 
-                          levels = c(paste0("Original: trial ", 1:3),
+                          levels = c(paste0("Original trial ", 1:3),
                                      "Original", "Equated")),
          construct = case_when(construct == "imrc" ~ "Immediate word recall",
                                construct == "dlrc" ~ "Delayed word recall"),
@@ -280,11 +280,9 @@ rc_long %>%
   ggplot() +
   geom_boxplot(aes(x = measure, y = value)) +
   facet_grid(rows = vars(year), cols = vars(construct),
-             scale = "free_x") +
+             scale = "free_x", space="free") +
+  labs(x = element_blank(), y = "Word recall scores") +
   theme_bw()
 
 ggsave(here::here("output", "figures", "figureX_rc_dist.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
-
-
-
