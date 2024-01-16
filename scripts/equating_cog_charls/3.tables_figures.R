@@ -38,7 +38,7 @@ table1_151820 <- charls_selected %>%
     female = c("Yes" = 1, "No" = 0),
     rural = c("Yes" = 1, "No" = 0),
     childhood_edu = c(
-      "Elementary school or less" = 1,
+      "Elementary school" = 1,
       "Vocational school/middle school/high school" = 2,
       "College & above" = 3),
     wave = c("2015" = "3", "2018" = "4", "2020" = "5"),
@@ -140,6 +140,7 @@ eqted_empirical_plot <- harmonized_empirical_balanced %>%
   geom_line(aes(linetype = interaction(variable, type))) + # size = 2 for poster
   geom_point(aes(shape = interaction(variable, type))) + # size = 2 for poster
   scale_x_continuous(breaks = c(2011, 2013, 2015, 2018, 2020)) +
+  scale_y_continuous(limits = c(2.4, 5.2), breaks = c(3, 4, 5)) +
   scale_color_manual(name = "Variable",
                      values = c("cyan3", "salmon", "cyan3", "salmon"),
                      labels = c("Original immediate word recall",
@@ -188,18 +189,24 @@ empirical_plot <- harmonized_empirical_balanced %>%
                           wave == 3 ~ 2015,
                           wave == 4 ~ 2018,
                           wave == 5 ~ 2020),
+         variable = factor(variable, levels = c("Delayed word recall",
+                                                "Immediate word recall"))
   ) %>%
   filter(type == "cleaned") %>%
   ggplot(aes(x = year, y = mean, group = variable, color = variable)) + 
   geom_errorbar(aes(ymin = mean - 2 * se, ymax = mean + 2 * se), width=.1) +
   scale_x_continuous(breaks = c(2011, 2013, 2015, 2018, 2020)) +
+  scale_y_continuous(limits = c(2.4, 5.2), breaks = c(3, 4, 5)) +
   geom_line() +
   geom_point() +
   theme_classic() +
   labs(x = "Wave",
        y = "Word recall") +
-  theme(legend.position = "none") + 
-  labs(x = "Year", y = "Word recall scores")
+  theme(legend.position = "none") +
+  labs(x = "Year", y = "Word recall scores") +
+  theme(text = element_text(size = 10, color = "black"),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"))
 empirical_plot
 
 ##---- stacked plot ----
