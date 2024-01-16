@@ -1,6 +1,5 @@
 # Data export for equating method
 # Created by: Yingyan Wu
-# Some code was adapted from Crystal Shaw's and Mingfei Dong's Data construction scripts
 # Mar.13.2023
 
 # For the specific missing characters in stata, the data was read using 
