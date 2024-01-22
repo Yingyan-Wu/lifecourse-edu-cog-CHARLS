@@ -127,7 +127,8 @@ harmonized_empirical_balanced %<>%
   arrange(type, wave) %>%
   print()
 
-eqted_empirical_plot <- harmonized_empirical_balanced %>%
+eqted_empirical_plot <-
+  harmonized_empirical_balanced %>%
   mutate(year = case_when(wave == 1 ~ 2011,
                           wave == 2 ~ 2013,
                           wave == 3 ~ 2015,
@@ -139,6 +140,9 @@ eqted_empirical_plot <- harmonized_empirical_balanced %>%
   geom_errorbar(aes(ymin = mean - 2*se, ymax = mean + 2*se), width=.1) + # size = 1 for poster
   geom_line(aes(linetype = interaction(variable, type))) + # size = 2 for poster
   geom_point(aes(shape = interaction(variable, type))) + # size = 2 for poster
+  geom_text(aes(label = round(mean, 2), y = mean + 5*se)) +
+  # geom_text(aes(label = ifelse(type == "eqt" & year >= 2018, 
+  #                              as.character(round(mean, 2)), '')),hjust=0,vjust=0) +
   scale_x_continuous(breaks = c(2011, 2013, 2015, 2018, 2020)) +
   scale_y_continuous(limits = c(2.4, 5.2), breaks = c(3, 4, 5)) +
   scale_color_manual(name = "Variable",
@@ -181,6 +185,9 @@ eqted_empirical_plot <- harmonized_empirical_balanced %>%
   labs(x = "Year", y = "Word recall scores")
 
 eqted_empirical_plot
+# ggsave(eqted_empirical_plot,
+#        filename = here::here("output", "figures", "figure0_empirical_plot_eqted.png"),
+#        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 ##---- before equating ----
 empirical_plot <- harmonized_empirical_balanced %>%
@@ -199,6 +206,7 @@ empirical_plot <- harmonized_empirical_balanced %>%
   scale_y_continuous(limits = c(2.4, 5.2), breaks = c(3, 4, 5)) +
   geom_line() +
   geom_point() +
+  geom_text(aes(label = round(mean, 2), y = mean + 5*se)) +
   theme_classic() +
   labs(x = "Wave",
        y = "Word recall") +
@@ -207,7 +215,42 @@ empirical_plot <- harmonized_empirical_balanced %>%
   theme(text = element_text(size = 10, color = "black"),
         axis.text.x = element_text(size = 10, color = "black"),
         axis.text.y = element_text(size = 10, color = "black"))
-empirical_plot
+
+empirical_plot +
+  scale_linetype_manual(name = "Variable",
+                        values = c(1, 1, 2, 2),
+                        labels = c("Original immediate word recall",
+                                   "Original delayed word recall",
+                                   "Equated immediate word recall",
+                                   "Equated delayed word recall")) +
+  scale_shape_manual(name = "Variable",
+                     values = c(19, 19, 17, 17),
+                     labels = c("Original immediate word recall",
+                                "Original delayed word recall",
+                                "Equated immediate word recall",
+                                "Equated delayed word recall")) +
+  theme_classic() +
+  theme(legend.position = "bottom", legend.direction = "horizontal",
+        text = element_text(size = 10, color = "black"),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        legend.title.align = 0.5,
+        legend.title = element_text(size = 10),
+        legend.text = element_text(size = 10)) +
+  guides(
+    shape = guide_legend(title.position = "top",
+                         title.vjust = -1.3,
+                         title.theme = element_text(size = 10, color = "black"),
+                         nrow = 2),
+    color = guide_legend(title.position = "top",
+                         title.vjust = -1.3,
+                         title.theme = element_text(size = 10, color = "black"),
+                         nrow = 2)) +
+  # theme_classic(base_size = 20) + # for poster
+  # theme(legend.position = "none") + # for poster
+  labs(x = "Year", y = "Word recall scores")
+# ggsave(filename = here::here("output", "figures", "figure0_empirical_plot_uneqted.png"),
+#        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 ##---- stacked plot ----
 figure1_panel <- 
