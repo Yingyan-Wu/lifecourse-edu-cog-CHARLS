@@ -1150,7 +1150,7 @@ colSums(is.na(hukou_mat))
 proc_freq(charls, chldstate30)
 with(charls, table(chldstate15, chldstate30, useNA = "ifany"))
 charls %<>%
-  mutate(child__30 = chldstate30)
+  mutate(child_30 = chldstate30)
 
 
 #---- Dropping people ----
