@@ -358,18 +358,18 @@ png(here::here("output", "figures", "figure3_eqt_plot.png"),
     width = 7, height = 5, units = "in", res = 300)
 par(mfrow=c(2,2), mar=c(4, 4, 2, 2), xaxs='i', yaxs='i')
 plot(eqim_eqp_IOW_1518, xlab = "Original Score (Wave 2018)", 
-     ylab = "Equated Score")
+     ylab = "Equated Score", legendtext = "Equipercentile")
 title(main = "Immediate word recall score", line = 1)
 mtext("A", side = 3, line = 0.5, cex = 1, adj = -0.28, font = 2)
 plot(eqdl_eqp_IOW_1518, xlab = "Original Score (Wave 2018)", 
-     ylab = "Equated Score")
+     ylab = "Equated Score", legendtext = "Equipercentile")
 title(main = "Delayed word recall score", line = 1)
 mtext("B", side = 3, line = 0.5, cex = 1, adj = -0.28, font = 2)
 plot(eqim_eqp_IOW_1520, xlab = "Original Score (Wave 2020)", 
-     ylab = "Equated Score")
+     ylab = "Equated Score", legendtext = "Equipercentile")
 mtext("C", side = 3, line = 0.5, cex = 1, adj = -0.28, font = 2)
 plot(eqdl_eqp_IOW_1520, xlab = "Original Score (Wave 2020)", 
-     ylab = "Equated Score")
+     ylab = "Equated Score", legendtext = "Equipercentile")
 mtext("D", side = 3, line = 0.5, cex = 1, adj = -0.28, font = 2)
 dev.off()
 graphics.off()
