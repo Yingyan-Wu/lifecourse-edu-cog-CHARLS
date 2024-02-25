@@ -16,6 +16,7 @@ p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "labelled",
 
 #---- function ----
 source(here::here("scripts", "functions.R"))
+source(here::here("scripts", "equating_cog_charls", "functions_weight_dev.R"))
 
 #---- Table 2. descriptive table 1 ----
 load(here::here("data", "analysis_data", "charls_eqt_selected.RData"))
