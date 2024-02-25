@@ -10,8 +10,8 @@ if (!require("pacman")){
   install.packages("pacman", repos='http://cran.us.r-project.org')
 }
 
-p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "glue", 
-       "survey", "lme4",  "labelled", "lubridate")
+p_load("here", "readr", "plyr", "tidyverse", "magrittr","haven", "survey", "glue",
+       "labelled", "lubridate")
 # Do not load "summarytools" as it contains conflicted functions from dplyr
 
 #---- function ----
@@ -84,9 +84,10 @@ table(harmonized$province_eng,useNA = "ifany")
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("demographic_background", "health_status_and_functioning", 
-              "work_retirement_and_pension", "work_retirement",
+              "work_retirement_and_pension", "work_retirement", "sample_infor",
               "family_information", "weights")
-folder_index <- c(1:length(folders))[-c(1, 3, 5, 8)] # main waves only
+
+folder_index <- c(1:length(folders))[-c(1, 3, 5, 9)] # main waves only
 
 # Read in function
 read_charls <- function(paths){
@@ -99,7 +100,7 @@ read_charls <- function(paths){
              str_detect(paths, "2015")){
     haven::read_dta(paths) %>%
       select(-c("xrtype", "versionID", "proxy"))
-  } else if (str_detect(paths, "Family_Information|Weights") & 
+  } else if (str_detect(paths, "Family_Information|Weights|Sample_Infor") & 
              str_detect(paths, "2013|2015")){
     haven::read_dta(paths) %>%
       select(-c("versionID"))
@@ -114,8 +115,8 @@ read_charls <- function(paths){
              str_detect(paths, "2018")){
     haven::read_dta(paths) %>%
       select(-c("versionID"))
-  } else if (str_detect(paths, "2018") &
-             str_detect(paths, "Weights")){
+  } else if (str_detect(paths, "2018|2020") &
+             str_detect(paths, "Weights|Sample_Infor")){
     haven::read_dta(paths) %>%
       select(-c("versionID"))
   } else if (str_detect(paths, "2018") & 
@@ -131,6 +132,20 @@ read_charls <- function(paths){
     haven::read_dta(paths) %>%
       select(-c("versionID",
                 "xrgender", "ziwtime"))
+  } else if (str_detect(paths, "2020") &
+             str_detect(paths, "Health_Status_and_Functioning")){
+    haven::read_dta(paths) %>%
+      select(-c("xrage", "xrtype", "ziwtime", "versionID"))
+  } else if (str_detect(paths, "2020") &
+             str_detect(paths, "Work_Retirement")){
+    haven::read_dta(paths) %>%
+      select(-c("xrage", "ziwtime", "versionID"))
+  } else if (str_detect(paths, "2020") &
+             str_detect(paths, "Family_Information")){
+    haven::read_dta(paths) %>%
+      select(-c("zchildnum", "versionID"))
+  } else {
+    haven::read_dta(paths)
   }
   
   # rename_with(.cols = "proxy",
@@ -181,7 +196,7 @@ names(list) <- gsub(".*/(.*)\\..*", "\\1", files)
 assign("life_history", list)
 rm(list)
 
-# ---- **join the datasets ----
+## ---- join the datasets ----
 # Waves
 charls_w1 <- join_all(wave1, 
                       by = c("ID", "householdID", "communityID"),
@@ -211,6 +226,16 @@ charls_w4 <- join_all(wave4,
               function(x){paste0("w4_", x)})
 # colnames(charls_w4)
 
+wave5_ID <- wave5$Demographic_Background %>% select(ID, householdID)
+wave5$Family_Information <- wave5_ID %>%
+  left_join(wave5$Family_Information, by = "householdID", copy = T)
+
+charls_w5 <- join_all(wave5, 
+                      by = c("ID", "householdID", "communityID"),
+                      type = "left", match = "all") %>%
+  rename_with(.cols = !c("ID", "householdID", "communityID"), 
+              function(x){paste0("w5_", x)})
+
 charls_lh <- join_all(life_history, 
                       by = c("ID", "householdID", "communityID", "versionID"),
                       type = "left", match = "all") %>%
@@ -218,7 +243,7 @@ charls_lh <- join_all(life_history,
               function(x){paste0("lh_", x)})
 
 rm(life_history)
-rm(list = paste0("wave", 1:4))
+rm(list = paste0("wave", 1:5))
 gc()
 # Pending
 # 3 more participants in harmonized dataset in wave 1
@@ -246,7 +271,7 @@ rm(harmonized_id)
 
 ##----  join to a single dataset (wave 1 baseline) ----
 # Merge all the waves (All the participants!)
-charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4,
+charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4, charls_w5,
                           charls_lh)),
                    by = c("ID"), # "ID_w234" = "ID", # somehow it didn't work anymore. Rename the ID_w234 in w1 above
                    # "householdID", "communityID"),# Pending: needs to figure out this later
@@ -267,7 +292,7 @@ charls %<>%
             by = "ID")
 colnames(charls %>% select(contains(".x")))
 
-rm(list = paste0("charls_", c(paste0("w", 1:4), "lh")))
+rm(list = paste0("charls_", c(paste0("w", 1:5), "lh")))
 
 charls %<>% remove_labels()
 gc()
@@ -288,26 +313,51 @@ gc()
 # with(charls, table(radadoccup_c == lh_radadoccup_c, useNA = "ifany"))
 
 # Filling NAs for birth month, birth year, gender in the harmonized dataset
-# with values from life history dataset
-
+# with values from life history dataset and wave 5 dataset (if available)
 charls %<>%
   mutate(rabmonth_v2 = case_when(!is.na(rabmonth) ~ rabmonth,
-                                 !is.na(lh_rabmonth) ~ lh_rabmonth),
+                                 !is.na(lh_rabmonth) ~ lh_rabmonth,
+                                 w5_ba003_2 != -1 ~ w5_ba003_2),
          rabyear_v2 = case_when(!is.na(rabyear) ~ rabyear,
-                                !is.na(lh_rabyear) ~ lh_rabyear),
+                                !is.na(lh_rabyear) ~ lh_rabyear,
+                                !is.na(w5_ba003_1) ~ w5_ba003_1),
          ragender_v2 = case_when(!is.na(ragender) ~ ragender,
-                                 !is.na(lh_ragender) ~ lh_ragender),
+                                 !is.na(lh_ragender) ~ lh_ragender,
+                                 w5_ba001 == w5_ba002|is.na(w5_ba002) ~ 
+                                   as.numeric(w5_ba001)),
          ramomoccup_c_v2 = case_when(!is.na(ramomoccup_c) ~ ramomoccup_c,
                                      !is.na(lh_ramomoccup_c) ~ lh_ramomoccup_c),
          radadoccup_c_v2 = case_when(!is.na(radadoccup_c) ~ radadoccup_c,
                                      !is.na(lh_radadoccup_c) ~ lh_radadoccup_c))
 
-# Sanity check
-with(charls, table(rabyear_v2 == lh_raidbyear, useNA = "ifany"))
-with(charls, table(is.na(rabmonth_v2) & !is.na(lh_raidbmonth),useNA = "ifany"))
-with(charls, table(is.na(rabyear_v2) & !is.na(lh_raidbyear),useNA = "ifany"))
+# # Sanity check
+# with(charls, table(rabyear_v2 == lh_raidbyear, useNA = "ifany"))
+# with(charls, table(is.na(rabmonth_v2) & !is.na(lh_raidbmonth),useNA = "ifany"))
+# with(charls, table(is.na(rabyear_v2) & !is.na(lh_raidbyear),useNA = "ifany"))
+# charls %>% filter(is.na(rabyear_v2) & !is.na(lh_raidbyear)) %>%
+#   select(ID, rabmonth, rabyear, rabmonth_v2, rabyear_v2, lh_raidbmonth, lh_raidbyear,
+#          contains("w5_ba003")) %>%
+#   view()
 
 #---- Age ----
+# Wave 5 age
+age_w5 <- charls %>% select(ID, contains("w5_ba003"), contains("xrage"),
+                               w5_imonth, w5_iyear) %>%
+  mutate(w5_iwd = as.Date(paste0(w5_imonth, "/1/", w5_iyear), "%m/%d/%Y"),
+         w5_rabdate = case_when(
+           w5_ba003_2 == -1 ~
+             as.Date(paste0("1/1/", w5_ba003_1), "%m/%d/%Y"),
+           w5_ba003_3 == -1 ~
+             as.Date(paste0(w5_ba003_2, "/1/", w5_ba003_1), "%m/%d/%Y"),
+           !is.na(w5_ba003_3) ~
+             as.Date(paste0(w5_ba003_2, "/", w5_ba003_3, "/", w5_ba003_1), 
+                     "%m/%d/%Y")),
+         r5agey = round(interval(start = w5_rabdate, 
+                                 end = w5_iwd) / 
+                          duration(num = 1, units = "years")))
+charls %<>%
+  left_join(age_w5 %>% select(ID, r5agey), by = "ID")
+
 charls %>% select(contains("agey")) %>%
   apply(., 2, proc_sum)
 
@@ -316,9 +366,13 @@ charls %<>%
   # birth dates (assuming at the first day of the month)
   mutate(rabdate_v2 = as.Date(paste0(rabmonth_v2, "/1/", rabyear_v2),
                               "%m/%d/%Y"))
-for (i in 1:4){
+charls %<>%
+  dplyr::rename(r5iwm = w5_imonth,
+                r5iwy = w5_iyear)
+
+for (i in 1:5){
   charls %<>%
-    mutate(
+    dplyr::mutate(
       # Interview dates (assuming at the first day of the month)
       !!paste0("r", i, "iwd_v2") := as.Date(
         paste0(!!sym(paste0("r", i, "iwm")), "/1/", 
@@ -344,9 +398,9 @@ charls %>% select(contains("agey_v2")) %>%
 # impute them using the closest nonmissing values of age +/- 2 or +/-3 
 # depending on waves: 2011, 2013, 2015, 2018, 2020
 age_y <- charls %>% dplyr::select(contains("agey_v2"), -contains("LHagey")) %>% 
-  apply(., 1, impute_ages, survey_years = c(2011, 2013, 2015, 2018)) %>% t()
+  apply(., 1, impute_ages, survey_years = c(2011, 2013, 2015, 2018, 2020)) %>% t()
 
-charls[, paste0("r", 1:4, "agey_v3")] <- age_y
+charls[, paste0("r", 1:5, "agey_v3")] <- age_y
 rm(age_y)
 
 charls %>% select(contains("agey_v3")) %>%
@@ -388,8 +442,8 @@ view(charls_missingage)
 
 #---- Gender ----
 charls %<>% 
-  mutate(female = case_when(ragender == 1 ~ 0,
-                            ragender == 2 ~ 1),
+  mutate(female = case_when(ragender_v2 == 1 ~ 0,
+                            ragender_v2 == 2 ~ 1),
          lh_female = case_when(lh_ragender == 1 ~ 0,
                                lh_ragender == 2 ~ 1),
          female_v2 = case_when(!is.na(female) ~ female,
@@ -398,7 +452,7 @@ charls %<>%
 with(charls, table(female, ragender, useNA = "ifany"))
 with(charls, table(female, lh_ragender, useNA = "ifany"))
 with(charls, table(female, female_v2, useNA = "ifany"))
-with(charls, table(female_v2, useNA = "ifany")) # 6 missing gender
+with(charls, table(female_v2, useNA = "ifany")) # 5 missing gender
 # with(charls, table(female, w1_rgender, useNA = "ifany"))
 # with(charls, table(female, w2_ba000_w2_3, useNA = "ifany"))
 # with(charls, table(female, w2_xrgender, useNA = "ifany"))
@@ -411,7 +465,19 @@ with(charls, table(female_v2, useNA = "ifany")) # 6 missing gender
 # charls %<>% dplyr::select(-ragender)
 
 #---- Education variables ----
+##---- Early life Education ----
+charls %<>%
+  mutate(r5educ_c = case_when(w5_ba010 %in% c(10, 11) ~ 10, # master + phd
+                     TRUE ~ w5_ba010)) %>%
+  mutate(raeduc_c_v2 = case_when(!is.na(raeduc_c) ~ raeduc_c,
+                                 is.na(raeduc_c) ~ r5educ_c))
+# Sanity check
+with(charls, table(raeduc_c_v2, r5educ_c, useNA = "ifany"))
+
 ##---- Adult Education ----
+# No adult education info available for wave 5 participants (it's ok, cuz for
+# those who joined the cohort in wave 5, we'll have to exclude them anyway
+# due to only one occurrence of cognitive test measures)
 charls %<>%
   mutate_at(vars(starts_with("w4_bd007_w4_1_s")), 
             function(x) ifelse(x == 0, NA, x)) %>%
@@ -497,10 +563,10 @@ with(charls, table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 ##---- Edu + adult edu ----
 charls %<>%
   mutate(
-    childhood_edu = case_when(raeduc_c == 1 ~ 0,
-                              raeduc_c %in% c(2, 3, 4) ~ 1,
-                              raeduc_c %in% c(5, 6, 7) ~ 2,
-                              raeduc_c %in% c(8, 9, 10) ~ 3),
+    childhood_edu = case_when(raeduc_c_v2 == 1 ~ 0,
+                              raeduc_c_v2 %in% c(2, 3, 4) ~ 1,
+                              raeduc_c_v2 %in% c(5, 6, 7) ~ 2,
+                              raeduc_c_v2 %in% c(8, 9, 10) ~ 3),
     continuing_edu = case_when(adult_edu == 0 ~ 0,
                                adult_edu == 1 & adult_edu_dplm == 0 ~ 1,
                                adult_edu == 1 & adult_edu_dplm == 1 ~ 2),
@@ -532,9 +598,9 @@ charls %<>%
                 "college & above + continuing education with a diploma" = 11))
 
 # Sanity check
-with(charls, table(edu_cat, raeduc_c, useNA = "ifany"))
+with(charls, table(edu_cat, raeduc_c_v2, useNA = "ifany"))
 with(charls, table(continuing_edu, adult_edu_dplm, useNA = "ifany"))
-with(charls %>% filter(is.na(edu_cat) & raeduc_c == 1), 
+with(charls %>% filter(is.na(edu_cat) & raeduc_c_v2 == 1), 
      table(adult_edu, adult_edu_dplm, useNA = "ifany"))
 
 ##---- Education interruption 1967 - 1977 ----
@@ -555,8 +621,25 @@ with(charls %>% filter(!is.na(rLHiwm)),
 
 #---- Outcome ----
 # The outcome was cleaned in another script (equipercentile equating method)
-# PENDING
-#---- Region of residence Childhood ----
+load(here::here("data", "analysis_data", "eqt_rc.RData"))
+charls %<>%
+  left_join(eqt_tib, by = "ID")
+table(is.na(charls$r4imrc_eqt))
+table(is.na(charls$r4imrc))
+
+eqt_rc_xl <- readxl::read_xlsx(here::here("output", "tables", 
+                                           "table3_equating.xlsx")) %>%
+  set_colnames(c("test", "original_score", "r4eqt", "r5eqt"))
+
+eqt_rc_tib <- eqt_rc_xl %>%
+  pivot_wider(id_cols = "original_score",
+              names_from = "test", values_from = c("r4eqt", "r5eqt")) %>%
+  set_colnames(c("original_score", "r4imrc_eqt", "r4dlrc_eqt",
+                 "r5imrc_eqt", "r5dlrc_eqt"))
+charls %<>%
+  
+
+#---- Childhood Region of residence ----
 # psu2011_nbs <- readxl::read_xlsx(here::here("data", "analysis_data", 
 #                                             "psu2011_nbs.xlsx"))
 # colnames(psu2011_nbs)
@@ -604,7 +687,7 @@ charls %<>%
 charls %<>%
   mutate(childhood_1st_resi = lh_t002_province_1_)
 
-#---- Rural/urban residence Childhood ----
+#---- Childhood Rural/urban residence ----
 colnames(charls %>% select(contains("bb006")))
 proc_freq(charls, w1_bb006)
 proc_freq(charls, w2_bb006)
@@ -619,10 +702,10 @@ charls %<>%
                                    TRUE ~ rarural_child))
 
 # Sanity check
-# proc_freq(charls, rarural_child)
+proc_freq(charls, rarural_child)
 # with(charls, table(rarural_child, childhood_1st_resi, useNA = "ifany"))
 
-#---- Parental socioeconomic status (latent variable to be built) ----
+#---- Parental socioeconomic status ----
 charls %<>% mutate(rameduc_c = case_when(rameduc_c == 1 ~ 0,
                                          rameduc_c %in% c(2, 3, 4) ~ 1,
                                          rameduc_c %in% c(5, 6, 7) ~ 2,
@@ -640,6 +723,9 @@ with(charls, table(rameduc_c, useNA = "ifany"))
 
 #---- birth order ----
 # From the core dataset
+# No detailed sibling information from wave 5    T^T
+# But it's fine! (same reasons for childhood rural/urban residence)
+# missingness not bad! MI can still save us.
 charls %<>%
   mutate(
     first_child = case_when(
@@ -724,16 +810,14 @@ charls %<>%
 with(charls, table(first_child_lh, first_child_v2, useNA = "ifany"))
 proc_freq(charls, first_child_v2)
 
-# Pending
-# Not sure whether I can trust this
-# This person's really weird
-# Every year after she was born, there was a sibling born.
-view(charls %>% filter(ID == "056346102001") %>%
-       select(ID, female, rabyear, edu_cat,first_child_v2, contains("lh_b4_3_")))
-
-view(charls %>% filter(first_child_v2 == 1) %>%
-       select(ID, female, rabyear_v2, edu_cat, first_child_v2, 
-              contains("lh_b4_3_")))
+# # There are some weird people
+# # e.g. The person below: Every year after she was born, there was a sibling born.
+# view(charls %>% filter(ID == "056346102001") %>%
+#        select(ID, female, rabyear, edu_cat,first_child_v2, contains("lh_b4_3_")))
+# 
+# view(charls %>% filter(first_child_v2 == 1) %>%
+#        select(ID, female, rabyear_v2, edu_cat, first_child_v2, 
+#               contains("lh_b4_3_")))
 
 #---- Working history from harmonized LH ----
 work_history_long_mat <- charls %>%
@@ -865,8 +949,9 @@ marital_long_mat <- charls %>%
                values_to = "prtnstate",
                names_pattern = "prtnstate(.*)") %>%
   mutate(Age = as.numeric(Age)) %>%
-  filter(Age <= rLHagey | is.na(rLHagey)) # exclude the records of later age which participants
-# have not reached (assigned NA records)
+  filter(Age <= rLHagey | is.na(rLHagey)) 
+# # exclude the records of later age which participants
+# have not reached (remove assigned NA records)
 
 # Sanity check
 with(marital_long_mat, table(Age, useNA = "ifany"))
@@ -894,6 +979,8 @@ charls %<>% select(-contains("first_maritalsts"))
 charls %<>%
   left_join(first_marital_mat %>% select(ID, contains("first_maritalsts")),
             by = "ID")
+# Sanity check
+proc_freq(charls, first_maritalsts)
 
 ##---- marital status 30 (25 - 35 nonmissing closest to 30) -----
 nonmissing_30_marital_mat <- marital_long_mat %>%
@@ -925,7 +1012,6 @@ proc_freq(charls, marital_30)
 # with(charls %>% filter(is.na(prtnstate30) & !is.na(first_maritalsts)),
 #      table(first_maritalsts_age, useNA = "ifany"))
 
-
 ##---- wave 1 Marital status ----
 charls %<>%
   mutate(r1mstat_c = case_when(r1mstat %in% c(1, 2) ~ 1,
@@ -946,14 +1032,18 @@ with(charls, table(h1rural, h2rural, useNA = "ifany"))
 with(charls, table(h1rural, h3rural, useNA = "ifany"))
 
 charls %<>%
-  mutate(hrural_v2 = case_when(
+  mutate(h5rural = case_when(w5_ba008 %in% c(3, 4) ~ 1,
+                               !is.na(w5_ba008) ~ 0),
+    hrural_v2 = case_when(
     !is.na(h1rural) ~ h1rural,
     is.na(h1rural) & !is.na(h2rural) ~ h2rural,
     is.na(h1rural) & is.na(h2rural) & !is.na(h3rural) ~ h3rural,
-    is.na(h1rural) & is.na(h2rural) & is.na(h3rural) & is.na(h4rural) ~ h4rural
-  ))
+    is.na(h1rural) & is.na(h2rural) & is.na(h3rural) & !is.na(h4rural) ~ h4rural,
+    is.na(h1rural) & is.na(h2rural) & is.na(h3rural) & is.na(h4rural) &
+      !is.na(h5rural) ~ h5rural))
 
 # Sanity check
+proc_freq(charls, hrural_v2)
 with(charls %>% filter(is.na(h1rural) & !is.na(h2rural)), 
      table(inw1, inw2, useNA = "ifany"))
 with(charls %>% filter(is.na(h1rural) & !is.na(h3rural)), 
@@ -1114,44 +1204,16 @@ charls %<>%
 with(charls, table(hkstate30, hukou_30, useNA = "ifany"))
 proc_freq(charls, hukou_30)
 
-
-
-
-
 charls %<>%
   mutate(marital_30 = maritalsts_30  - 1)
 with(charls, table(marital_30, maritalsts_30, useNA = "ifany"))
 proc_freq(charls, marital_30)
-#---- Hukou status ----
-proc_freq(charls, r1hukou)
-proc_freq(charls, lh_hukoutype) # First hukou status
-
-with(charls, table(r1hukou, r2hukou, useNA = "ifany"))
-with(charls %>% filter(is.na(r1hukou) & !is.na(r2hukou)), 
-     table(inw1, inw2, useNA = "ifany"))
-with(charls %>% filter(is.na(r1hukou) & !is.na(r3hukou)), 
-     table(inw1, inw3, useNA = "ifany"))
-with(charls %>% filter(is.na(r1hukou) & !is.na(r4hukou)), 
-     table(inw1, inw4, useNA = "ifany"))
-
-charls %<>%
-  mutate(hukou_flag = case_when(
-    r1hukou == r2hukou & r1hukou == r3hukou &
-      r1hukou == r4hukou ~ 0,
-    is.na(r1hukou) & is.na(r2hukou) & is.na(r3hukou) &
-      is.na(r4hukou) & is.na(lh_hukoutype) ~ NA_real_,
-    TRUE ~ 1))
-
-proc_freq(charls, hukou_flag)
-hukou_mat <- charls %>% select(contains("hukou")) %>% select(-hukou_flag)
-colSums(is.na(hukou_mat))
 
 #---- Number of children at 30 ----
 proc_freq(charls, chldstate30)
 with(charls, table(chldstate15, chldstate30, useNA = "ifany"))
 charls %<>%
   mutate(child_30 = chldstate30)
-
 
 #---- Dropping people ----
 ##---- 1. Dropping those who still missing age and gender ----
@@ -1160,16 +1222,17 @@ charls %<>%
 #   select(contains("edu"), contains("imrc"), contains("dlrc"))
 # table(colSums(is.na(test)))
 
-# These 6 people did not have the outcome measures and the eductaion variables
+# These 5 people did not have the outcome measures and the eductaion variables
 charls %>%
   filter(is.na(female_v2) & is.na(r1agey_v3)) %>% nrow()
 charls_selected <- charls %>%
   filter(!is.na(female_v2) | !is.na(r1agey_v3))
 
 ##---- 2. Dropping those who did not have any word recall scores ----
-# n = 2227
+# n = 2410
 charls_selected %>% 
-  filter((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc) & is.na(r4imrc))|
+  filter((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc) & is.na(r4imrc) &
+            is.na())|
            (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc) & is.na(r4dlrc))) %>% 
   nrow()
 charls_selected %<>% 
@@ -1191,6 +1254,29 @@ save(charls_selected,
      file = here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- OLD ----
+# #---- Hukou status ----
+# proc_freq(charls, r1hukou)
+# proc_freq(charls, lh_hukoutype) # First hukou status
+# 
+# with(charls, table(r1hukou, r2hukou, useNA = "ifany"))
+# with(charls %>% filter(is.na(r1hukou) & !is.na(r2hukou)), 
+#      table(inw1, inw2, useNA = "ifany"))
+# with(charls %>% filter(is.na(r1hukou) & !is.na(r3hukou)), 
+#      table(inw1, inw3, useNA = "ifany"))
+# with(charls %>% filter(is.na(r1hukou) & !is.na(r4hukou)), 
+#      table(inw1, inw4, useNA = "ifany"))
+# 
+# charls %<>%
+#   mutate(hukou_flag = case_when(
+#     r1hukou == r2hukou & r1hukou == r3hukou &
+#       r1hukou == r4hukou ~ 0,
+#     is.na(r1hukou) & is.na(r2hukou) & is.na(r3hukou) &
+#       is.na(r4hukou) & is.na(lh_hukoutype) ~ NA_real_,
+#     TRUE ~ 1))
+# 
+# proc_freq(charls, hukou_flag)
+# hukou_mat <- charls %>% select(contains("hukou")) %>% select(-hukou_flag)
+# colSums(is.na(hukou_mat))
 # #---- Outcome: Word recall ----
 # # immediate word recall
 # with(charls %>% filter(r3imrc == 0),
