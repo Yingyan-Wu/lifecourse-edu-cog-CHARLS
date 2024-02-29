@@ -84,9 +84,9 @@ table(harmonized$province_eng,useNA = "ifany")
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("demographic_background", "health_status_and_functioning", 
+              "cognition",
               "work_retirement_and_pension", "work_retirement", "sample_infor",
               "family_information", "weights")
-
 folder_index <- c(1:length(folders))[-c(1, 3, 5, 9)] # main waves only
 
 # Read in function
@@ -96,11 +96,11 @@ read_charls <- function(paths){
   } else if (str_detect(paths, "2011")) {
     haven::read_dta(paths) %>%
       select(-c("proxy")) # pending: can't figure out how to rename proxy automatically
-  } else if (str_detect(paths, "Health_Status_and_Functioning") & 
+  } else if (str_detect(paths, "Health_Status_and_Functioning") &
              str_detect(paths, "2015")){
     haven::read_dta(paths) %>%
       select(-c("xrtype", "versionID", "proxy"))
-  } else if (str_detect(paths, "Family_Information|Weights|Sample_Infor") & 
+  } else if (str_detect(paths, "Family_Information|Weights|Sample_Infor") &
              str_detect(paths, "2013|2015")){
     haven::read_dta(paths) %>%
       select(-c("versionID"))
@@ -111,7 +111,7 @@ read_charls <- function(paths){
   } else if (str_detect(paths, "2013|2015")){
     haven::read_dta(paths) %>%
       select(-c("xrtype", "versionID"))
-  } else if (str_detect(paths, "Family_Information") & 
+  } else if (str_detect(paths, "Family_Information") &
              str_detect(paths, "2018")){
     haven::read_dta(paths) %>%
       select(-c("versionID"))
@@ -119,15 +119,19 @@ read_charls <- function(paths){
              str_detect(paths, "Weights|Sample_Infor")){
     haven::read_dta(paths) %>%
       select(-c("versionID"))
-  } else if (str_detect(paths, "2018") & 
+  } else if (str_detect(paths, "2018") &
              str_detect(paths, "Health_Status_and_Functioning")){
     haven::read_dta(paths) %>%
       select(-c("versionID", "xrtype",
                 "xrgender", "ziwtime"))
-  } else if (str_detect(paths, "2018") & 
+  } else if (str_detect(paths, "2018") &
              str_detect(paths, "Work_Retirement")){
     haven::read_dta(paths) %>%
       select(-c("versionID", "xrtype"))
+  } else if (str_detect(paths, "2018") &
+             str_detect(paths, "Cognition")){
+    haven::read_dta(paths) %>%
+      select(-c("versionID"))
   } else if (str_detect(paths, "2018")){
     haven::read_dta(paths) %>%
       select(-c("versionID",
@@ -177,7 +181,6 @@ folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("residence", "demographic_background", "education_history", 
               "family_information")
 folder_index <- c(1:length(folders))[5] # life history only
-
 files <- list.files(path = folders[5], full.names = TRUE)
 files <- files[str_detect(files, regex(glue_collapse(datasets, sep="|"), 
                                        ignore_case = T))]
@@ -229,7 +232,6 @@ charls_w4 <- join_all(wave4,
 wave5_ID <- wave5$Demographic_Background %>% select(ID, householdID)
 wave5$Family_Information <- wave5_ID %>%
   left_join(wave5$Family_Information, by = "householdID", copy = T)
-
 charls_w5 <- join_all(wave5, 
                       by = c("ID", "householdID", "communityID"),
                       type = "left", match = "all") %>%
@@ -274,11 +276,10 @@ rm(harmonized_id)
 charls <- join_all(c(list(charls_w1, charls_w2, charls_w3, charls_w4, charls_w5,
                           charls_lh)),
                    by = c("ID"), # "ID_w234" = "ID", # somehow it didn't work anymore. Rename the ID_w234 in w1 above
-                   # "householdID", "communityID"),# Pending: needs to figure out this later
                    type = "full") %>% 
   as_tibble()
+colnames(charls %>% select(contains(".x")))
 
-# colnames(charls %>% select(contains(".x")))
 charls %<>%
   left_join(harmonized %>% select(-householdID, -communityID, 
                                   -ID_w1), by = "ID")
@@ -342,19 +343,19 @@ charls %<>%
 #---- Age ----
 # Wave 5 age
 age_w5 <- charls %>% select(ID, contains("w5_ba003"), contains("xrage"),
-                               w5_imonth, w5_iyear) %>%
-  mutate(w5_iwd = as.Date(paste0(w5_imonth, "/1/", w5_iyear), "%m/%d/%Y"),
-         w5_rabdate = case_when(
-           w5_ba003_2 == -1 ~
-             as.Date(paste0("1/1/", w5_ba003_1), "%m/%d/%Y"),
-           w5_ba003_3 == -1 ~
-             as.Date(paste0(w5_ba003_2, "/1/", w5_ba003_1), "%m/%d/%Y"),
-           !is.na(w5_ba003_3) ~
-             as.Date(paste0(w5_ba003_2, "/", w5_ba003_3, "/", w5_ba003_1), 
-                     "%m/%d/%Y")),
-         r5agey = round(interval(start = w5_rabdate, 
-                                 end = w5_iwd) / 
-                          duration(num = 1, units = "years")))
+                            w5_imonth, w5_iyear) %>%
+  dplyr::mutate(w5_iwd = as.Date(paste0(w5_imonth, "/1/", w5_iyear), "%m/%d/%Y"),
+                w5_rabdate = case_when(
+                  w5_ba003_2 == -1 ~
+                    as.Date(paste0("1/1/", w5_ba003_1), "%m/%d/%Y"),
+                  w5_ba003_3 == -1 ~
+                    as.Date(paste0(w5_ba003_2, "/1/", w5_ba003_1), "%m/%d/%Y"),
+                  !is.na(w5_ba003_3) ~
+                    as.Date(paste0(w5_ba003_2, "/", w5_ba003_3, "/", w5_ba003_1), 
+                            "%m/%d/%Y")),
+                r5agey = round(interval(start = w5_rabdate, 
+                                        end = w5_iwd) / 
+                                 duration(num = 1, units = "years")))
 charls %<>%
   left_join(age_w5 %>% select(ID, r5agey), by = "ID")
 
@@ -468,7 +469,7 @@ with(charls, table(female_v2, useNA = "ifany")) # 5 missing gender
 ##---- Early life Education ----
 charls %<>%
   mutate(r5educ_c = case_when(w5_ba010 %in% c(10, 11) ~ 10, # master + phd
-                     TRUE ~ w5_ba010)) %>%
+                              TRUE ~ w5_ba010)) %>%
   mutate(raeduc_c_v2 = case_when(!is.na(raeduc_c) ~ raeduc_c,
                                  is.na(raeduc_c) ~ r5educ_c))
 # Sanity check
@@ -620,24 +621,119 @@ with(charls %>% filter(!is.na(rLHiwm)),
      table(lh_e004, lh_e002, useNA = "ifany"))
 
 #---- Outcome ----
+##---- Wave 5 ----
+with(charls, table(w5_dc012_s11, w5_dc012_s12, useNA = "ifany"))
+# There are 1244 participants with no responses (can't recall any of the words)
+# but there are 427 participants refused to recall
+
+w5rc_mat <- charls %>% select(
+  contains(c("w5_dc012_","w5_dc013_", "w5_dc014_", # Immediate recall score
+             "w5_dc028_"))) # Delayed recall score
+colnames(w5rc_mat)
+# put every non missing and non zero value to be 1 besides s12
+w5rc_mat[w5rc_mat != 0 & !is.na(w5rc_mat)] <- 1
+w5rc_mat %<>%
+  mutate(across(ends_with("s11"), ~ case_when(.x == 0 ~ NA_real_,
+                                              .x == 11 ~ 0)))
+
+charls %<>%
+  mutate(r5imrc_cleaned = case_when(
+    w5_dc012_s11 == 11 ~ 0,
+    w5_dc012_s12 == 12 ~ NA_real_,
+    is.na(w5_dc012_s11) & is.na(w5_dc012_s12) ~ NA_real_,
+    TRUE ~ rowSums(w5rc_mat %>% select(
+      contains("w5_dc012_s"), -contains(c("s12", "s11"))), na.rm = T)),
+    r5imrc_trial2 = case_when(
+      w5_dc013_s11 == 11 ~ 0,
+      w5_dc013_s12 == 12 ~ NA_real_,
+      is.na(w5_dc013_s11) & is.na(w5_dc013_s12) ~ NA_real_,
+      TRUE ~ rowSums(w5rc_mat %>% select(
+        contains("w5_dc013_s"), -contains(c("s12", "s11"))), na.rm = T)),
+    r5imrc_trial3 = case_when(
+      w5_dc014_s11 == 11 ~ 0,
+      w5_dc014_s12 == 12 ~ NA_real_,
+      is.na(w5_dc014_s11) & is.na(w5_dc014_s12) ~ NA_real_,
+      TRUE ~ rowSums(w5rc_mat %>% select(
+        contains("w5_dc014_s"), -contains(c("s12", "s11"))), na.rm = T)),
+    r5dlrc_cleaned = case_when(
+      w5_dc028_s11 == 11 ~ 0,
+      w5_dc028_s12 == 12 ~ NA_real_,
+      is.na(w5_dc028_s11) & is.na(w5_dc028_s12) ~ NA_real_,
+      TRUE ~ rowSums(
+        w5rc_mat %>% 
+          select(contains("dc028_s"), -contains(c("s12", "s11"))), na.rm = T))
+  )
+
+with(charls, table(r5imrc_cleaned, useNA = "ifany"))
+charls %>% select(contains(c("imrc", "dlrc"))) %>% summary()
+with(charls, table(r5dlrc_cleaned, useNA = "ifany"))
+
+##---- Cleaning Immediate word recall ----
+# Clean the 0s and NAs (separated refuse to answer variable not available in wave 1 and 2)
+with(charls %>% filter(r3imrc == 0),
+     table(w3_dc006s11, w3_dc006s12, useNA = "ifany"))
+with(charls %>% filter(r4imrc == 0),
+     table(w4_dc028_w4_s11, w4_dc028_w4_s12, useNA = "ifany"))
+# There are 1877 participants with non responses (can't recall any of the words)
+# But the rest 653 participants refused to recall (needs to be NAed)
+
+charls %<>% 
+  mutate(
+    r3imrc_cleaned = case_when(
+      r3imrc == 0 & w3_dc006s12 == 12 ~ NA_real_,
+      # Note: if using read.dta13, the value will be "12 Refuse to Recall" for dc006s12s
+      TRUE ~ as.numeric(r3imrc)),
+    r4imrc_cleaned = case_when(
+      r4imrc == 0 & w4_dc028_w4_s12 == 12 ~ NA_real_,
+      TRUE ~ as.numeric(r4imrc)))
+# Sanity check
+with(charls, table(r3imrc_cleaned, r3imrc, useNA = "ifany"))
+with(charls, table(r4imrc_cleaned, w4_dc028_w4_s12, useNA = "ifany"))    
+
+##---- Cleaning Delayed word recall ----
+with(charls %>% filter(r3dlrc == 0),
+     table(w3_dc027s11, w3_dc027s12, useNA = "ifany"))
+with(charls %>% filter(r4dlrc == 0),
+     table(w4_dc047_w4_s11, w4_dc047_w4_s12, useNA = "ifany"))
+# There are 2334 participants with non responses (can't recall any of the words)
+# But the rest 505 participants seem to be NAed
+
+charls %<>% 
+  mutate(r3dlrc_cleaned = case_when(r3dlrc == 0 & w3_dc027s12 == 12 ~ NA_real_,
+                                    TRUE ~ r3dlrc),
+         r4dlrc_cleaned = case_when(r4dlrc == 0 & w4_dc047_w4_s12 == 12 ~ NA_real_,
+                                    TRUE ~ r4dlrc))
+# Sanity check
+with(charls, table(r3dlrc_cleaned, r3dlrc, useNA = "ifany"))
+with(charls, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
+with(charls, table(r5dlrc_cleaned, useNA = "ifany"))
+
+##---- Equated scores ----
+eqt_table <- readxl::read_xlsx(here::here("output", "tables", 
+                                          "table3_equating.xlsx")) %>%
+  set_colnames(c("test", "original_score", "r4", "r5")) %>%
+  mutate(test = case_when(test == "Immediate" ~ "imrc",
+                          test == "Delayed" ~ "dlrc")) %>%
+  pivot_wider(id_cols = "original_score", names_from = "test", 
+              values_from = c("r4", "r5"), names_sep = "") %>%
+  dplyr::rename_at(vars(ends_with("rc")), ~ str_c(., "_eqt"))
+
+charls %<>%
+  left_join(eqt_table %>% select(original_score, r4imrc_eqt), 
+            by = c("r4imrc_cleaned" = "original_score")) %>%
+  left_join(eqt_table %>% select(original_score, r4dlrc_eqt), 
+            by = c("r4dlrc_cleaned" = "original_score")) %>%
+  left_join(eqt_table %>% select(original_score, r5imrc_eqt), 
+            by = c("r5imrc_cleaned" = "original_score")) %>%
+  left_join(eqt_table %>% select(original_score, r5dlrc_eqt), 
+            by = c("r5dlrc_cleaned" = "original_score"))
+
+# Can also use the eqted score dataset saved from equipercentile project
 # The outcome was cleaned in another script (equipercentile equating method)
-load(here::here("data", "analysis_data", "eqt_rc.RData"))
-charls %<>%
-  left_join(eqt_tib, by = "ID")
-table(is.na(charls$r4imrc_eqt))
-table(is.na(charls$r4imrc))
-
-eqt_rc_xl <- readxl::read_xlsx(here::here("output", "tables", 
-                                           "table3_equating.xlsx")) %>%
-  set_colnames(c("test", "original_score", "r4eqt", "r5eqt"))
-
-eqt_rc_tib <- eqt_rc_xl %>%
-  pivot_wider(id_cols = "original_score",
-              names_from = "test", values_from = c("r4eqt", "r5eqt")) %>%
-  set_colnames(c("original_score", "r4imrc_eqt", "r4dlrc_eqt",
-                 "r5imrc_eqt", "r5dlrc_eqt"))
-charls %<>%
-  
+# Checked that the distribution of equated scores are the same
+# load(here::here("data", "analysis_data", "eqt_rc.RData"))
+# charls %<>% 
+#   left_join(eqt_tib, by = "ID")
 
 #---- Childhood Region of residence ----
 # psu2011_nbs <- readxl::read_xlsx(here::here("data", "analysis_data", 
@@ -1033,14 +1129,14 @@ with(charls, table(h1rural, h3rural, useNA = "ifany"))
 
 charls %<>%
   mutate(h5rural = case_when(w5_ba008 %in% c(3, 4) ~ 1,
-                               !is.na(w5_ba008) ~ 0),
-    hrural_v2 = case_when(
-    !is.na(h1rural) ~ h1rural,
-    is.na(h1rural) & !is.na(h2rural) ~ h2rural,
-    is.na(h1rural) & is.na(h2rural) & !is.na(h3rural) ~ h3rural,
-    is.na(h1rural) & is.na(h2rural) & is.na(h3rural) & !is.na(h4rural) ~ h4rural,
-    is.na(h1rural) & is.na(h2rural) & is.na(h3rural) & is.na(h4rural) &
-      !is.na(h5rural) ~ h5rural))
+                             !is.na(w5_ba008) ~ 0),
+         hrural_v2 = case_when(
+           !is.na(h1rural) ~ h1rural,
+           is.na(h1rural) & !is.na(h2rural) ~ h2rural,
+           is.na(h1rural) & is.na(h2rural) & !is.na(h3rural) ~ h3rural,
+           is.na(h1rural) & is.na(h2rural) & is.na(h3rural) & !is.na(h4rural) ~ h4rural,
+           is.na(h1rural) & is.na(h2rural) & is.na(h3rural) & is.na(h4rural) &
+             !is.na(h5rural) ~ h5rural))
 
 # Sanity check
 proc_freq(charls, hrural_v2)
@@ -1231,8 +1327,8 @@ charls_selected <- charls %>%
 ##---- 2. Dropping those who did not have any word recall scores ----
 # n = 2410
 charls_selected %>% 
-  filter((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc) & is.na(r4imrc) &
-            is.na())|
+  filter((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc) & is.na(r4imrc)) |
+           # & is.na())|
            (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc) & is.na(r4dlrc))) %>% 
   nrow()
 charls_selected %<>% 
@@ -1246,6 +1342,14 @@ charls_selected %<>%
 # table(test$ID %in% charls_selected$ID)
 # table(charls_selected$ID %in% test$ID)
 # charls_selected <- test
+test <- charls
+test_selected <- charls_selected
+load(here::here("data", "analysis_data", "charls_selected.RData"))
+diffdf::diffdf(test_selected, charls_selected)
+table(test_selected$ID %in% charls_selected$ID)
+table(charls_selected$ID %in% test_selected$ID)
+charls <- test
+charls_selected <- test_selected
 
 #---- Save the data ----
 save(charls, 
