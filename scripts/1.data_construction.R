@@ -781,7 +781,14 @@ charls %<>%
 # with(charls, table(is.na(lh_t002_psu_1_short), is.na(lh_t002_psu_5_short)))
 
 charls %<>%
-  mutate(childhood_1st_resi = lh_t002_province_1_)
+  mutate(childhood_1st_resi = lh_t002_province_1_,
+         childhood_1st_region = case_when(
+           str_detect(childhood_1st_resi, "Beijing|Tianjin|Hebei|Shanghai|Jiangsu|Zhejiang|
+               Fujian|Shandong|Guangdong|Hainan") ~ 1,
+           str_detect(childhood_1st_resi, "Shanxi|Anhui|Jiangxi|Henan|Hubei|Hunan") ~ 2,
+           str_detect(childhood_1st_resi, "Mongolia|Guangxi|Chongqing|Sichuan|Guizhou|Yunnan|
+               Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3,
+           str_detect(childhood_1st_resi,"Liaoning|Jilin|Heilongjiang") ~ 4))
 
 #---- Childhood Rural/urban residence ----
 colnames(charls %>% select(contains("bb006")))
@@ -1152,11 +1159,11 @@ proc_freq(charls, province_eng) %>% print(n = Inf)
 charls %<>% mutate(
   region_eng = case_when(
     str_detect(province_eng, "Beijing|Tianjin|Hebei|Shanghai|Jiangsu|Zhejiang|
-               Fujian|Shandong|Guangdong|Hainan") ~ 1,
-    str_detect(province_eng, "Shanxi|Anhui|Jiangxi|Henan|Hubei|Hunan") ~ 2,
+               Fujian|Shandong|Guangdong|Hainan") ~ 1, # East
+    str_detect(province_eng, "Shanxi|Anhui|Jiangxi|Henan|Hubei|Hunan") ~ 2, # Central
     str_detect(province_eng, "Mongolia|Guangxi|Chongqing|Sichuan|Guizhou|Yunnan|
-               Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3,
-    str_detect(province_eng,"Liaoning|Jilin|Heilongjiang") ~ 4))
+               Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3, # West
+    str_detect(province_eng,"Liaoning|Jilin|Heilongjiang") ~ 4)) # North East
 
 # Sanity check
 proc_freq(charls, region_eng)
@@ -1196,7 +1203,6 @@ residence_mat %<>%
 # with(residence_mat, table(rural_30, hrural_v2, useNA = "ifany"))
 # with(residence_mat, table(rural_30, h1rural, useNA = "ifany"))
 # with(residence_mat, table(rural_30, lh_t004_1_, useNA = "ifany"))
-
 
 # residence_mat %<>%
 #   mutate(lh_t001_date = case_when(
@@ -1273,7 +1279,7 @@ charls %<>%
 proc_freq(first_hukou_mat, first_hukou)
 proc_freq(charls, first_hukou)
 
-##----  Hukou status at 30 (25 - 35 nonmissing closest to 30) -----
+##---- Hukou status at 30 (25-35 nonmissing closest to 30) -----
 nonmissing_30_hukou_mat <- hukou_long_mat %>%
   filter(!is.na(hkstate)) %>%
   mutate(age_30_abs = abs(Age - 30)) %>%
@@ -1300,16 +1306,36 @@ charls %<>%
 with(charls, table(hkstate30, hukou_30, useNA = "ifany"))
 proc_freq(charls, hukou_30)
 
-charls %<>%
-  mutate(marital_30 = maritalsts_30  - 1)
-with(charls, table(marital_30, maritalsts_30, useNA = "ifany"))
-proc_freq(charls, marital_30)
-
 #---- Number of children at 30 ----
-proc_freq(charls, chldstate30)
-with(charls, table(chldstate15, chldstate30, useNA = "ifany"))
+childnum_long_mat <- charls %>%
+  select(ID, rLHagey, contains("chldstate")) %>%
+  pivot_longer(!c(ID, rLHagey), 
+               names_to = "Age",
+               values_to = "chldstate",
+               names_pattern = "chldstate(.*)") %>%
+  mutate(Age = as.numeric(Age)) %>%
+  filter(Age <= rLHagey | is.na(rLHagey)) 
+
+nonmissing_30_child_mat <- childnum_long_mat %>%
+  filter(!is.na(chldstate)) %>%
+  mutate(age_30_abs = abs(Age - 30)) %>%
+  filter(age_30_abs <= 5) %>%
+  arrange(ID, age_30_abs) %>%
+  group_by(ID) %>%
+  slice(1) %>%
+  ungroup() %>%
+  dplyr::rename(chldstate_30 = chldstate,
+                chldstate_30_age = Age)
+
 charls %<>%
-  mutate(child_30 = chldstate30)
+  left_join(nonmissing_30_child_mat %>% select(ID, contains("chldstate_30")),
+            by = "ID")
+
+proc_freq(charls, chldstate30)
+with(charls, table(chldstate_30, chldstate30, useNA = "ifany"))
+
+#---- Weight ----
+charls %<>% dplyr::rename(r5wtrespb = w5_INDV_weight_ad2)
 
 #---- Dropping people ----
 ##---- 1. Dropping those who still missing age and gender ----
@@ -1325,31 +1351,45 @@ charls_selected <- charls %>%
   filter(!is.na(female_v2) | !is.na(r1agey_v3))
 
 ##---- 2. Dropping those who did not have any word recall scores ----
-# n = 2410
+# n = 1979
 charls_selected %>% 
-  filter((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc) & is.na(r4imrc)) |
-           # & is.na())|
-           (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc) & is.na(r4dlrc))) %>% 
+  filter((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc_cleaned) & is.na(r4imrc_cleaned) &
+            is.na(r5imrc_cleaned)) |
+           (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc_cleaned) & is.na(r4dlrc_cleaned) &
+              is.na(r5dlrc_cleaned))) %>% 
   nrow()
 charls_selected %<>% 
-  filter(!((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc) & is.na(r4imrc))|
-             (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc) & is.na(r4dlrc))))
+  filter(!((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc_cleaned) & is.na(r4imrc_cleaned) &
+              is.na(r5imrc_cleaned)) |
+             (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc_cleaned) & is.na(r4dlrc_cleaned) &
+                is.na(r5dlrc_cleaned))))
 
-# Check the previous saved dataset
-# test <- charls_selected
-# load(here::here("data", "analysis_data", "charls_selected.RData"))
-# colnames(test)[!colnames(test) %in% colnames(charls_selected)]
-# table(test$ID %in% charls_selected$ID)
-# table(charls_selected$ID %in% test$ID)
-# charls_selected <- test
-test <- charls
-test_selected <- charls_selected
-load(here::here("data", "analysis_data", "charls_selected.RData"))
-diffdf::diffdf(test_selected, charls_selected)
-table(test_selected$ID %in% charls_selected$ID)
-table(charls_selected$ID %in% test_selected$ID)
-charls <- test
-charls_selected <- test_selected
+##---- Select variables ----
+charls_selected %<>%
+  select(ID, 
+         # Weights
+         paste0("r", 1:5, "wtrespb"),
+         # Age and gender
+         paste0("r", 1:5, "agey_v3"), female_v2, 
+         # Education
+         raeduc_c_v2, contains("_edu"), edu_cat,
+         # Word recall scores
+         contains("imrc"), contains("dlrc"), 
+         # Childhood residence
+         childhood_1st_resi, childhood_1st_region, rarural_child, 
+         # Parental SES
+         rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c, 
+         # Birth order
+         first_child_v2, 
+         # Occupation
+         contains("first_occupation"), contains("occupation_30"), 
+         # Marital status
+         contains("first_maritalsts"), marital_30, maritalsts_30_age, 
+         # Adulthood Rural and hukou
+         paste0("h", 1:5, "rural"), region_eng, province_eng, rural_30, 
+         contains("first_hukou"), contains("hukou_30"), 
+         # Number of children at 30 years old
+         contains("chldstate_30"))
 
 #---- Save the data ----
 save(charls, 
