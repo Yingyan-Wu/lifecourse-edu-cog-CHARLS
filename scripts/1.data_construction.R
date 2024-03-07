@@ -1372,7 +1372,7 @@ charls_selected %<>%
          # Age and gender
          paste0("r", 1:5, "agey_v3"), female_v2, 
          # Education
-         raeduc_c_v2, contains("_edu"), edu_cat,
+         childhood_edu, continuing_edu, edu_cat,
          # Word recall scores
          contains("imrc"), contains("dlrc"), 
          # Childhood residence
