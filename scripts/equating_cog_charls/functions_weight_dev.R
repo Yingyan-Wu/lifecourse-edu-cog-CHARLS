@@ -50,8 +50,8 @@ checkcovbal <- function(data, weightvar, treatvar){
     geom_vline(xintercept = 0) +
     xlab("Standardized mean diff Mean(Ref) - Mean(Index)/SD(Ref)") +
     theme_bw() +
-    geom_vline(xintercept = c(-0.2, 0.2), linetype = "dashed",
-               color = "dark grey") +
+    # geom_vline(xintercept = c(-0.2, 0.2), linetype = "dashed",
+    #            color = "dark grey") +
     # sclae_x_continuous
     theme(aspect.ratio = 5/3, panel.grid.minor.x = element_blank(),
           axis.title.y = element_blank(),
@@ -74,8 +74,8 @@ covbal_comp_plot <- function(weighted_covbal_data, unweighted_covbal_data,
     xlab(paste0("Standardized mean diff\nmean(Wave ",ref, ") - mean(Wave ", index,
                 ")/SD(Wave ", ref, ")")) +
     theme_bw() +
-    geom_vline(xintercept = c(-0.2, 0.2), linetype = "dashed",
-               color = "dark grey") +
+    # geom_vline(xintercept = c(-0.2, 0.2), linetype = "dashed",
+    #            color = "dark grey") +
     theme(
       aspect.ratio = 5/3,
       panel.grid.minor.x = element_blank(),

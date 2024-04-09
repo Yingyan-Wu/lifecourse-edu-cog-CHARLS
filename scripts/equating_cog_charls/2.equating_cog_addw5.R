@@ -47,9 +47,9 @@ charls_selected <- harmonized_long_151820 %>%
 table(charls_selected$childhood_edu, useNA = "ifany")
 table(charls_selected$mstat, useNA = "ifany")
 
-# # save the dataset
-# save(charls_selected, file = here::here("data", "analysis_data",
-#                                         "charls_eqt_selected.RData"))
+# save the dataset
+save(charls_selected, file = here::here("data", "analysis_data",
+                                        "charls_eqt_selected.RData"))
 #---- 2a. Generate weights ----
 # Generate weights, to ensure the age/education distributions are the same 
 # in each study wave. This will remove the aging and education effects from the 
@@ -276,9 +276,9 @@ covbal_comp_plot(w4d_test_1520$covbal_data, unw_test_1520$covbal_data,
   theme(legend.position = "right")
 
 ##---- save final weights covariate balance data ----
-# save(unw_test_1518, unw_test_1520, 
-#      w3_test_1518, w4d_test_1520, 
-#      file = here::here("data", "analysis_data", "eqt_covbal_data.RData"))
+save(unw_test_1518, unw_test_1520,
+     w3_test_1518, w4d_test_1520,
+     file = here::here("data", "analysis_data", "eqt_covbal_data.RData"))
 
 #----2b. Check distribution for weighted 2018 and 2015 ----
 # Unweighted 2015
@@ -358,21 +358,26 @@ png(here::here("output", "figures", "figure3_eqt_plot.png"),
     width = 7, height = 5, units = "in", res = 300)
 par(mfrow=c(2,2), mar=c(4, 4, 2, 2), xaxs='i', yaxs='i')
 plot(eqim_eqp_IOW_1518, xlab = "Original Score (Wave 2018)", 
-     ylab = "Equated Score", legendtext = "Equipercentile")
+     ylab = "Equated Score", legendtext = "Equipercentile", 
+     morepars = list(ylim = c(0, 10)))
 title(main = "Immediate word recall score", line = 1)
 mtext("A", side = 3, line = 0.5, cex = 1, adj = -0.28, font = 2)
 plot(eqdl_eqp_IOW_1518, xlab = "Original Score (Wave 2018)", 
-     ylab = "Equated Score", legendtext = "Equipercentile")
+     ylab = "Equated Score", legendtext = "Equipercentile",
+     morepars = list(ylim = c(0, 10)))
 title(main = "Delayed word recall score", line = 1)
 mtext("B", side = 3, line = 0.5, cex = 1, adj = -0.28, font = 2)
 plot(eqim_eqp_IOW_1520, xlab = "Original Score (Wave 2020)", 
-     ylab = "Equated Score", legendtext = "Equipercentile")
+     ylab = "Equated Score", legendtext = "Equipercentile",
+     morepars = list(ylim = c(0, 10)))
 mtext("C", side = 3, line = 0.5, cex = 1, adj = -0.28, font = 2)
 plot(eqdl_eqp_IOW_1520, xlab = "Original Score (Wave 2020)", 
-     ylab = "Equated Score", legendtext = "Equipercentile")
+     ylab = "Equated Score", legendtext = "Equipercentile",
+     morepars = list(ylim = c(0, 10)))
 mtext("D", side = 3, line = 0.5, cex = 1, adj = -0.28, font = 2)
 dev.off()
-graphics.off()
+# graphics.off()
+
 # Table 
 equated_score_table <- 
   rbind(eqim_eqp_IOW_1518$concordance %>% mutate(Score = "Immediate"), 
@@ -386,9 +391,9 @@ equated_score_table <-
                  "Wave 2020 Equated score")) %>%
   mutate_if(is.numeric, round, 2)
 
-# writexl::write_xlsx(
-#   equated_score_table,
-#   path = here::here("output", "tables", "table3_equating.xlsx"))
+writexl::write_xlsx(
+  equated_score_table,
+  path = here::here("output", "tables", "table3_equating.xlsx"))
 
 ##---- Checked the distribution in the calibration group! ----
 charls_covbal %<>%
