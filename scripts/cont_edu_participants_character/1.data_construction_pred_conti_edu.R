@@ -15,6 +15,14 @@ p_load("here", "readr", "plyr", "tidyverse", "magrittr","haven", "survey", "glue
 #---- load the data ----
 load(here::here("data", "analysis_data", "charls_cleaned.RData"))
 
+#---- Reclassify variables ----
+charls %<>%
+  mutate(occupation_30_3cat = case_when(occupation_30 %in% c(1, 2) ~ 1,
+                                        occupation_30 %in% c(3, 4, 5) ~ 2,
+                                        occupation_30 == 6 ~ 3,
+                                        occupation_30 == 7 ~ 4,
+                                        occupation_30 == 8 ~ 5))
+
 #---- Dropping people ----
 ##---- 1. Dropping those who still missing age and gender ----
 # test <- charls %>%
