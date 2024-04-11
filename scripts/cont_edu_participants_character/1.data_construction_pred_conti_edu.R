@@ -55,11 +55,16 @@ charls_selected %<>%
          # Number of children at 30 years old
          contains("chldstate_30"))
 
+#---- Dropping people ----
+##---- 1. missing continuing education info ----
+charls_selected %>% filter(is.na(continuing_edu)) %>% nrow() #n = 828
+charls_selected %<>%
+  filter(!is.na(continuing_edu))
 
 #---- Save the data ----
 # Difference with main dataset is that main dataset exclude for those missing one outcome
 # The analysis in later scripts were conducted in the main dataset
 # If this paper is back in place, multiple imputation should be run in this dataset
 # and analysis needs to rerun in the imputed dataset
-save(charls_selected, 
+save(charls, charls_selected, 
      file = here::here("data", "analysis_data", "charls_selected_pred_cont.RData"))
