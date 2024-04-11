@@ -33,6 +33,8 @@ charls_selected %<>%
   select(ID, 
          # Weights
          paste0("r", 1:5, "wtrespb"),
+         # Birthyear
+         rabyear_v2,
          # Age and gender
          paste0("r", 1:5, "agey_v3"), female_v2, 
          # Education
