@@ -17,7 +17,7 @@ load(here::here("data", "analysis_data", "charls_cleaned.RData"))
 
 #---- Reclassify variables ----
 charls %<>%
-  mutate(occupation_30_3cat = case_when(occupation_30 %in% c(1, 2) ~ 1,
+  mutate(occupation_30_5cat = case_when(occupation_30 %in% c(1, 2) ~ 1,
                                         occupation_30 %in% c(3, 4, 5) ~ 2,
                                         occupation_30 == 6 ~ 3,
                                         occupation_30 == 7 ~ 4,
@@ -77,4 +77,4 @@ charls_selected %<>%
 # If this paper is back in place, multiple imputation should be run in this dataset
 # and analysis needs to rerun in the imputed dataset
 save(charls, charls_selected, 
-     file = here::here("data", "analysis_data", "charls_selected_pred_cont.RData"))
+     file = here::here("data", "analysis_data", "charls_selected_pred_cont_cc.RData"))
