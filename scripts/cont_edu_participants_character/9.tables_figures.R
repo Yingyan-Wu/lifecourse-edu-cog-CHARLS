@@ -14,7 +14,6 @@ p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "glue",
 # Do not load "summarytools" as it contains conflicted functions as dplyr
 
 #---- Load the data ----
-load(here::here("data", "analysis_data", "charls_selected_pred_cont_cc.RData"))
 imp_pmm_40 <- readRDS(here::here("data", "analysis_data", "imp_pmm_40_stacked.RDS"))
 imp_pmm_40 %<>%
   mutate(occupation_30_5cat = case_when(occupation_30 %in% c(1, 2) ~ 1,
