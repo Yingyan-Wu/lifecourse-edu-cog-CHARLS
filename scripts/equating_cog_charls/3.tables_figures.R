@@ -205,9 +205,9 @@ eqted_empirical_plot <-
   labs(x = "Year", y = "Word recall scores")
 
 eqted_empirical_plot
-# ggsave(eqted_empirical_plot,
-#        filename = here::here("output", "figures", "figure1_empirical_plot_eqted.png"),
-#        device = "png", dpi = 300, width = 7, height = 5, units = "in")
+ggsave(eqted_empirical_plot,
+       filename = here::here("output", "figures", "figure1_empirical_plot_eqted.eps"),
+       device = "eps", dpi = 300, width = 7, height = 5, units = "in")
 
 
 #---- Figure 2. Covariate balance plot ----
@@ -238,6 +238,9 @@ figure2_covbal
 ggsave(figure2_covbal,
        filename = here::here("output", "figures", "figure2_covbal_plot.png"),
        device = "png", dpi = 300, width = 9, height = 7, units = "in")
+ggsave(figure2_covbal,
+       filename = here::here("output", "figures", "figure2_covbal_plot.eps"),
+       device = "eps", dpi = 300, width = 9, height = 7, units = "in")
 
 #---- Figure 3. equated equating plot ----
 # in euqating_cog_addw5.R script
