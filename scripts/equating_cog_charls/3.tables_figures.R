@@ -27,6 +27,8 @@ with(harmonized_addw5_selected %>% filter(r4age_y >= 60,
                                      !is.na(r4imrc_cleaned), 
                                      !is.na(r4dlrc_cleaned)), 
      table(r4dlrc_cleaned > r4imrc_cleaned, useNA = "ifany"))/7676
+# FALSE    TRUE 
+# 0.47642 0.52358 
 
 harmonized_addw5_selected %>% filter(r5age_y >= 60) %>% nrow() # 15704
 harmonized_addw5_selected %>% filter(r5age_y >= 60, 
@@ -36,9 +38,15 @@ with(harmonized_addw5_selected %>% filter(r5age_y >= 60,
                                           !is.na(r5imrc_cleaned), 
                                           !is.na(r5dlrc_cleaned)), 
      table(r5dlrc_cleaned > r5imrc_cleaned, useNA = "ifany"))/9137
+# FALSE      TRUE 
+# 0.3477071 0.6522929 
+
 
 #---- Table 2. descriptive table 1 ----
 load(here::here("data", "analysis_data", "charls_eqt_selected.RData"))
+# Unique participants
+charls_selected %>% select(ID) %>% unique() %>% nrow() # 11148
+# Table
 table1_151820 <- charls_selected %>%
   select(age_y, female, childhood_edu, rural, work_status,
          hukou_impute, imrc_cleaned, dlrc_cleaned, wave) %>%
