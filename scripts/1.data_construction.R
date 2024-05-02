@@ -247,12 +247,6 @@ charls_lh <- join_all(life_history,
 rm(life_history)
 rm(list = paste0("wave", 1:5))
 gc()
-# Pending
-# 3 more participants in harmonized dataset in wave 1
-# harmonized_selected %>%
-#   filter(!ID_w1 %in% charls_w1$ID)
-# 
-# view(charls_w1 %>% filter(str_detect(ID, "064604211")))
 
 # ID from harmonized dataset
 harmonized_id <- harmonized %>% 
@@ -709,14 +703,18 @@ with(charls, table(r4dlrc_cleaned, r4dlrc, useNA = "ifany"))
 with(charls, table(r5dlrc_cleaned, useNA = "ifany"))
 
 ##---- Equated scores ----
+# Same algorithm for equating for r4 and r5
 eqt_table <- readxl::read_xlsx(here::here("output", "tables", 
-                                          "table3_equating.xlsx")) %>%
-  set_colnames(c("test", "original_score", "r4", "r5")) %>%
+                                          "table3_lumping_equating.xlsx")) %>%
+  set_colnames(c("test", "original_score", "eqt_score")) %>%
+  # set_colnames(c("test", "original_score", "r4", "r5")) %>%
   mutate(test = case_when(test == "Immediate" ~ "imrc",
                           test == "Delayed" ~ "dlrc")) %>%
   pivot_wider(id_cols = "original_score", names_from = "test", 
-              values_from = c("r4", "r5"), names_sep = "") %>%
-  dplyr::rename_at(vars(ends_with("rc")), ~ str_c(., "_eqt"))
+              values_from = "eqt_score", names_sep = "") %>%
+  dplyr::rename_at(vars(ends_with("rc")), ~ str_c("r4", ., "_eqt")) %>%
+  mutate(r5imrc_eqt = r4imrc_eqt,
+         r5dlrc_eqt = r4dlrc_eqt)
 
 charls %<>%
   left_join(eqt_table %>% select(original_score, r4imrc_eqt), 
@@ -1244,7 +1242,10 @@ hukou_long_mat <- charls %>%
                names_to = "Age",
                values_to = "hkstate",
                names_pattern = "hkstate(.*)") %>%
-  mutate(Age = as.numeric(Age)) %>%
+  mutate(Age = as.numeric(Age),
+         # Set those reported to not having hukou to be NA
+         hkstate = case_when(hkstate == 4 ~ NA,
+                             TRUE ~ hkstate)) %>%
   filter(Age <= rLHagey |is.na(rLHagey)) # exclude the records of later age which participants
 # have not reached (assigned NA records)
 
