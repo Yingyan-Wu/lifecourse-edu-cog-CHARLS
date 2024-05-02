@@ -10,7 +10,7 @@ rm(list = ls())
 if (!require("pacman")){
   install.packages("pacman", repos = 'http://cran.us.r-project.org')
 }
-p_load("haven", "tidyverse", "magrittr", "plyr", "mice", "DataExplorer")
+p_load("haven", "magrittr", "plyr", "tidyverse", "mice", "DataExplorer")
 
 #---- function ----
 source(here::here("scripts", "functions.R"))
