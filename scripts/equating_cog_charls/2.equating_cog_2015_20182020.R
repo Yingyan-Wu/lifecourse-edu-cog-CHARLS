@@ -361,33 +361,3 @@ save(eqt_tib, file = here::here("data", "analysis_data", "eqt_rc_05012024.RData"
 # Save harmonized_addw5_selected
 save(harmonized_addw5_selected, 
      file = here::here("data", "analysis_data", "charls_equating_samp_eqt_151820_05012024.RData"))
-
-#---- Figure S1. distribution of different trials of imrc -----
-rc_long <- harmonized_addw5_selected %>%
-  select(ID, contains(c("r4imrc", "r5imrc", "r4dlrc", "r5dlrc"))) %>% 
-  pivot_longer(cols = !ID,
-               names_to = c("wave", "construct", "trial"),
-               names_pattern = "r(\\d)(.*)_(.*)") %>%
-  mutate(year = case_when(wave == 4 ~ "Wave 2018",
-                          wave == 5 ~ "Wave 2020"),
-         measure = case_when(
-           construct == "imrc" & trial == "cleaned" ~ "Original trial 1",
-           construct == "dlrc" & trial == "cleaned" ~ "Original",
-           trial == "trial2" ~ "Original trial 2",
-           trial == "trial3" ~ "Original trial 3",
-           trial == "eqt" ~ "Equated"),
-         measure = factor(measure, 
-                          levels = c(paste0("Original trial ", 1:3),
-                                     "Original", "Equated")),
-         construct = case_when(construct == "imrc" ~ "Immediate word recall",
-                               construct == "dlrc" ~ "Delayed word recall"),
-         construct = factor(construct, levels = c("Immediate word recall", 
-                                                  "Delayed word recall")))
-
-rc_long %>%
-  ggplot() +
-  geom_boxplot(aes(x = measure, y = value)) +
-  facet_grid(rows = vars(year), cols = vars(construct),
-             scale = "free_x", space="free") +
-  labs(x = element_blank(), y = "Word recall scores") +
-  theme_bw()
