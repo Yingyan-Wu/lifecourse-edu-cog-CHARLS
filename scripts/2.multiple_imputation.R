@@ -24,7 +24,8 @@ charls_selected_forimp <- charls_selected %>%
   select(-paste0("r", 2:5, "agey_v3"),
          -contains(c("imrc", "dlrc")), -province_eng, -edu_cat, 
          -paste0("h", 1:5, "rural"), -first_maritalsts_age, -childhood_1st_resi,
-         -contains("first_hukou"), -chldstate_30_age, -occupation_30_age, 
+         -contains("first_hukou"), first_hukou,
+         -chldstate_30_age, -occupation_30_age, 
          -hukou_30_age,
          -contains("first_occupation"))
 DataExplorer::plot_missing(charls_selected_forimp)
