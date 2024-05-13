@@ -59,7 +59,8 @@ binary_vars <-
 # Comment this out to treat them all as continuous variables
 ordinal_vars <- c("childhood_edu", "continuing_edu", "rameduc_c", "rafeduc_c")
 
-cat_vars <- c("hukou_30", "occupation_30", "childhood_1st_region", "region_eng")
+cat_vars <- c("hukou_30", "occupation_30", "childhood_1st_region", "region_eng",
+              "first_hukou")
 
 (cont_vars <- variable_length_mat %>%
     filter(!Var %in% c(binary_vars, ordinal_vars, cat_vars)) %>% pull(Var))
@@ -112,6 +113,7 @@ densityplot(imp_pmm_40)
 save(imp_pmm_40, file = here::here("data", "analysis_data", "imp_pmm_40.RData"))
 
 #---- Stack imputed dataset ----
+load(here::here("data", "analysis_data", "imp_pmm_40.RData"))
 imp_num = 40
 imp_temp <- list()
 for (i in 1:imp_num){
@@ -122,7 +124,7 @@ for (i in 1:imp_num){
       select(ID, paste0("r", 2:5, "agey_v3"),
              contains(c("imrc", "dlrc")), -province_eng, -edu_cat, 
              paste0("h", 1:5, "rural"), -first_maritalsts_age, -childhood_1st_resi,
-             contains("first_hukou"), -chldstate_30_age, -occupation_30_age, 
+             -chldstate_30_age, -occupation_30_age, 
              hukou_30_age,
              contains("first_occupation")),
     imp_temp[[i]][, colnames(impute_data)])
