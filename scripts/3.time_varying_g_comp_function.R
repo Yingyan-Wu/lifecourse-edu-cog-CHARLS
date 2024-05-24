@@ -90,13 +90,13 @@ joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
   } else {
     data_boot <- dataset
   }
-
-  data_boot %<>%
-    filter(!is.na(!!sym(x0)) & !is.na(!!sym(x1)))
   
-  data_boot_long <- tibble(
-    ID = data_boot$ID,
-    newid = 1:length(data_boot$ID)) %>%
+  # Filter to index and comparison groups only (nonmissing binary x0 and x1)
+  data_boot %<>%
+    filter(!is.na(!!sym(x0)) & !is.na(!!sym(x1))) %>%
+    mutate(newid = 1:n())
+  
+  data_boot_long <- data_boot %>% select(ID, newid) %>%
     left_join(dataset_long, by = "ID", relationship = "many-to-many") %>%
     filter(!is.na(!!sym(y)))
   
@@ -104,11 +104,11 @@ joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
   #Estimating marginal expectation of X0 and X1
   px0_model <- glm(as.formula(paste0(x0, "~ 1")), 
                    data = data_boot, weights = r1wtrespb, 
-                   family = binomial("identity"))
+                   family = quasibinomial("identity"))
   px1_model <- glm(as.formula(paste0(x1, "~ 1")),  
                    data = data_boot, 
                    weights = r1wtrespb, 
-                   family = binomial("identity"))
+                   family = quasibinomial("identity"))
   
   #---- Step 2: Fit a model for C1 given X0 and C0 (lambdas)----
   for (c1_var in c1_mutinomial){
@@ -122,9 +122,9 @@ joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
   for (c1_var in c1_binary){
     c1_model_form <- paste0(c1_var, " ~ ", x0, " + ", 
                             paste(c0, collapse = "+"))
-    model <- glm(as.formula(c1_model_form), 
-                 data = data_boot, weights = r1wtrespb,
-                 family = binomial)
+    model <- glm(as.formula(c1_model_form), data = data_boot, weights = r1wtrespb,
+                 family = binomial,  alpha = 1, # alpha = 1 lasso, 0 ridge
+                 lambda = NULL)
     assign(paste0("pc1_model_", c1_var), model)
   }
   
@@ -146,11 +146,9 @@ joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
     weights = c("w_obs", "r1wtrespb"),
     cWeights = TRUE)
   
-  colSums(is.na(data_boot_long))
-  
   #---- Step 4: Simulate post intervention DAG distribution----
   data_boot %<>%
-    mutate(
+    dplyr::mutate(
       # Intervention X
       doX0 = rbinom(n, size = 1, prob = 
                       predict(px0_model, data_boot, type = "response")),
