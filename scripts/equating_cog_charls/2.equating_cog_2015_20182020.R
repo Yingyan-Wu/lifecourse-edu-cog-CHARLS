@@ -253,7 +253,7 @@ eqdl_eqp_IOW_15_1820$concordance
 plot(eqdl_eqp_IOW_15_1820, eqdl_mean_IOW_15_1820, eqdl_linear_IOW_15_1820)
 
 ##---- eqt plots ----
-png(here::here("output", "figures", "figure4_eqt_plot_lump20182020.png"),
+tiff(here::here("output", "figures", "figure4_eqt_plot_lump20182020.tiff"),
     width = 7, height = 5, units = "in", res = 300)
 par(mfrow=c(1,2), mar=c(4, 4, 2, 2), xaxs='i', yaxs='i')
 plot(eqim_eqp_IOW_15_1820, xlab = "Original Score (Wave 2018/2020)",
