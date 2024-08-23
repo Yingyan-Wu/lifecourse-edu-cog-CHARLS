@@ -1,7 +1,7 @@
 # Time-varying g comp function
 # Created by: Yingyan Wu
 
-require(nnet) # package for multinomial logistic regression 
+require(nnet, magrittr) # package for multinomial logistic regression 
 
 imp_pmm_40 <- readRDS(here::here("data", "analysis_data", "imp_pmm_40_stacked.RDS"))
 imp_pmm_40 %<>%
