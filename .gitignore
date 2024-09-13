@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 .DS_Store
+.Renviron
 
 # folders
 data/
@@ -12,3 +13,5 @@ Abstract/
 
 # files
 CHARLS_Dataset_construction_codebook.xlsx
+test.RData
+Table 2. Summary of CHARLS HCAP studies.xlsx
