@@ -13,6 +13,7 @@ if (!require("pacman")){
 p_load("here", "readr", "plyr", "tidyverse", "magrittr","haven", "survey", "glue",
        "labelled", "lubridate")
 # Do not load "summarytools" as it contains conflicted functions from dplyr
+options(scipen = 999)
 
 #---- function ----
 source(here::here("scripts", "functions.R"))
