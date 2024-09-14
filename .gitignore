@@ -10,6 +10,7 @@ data/
 output/
 manuscript/
 Abstract/
+scripts/sample_code/
 
 # files
 CHARLS_Dataset_construction_codebook.xlsx
