@@ -21,7 +21,8 @@ load(here::here("data", "analysis_data", "charls_selected.RData"))
 #---- Check the missingness ----
 # Drop those derived variables for the dataset to be imputed
 charls_selected_forimp <- charls_selected %>%
-  select(-paste0("r", 2:5, "agey_v3"),
+  select(-ID,
+         -paste0("r", 2:5, "agey_v3"),
          -contains(c("imrc", "dlrc")), -province_eng, -edu_cat, 
          -paste0("h", 1:5, "rural"), -first_maritalsts_age, -childhood_1st_resi,
          -contains("first_hukou"), first_hukou,
@@ -30,8 +31,12 @@ charls_selected_forimp <- charls_selected %>%
          -contains("first_occupation"))
 DataExplorer::plot_missing(charls_selected_forimp)
 missing_summary <- DataExplorer::profile_missing(charls_selected_forimp) %>%
+  mutate(pct_missing = pct_missing*100) %>%
   arrange(pct_missing) %>%
   print(n = Inf)
+
+writexl::write_xlsx(missing_summary, 
+                    here::here("output", "tables", "missing_summary.xlsx"))
 
 ordered_var_list <- c(paste0(missing_summary$feature))
 
@@ -39,7 +44,7 @@ ordered_var_list <- c(paste0(missing_summary$feature))
 # Running single imputation
 # prep data by ordering by missingness
 impute_data <- charls_selected_forimp[, ordered_var_list] %>%
-  select(-ID) %>% as.data.frame() %>% print()
+  as.data.frame() %>% print()
 ncol(impute_data)
 colnames(impute_data)
 str(impute_data)
