@@ -69,7 +69,6 @@ harmonized_lh <- haven::read_dta(here::here("data", "raw_data", "harmonized",
 #     auth_key = "a152826f-19ff-78ea-32a5-1b8a9b13a291:fx")$translation)
 # 
 # save(psuw1, file = here::here("data", "analysis_data", "psuw1.RData"))
-
 load(here::here("data", "analysis_data", "psuw1.RData"))
 
 harmonized %<>% left_join(psuw1 %>% select(communityID, province_eng), 
@@ -173,7 +172,6 @@ for (i in folder_index){
 }
 
 rm(list)
-
 gc()
 
 ##---- life history datasets ----
@@ -239,6 +237,7 @@ charls_w5 <- join_all(wave5,
   rename_with(.cols = !c("ID", "householdID", "communityID"), 
               function(x){paste0("w5_", x)})
 
+# Life history
 charls_lh <- join_all(life_history, 
                       by = c("ID", "householdID", "communityID", "versionID"),
                       type = "left", match = "all") %>%
@@ -415,12 +414,12 @@ with(charls %>% filter(is.na(r4agey_v3) & !is.na(rLHagey)),
 
 missingage_id <- charls%>%
   filter(is.na(r1agey_v3) & is.na(r2agey_v3) & is.na(r3agey_v3) & 
-           is.na(r4agey_v3)) %>%
+           is.na(r4agey_v3) & is.na(r5agey_v3)) %>%
   pull(ID)
 
 charls_missingage <- charls %>%
   filter(ID %in% missingage_id) %>%
-  select("ID", paste0("r", 1:4, "iwd_v2"), rabdate_v2, 
+  select("ID", paste0("r", 1:5, "iwd_v2"), rabdate_v2, 
          # Weights
          paste0("r", 1:4, "wtrespb"),
          "ragender",
@@ -439,16 +438,11 @@ view(charls_missingage)
 #---- Gender ----
 charls %<>% 
   mutate(female = case_when(ragender_v2 == 1 ~ 0,
-                            ragender_v2 == 2 ~ 1),
-         lh_female = case_when(lh_ragender == 1 ~ 0,
-                               lh_ragender == 2 ~ 1),
-         female_v2 = case_when(!is.na(female) ~ female,
-                               is.na(female) ~ lh_female))
+                            ragender_v2 == 2 ~ 1))
 # sanity check
+with(charls, table(female, ragender_v2, useNA = "ifany"))# 5 missing gender
 with(charls, table(female, ragender, useNA = "ifany"))
 with(charls, table(female, lh_ragender, useNA = "ifany"))
-with(charls, table(female, female_v2, useNA = "ifany"))
-with(charls, table(female_v2, useNA = "ifany")) # 5 missing gender
 # with(charls, table(female, w1_rgender, useNA = "ifany"))
 # with(charls, table(female, w2_ba000_w2_3, useNA = "ifany"))
 # with(charls, table(female, w2_xrgender, useNA = "ifany"))
@@ -547,8 +541,8 @@ charls %>% filter(adult_edu == 0 & adult_edu_dplm == 1) %>% select(contains("bd0
 
 charls %<>%
   mutate(adult_edu = case_when(adult_edu == 0 & adult_edu_dplm == 1 & 
-                                 w3_bd011 %in% c(1, 2) ~ 1,
-                               TRUE ~ adult_edu),
+                                    w3_bd011 %in% c(1, 2) ~ 1,
+                                  TRUE ~ adult_edu),
          adult_edu_dplm = case_when(
            (adult_edu == 0 & adult_edu_dplm == 1 & !w3_bd011 %in% c(1, 2))|
              (adult_edu == 1 & is.na(adult_edu_dplm))~ 0,
@@ -601,7 +595,6 @@ with(charls %>% filter(is.na(edu_cat) & raeduc_c_v2 == 1),
 
 ##---- Education interruption 1967 - 1977 ----
 # For sensitivity analysis
-# Pending
 with(charls %>% filter(r1agey_v3 >= 45), 
      table(rabyear_v2, lh_e002, useNA = "ifany"))
 proc_freq(charls, lh_e002)
@@ -783,11 +776,11 @@ charls %<>%
   mutate(childhood_1st_resi = lh_t002_province_1_,
          childhood_1st_region = case_when(
            str_detect(childhood_1st_resi, "Beijing|Tianjin|Hebei|Shanghai|Jiangsu|Zhejiang|
-               Fujian|Shandong|Guangdong|Hainan") ~ 1,
-           str_detect(childhood_1st_resi, "Shanxi|Anhui|Jiangxi|Henan|Hubei|Hunan") ~ 2,
+               Fujian|Shandong|Guangdong|Hainan") ~ 1, # East
+           str_detect(childhood_1st_resi, "Shanxi|Anhui|Jiangxi|Henan|Hubei|Hunan") ~ 2, # Middle
            str_detect(childhood_1st_resi, "Mongolia|Guangxi|Chongqing|Sichuan|Guizhou|Yunnan|
-               Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3,
-           str_detect(childhood_1st_resi,"Liaoning|Jilin|Heilongjiang") ~ 4))
+               Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3, # West
+           str_detect(childhood_1st_resi,"Liaoning|Jilin|Heilongjiang") ~ 4)) # Northeast
 
 #---- Childhood Rural/urban residence ----
 colnames(charls %>% select(contains("bb006")))
@@ -816,8 +809,8 @@ charls %<>% mutate(rameduc_c = case_when(rameduc_c == 1 ~ 0,
                                          rafeduc_c %in% c(2, 3, 4) ~ 1,
                                          rafeduc_c %in% c(5, 6, 7) ~ 2,
                                          rafeduc_c %in% c(8, 9, 10, 11) ~ 3),
-                   ramoccup_c = ramomoccup_c - 1,
-                   rafoccup_c = radadoccup_c - 1)
+                   ramoccup_c = ramomoccup_c_v2 - 1,
+                   rafoccup_c = radadoccup_c_v2 - 1)
 # Sanity check
 with(charls, table(ramoccup_c, ramomoccup_c, useNA = "ifany"))
 with(charls, table(rafoccup_c, radadoccup_c, useNA = "ifany"))
@@ -1342,15 +1335,15 @@ charls %<>% dplyr::rename(r5wtrespb = w5_INDV_weight_ad2)
 #---- Dropping people ----
 ##---- 1. Dropping those who still missing age and gender ----
 # test <- charls %>%
-#   filter(is.na(female_v2) & is.na(r1agey_v3)) %>%
+#   filter(is.na(female) & is.na(r1agey_v3)) %>%
 #   select(contains("edu"), contains("imrc"), contains("dlrc"))
 # table(colSums(is.na(test)))
 
 # These 5 people did not have the outcome measures and the eductaion variables
 charls %>%
-  filter(is.na(female_v2) & is.na(r1agey_v3)) %>% nrow()
+  filter(is.na(female) & is.na(r1agey_v3)) %>% nrow()
 charls_selected <- charls %>%
-  filter(!is.na(female_v2) | !is.na(r1agey_v3))
+  filter(!is.na(female) | !is.na(r1agey_v3))
 
 ##---- 2. Dropping those who did not have any word recall scores ----
 # n = 1979
@@ -1372,7 +1365,7 @@ charls_selected %<>%
          # Weights
          paste0("r", 1:5, "wtrespb"),
          # Age and gender
-         paste0("r", 1:5, "agey_v3"), female_v2, 
+         paste0("r", 1:5, "agey_v3"), female, 
          # Education
          childhood_edu, continuing_edu, edu_cat,
          # Word recall scores
