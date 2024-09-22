@@ -334,7 +334,7 @@ charls %<>%
 #          contains("w5_ba003")) %>%
 #   view()
 
-#---- Age ----
+#---- Age: agey_v3 ----
 # Wave 5 age
 age_w5 <- charls %>% select(ID, contains("w5_ba003"), contains("xrage"),
                             w5_imonth, w5_iyear) %>%
@@ -435,7 +435,7 @@ charls_missingage <- charls %>%
 view(charls_missingage)
 # Will have to drop these people
 
-#---- Gender ----
+#---- Gender: female ----
 charls %<>% 
   mutate(female = case_when(ragender_v2 == 1 ~ 0,
                             ragender_v2 == 2 ~ 1))
@@ -454,7 +454,7 @@ with(charls, table(female, lh_ragender, useNA = "ifany"))
 #Drop CHARLS harmonized gender variable
 # charls %<>% dplyr::select(-ragender)
 
-#---- Education variables ----
+#---- Education variables: childhood_edu, adult_edu, edu_cat ----
 ##---- Early life Education ----
 charls %<>%
   mutate(r5educ_c = case_when(w5_ba010 %in% c(10, 11) ~ 10, # master + phd
@@ -541,8 +541,8 @@ charls %>% filter(adult_edu == 0 & adult_edu_dplm == 1) %>% select(contains("bd0
 
 charls %<>%
   mutate(adult_edu = case_when(adult_edu == 0 & adult_edu_dplm == 1 & 
-                                    w3_bd011 %in% c(1, 2) ~ 1,
-                                  TRUE ~ adult_edu),
+                                 w3_bd011 %in% c(1, 2) ~ 1,
+                               TRUE ~ adult_edu),
          adult_edu_dplm = case_when(
            (adult_edu == 0 & adult_edu_dplm == 1 & !w3_bd011 %in% c(1, 2))|
              (adult_edu == 1 & is.na(adult_edu_dplm))~ 0,
@@ -608,7 +608,7 @@ length(charls %>% filter(rabyear <= 1962 & rabyear >= 1946))
 with(charls %>% filter(!is.na(rLHiwm)),
      table(lh_e004, lh_e002, useNA = "ifany"))
 
-#---- Outcome ----
+#---- Outcome: r1imrc, r2imrc, r3imrc_cleaned, r4imrc_eqt, r5imrc_eqt ----
 ##---- Wave 5 ----
 with(charls, table(w5_dc012_s11, w5_dc012_s12, useNA = "ifany"))
 # There are 1244 participants with no responses (can't recall any of the words)
@@ -727,7 +727,7 @@ charls %<>%
 # charls %<>% 
 #   left_join(eqt_tib, by = "ID")
 
-#---- Childhood Region of residence ----
+#---- Childhood Region of residence: childhood_1st_resi ----
 # psu2011_nbs <- readxl::read_xlsx(here::here("data", "analysis_data", 
 #                                             "psu2011_nbs.xlsx"))
 # colnames(psu2011_nbs)
@@ -782,7 +782,7 @@ charls %<>%
                Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3, # West
            str_detect(childhood_1st_resi,"Liaoning|Jilin|Heilongjiang") ~ 4)) # Northeast
 
-#---- Childhood Rural/urban residence ----
+#---- Childhood Rural/urban residence: rarural_child ----
 colnames(charls %>% select(contains("bb006")))
 proc_freq(charls, w1_bb006)
 proc_freq(charls, w2_bb006)
@@ -800,7 +800,7 @@ charls %<>%
 proc_freq(charls, rarural_child)
 # with(charls, table(rarural_child, childhood_1st_resi, useNA = "ifany"))
 
-#---- Parental socioeconomic status ----
+#---- Parental socioeconomic status: rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c ----
 charls %<>% mutate(rameduc_c = case_when(rameduc_c == 1 ~ 0,
                                          rameduc_c %in% c(2, 3, 4) ~ 1,
                                          rameduc_c %in% c(5, 6, 7) ~ 2,
@@ -816,7 +816,7 @@ with(charls, table(ramoccup_c, ramomoccup_c, useNA = "ifany"))
 with(charls, table(rafoccup_c, radadoccup_c, useNA = "ifany"))
 with(charls, table(rameduc_c, useNA = "ifany"))
 
-#---- birth order ----
+#---- birth order: first_child_v2 ----
 # From the core dataset
 # No detailed sibling information from wave 5    T^T
 # But it's fine! (same reasons for childhood rural/urban residence)
@@ -929,20 +929,20 @@ work_history_long_mat <- charls %>%
 # Sanity check
 with(work_history_long_mat, table(Age, useNA = "ifany"))
 
-# A random sample of 100 people
-set.seed("62283")
-random_id <- sample(unique(harmonized_lh$ID), 100, replace = F)
-
-work_history_long_mat %>%
-  filter(ID %in% random_id) %>%
-  ggplot(aes(x = Age, y = as.factor(wrkstate), group = ID, color = factor(ID))) +
-  geom_line() +
-  theme_classic() +
-  labs(x = "Age (year)",
-       y = "Work status",
-       title = paste0("Profile Plot of Work status across different age",
-                      "\nA random sample of 100 people")) +
-  theme(legend.position = "none")
+# # A random sample of 100 people
+# set.seed("62283")
+# random_id <- sample(unique(harmonized_lh$ID), 100, replace = F)
+# 
+# work_history_long_mat %>%
+#   filter(ID %in% random_id) %>%
+#   ggplot(aes(x = Age, y = as.factor(wrkstate), group = ID, color = factor(ID))) +
+#   geom_line() +
+#   theme_classic() +
+#   labs(x = "Age (year)",
+#        y = "Work status",
+#        title = paste0("Profile Plot of Work status across different age",
+#                       "\nA random sample of 100 people")) +
+#   theme(legend.position = "none")
 
 ##---- First occupation type ----
 # # First occupation mat
@@ -988,7 +988,7 @@ proc_freq(charls, first_occupation)
 # 2011 wave 1 labor force
 # proc_freq(charls, r1lbrf_c)
 
-##---- occupation at 30 (25 - 35 nonmissing closest to 30) -----
+##---- occupation at 30 (25 - 35 nonmissing closest to 30): occupation_30 -----
 nonmissing_30_work_mat <- work_history_long_mat %>%
   filter(!is.na(wrkstate)) %>%
   mutate(age_30_abs = abs(Age - 30)) %>%
@@ -1014,7 +1014,7 @@ nonmissing_30_work_mat <- work_history_long_mat %>%
 # view(charls %>% filter(ID %in% ID_set) %>%
 #        select(ID, rLHagey, contains("c_wrkstate")))
 
-charls %<>% select(-contains("occupation_30"))
+# charls %<>% select(-contains("occupation_30"))
 charls %<>%
   left_join(nonmissing_30_work_mat %>% select(ID, contains("occupation_30")),
             by = "ID")
@@ -1070,14 +1070,14 @@ first_marital_mat <- marital_long_mat %>%
   dplyr::rename(first_maritalsts = prtnstate,
                 first_maritalsts_age = Age)
 
-charls %<>% select(-contains("first_maritalsts"))
+# charls %<>% select(-contains("first_maritalsts"))
 charls %<>%
   left_join(first_marital_mat %>% select(ID, contains("first_maritalsts")),
             by = "ID")
 # Sanity check
 proc_freq(charls, first_maritalsts)
 
-##---- marital status 30 (25 - 35 nonmissing closest to 30) -----
+##---- marital status 30 (25 - 35 nonmissing closest to 30): marital_30 -----
 nonmissing_30_marital_mat <- marital_long_mat %>%
   filter(!is.na(prtnstate)) %>%
   mutate(age_30_abs = abs(Age - 30)) %>%
@@ -1120,7 +1120,7 @@ charls %<>%
 proc_freq(charls, r1mstat_c)
 proc_freq(charls, r1mstat_c_v2)
 
-#---- Residence in adulthood ----
+#---- Residence in adulthood: hrural_v2 ----
 ##---- Wave 1 Rural v.s.urban ----
 proc_freq(charls, h1rural)
 with(charls, table(h1rural, h2rural, useNA = "ifany"))
@@ -1161,73 +1161,94 @@ charls %<>% mutate(
 proc_freq(charls, region_eng)
 with(charls, table(region_eng, province_eng, useNA = "ifany"))
 
-##---- Rural/urban residence 30 ----
-residence_mat <- charls %>% select(contains(c("t001", "t002","t004")), 
-                                   rabyear_v2, contains("rural")) %>%
-  mutate(rayear_30 = rabyear_v2 + 30) %>%
+##---- Rural/urban residence 30: rural_30 ----
+rural_mat <- charls %>% select(ID, contains(c("lh_t001b_", "lh_t004_", "rural"))) %>%
   mutate(across(paste0("lh_t004_", 1:25, "_"),
                 ~ case_when(. %in% c(1, 3, 5) ~ 1,
                             . %in% c(2, 4) ~ 0)))
+
+moving_years_mat <- charls %>%
+  # year at 30 years old
+  mutate(rayear_30 = rabyear_v2 + 30) %>%
+  select(ID, rayear_30, matches("lh_t001b_1_.*_")) %>%
+  pivot_longer(cols = !c(ID, rayear_30),
+               names_pattern = "lh_t001b_1_(.*)_",
+               names_to = "xth_resi",
+               values_to = "year") %>%
+  na.omit() %>%
+  mutate(year_diff = abs(rayear_30 - year))
+
+summary(moving_years_mat$year_diff)
+
+rural_30_mat <- moving_years_mat %>%
+  # Filter on moving years that are within 5 years of 30 years old (25-35)
+  filter(year_diff <= 5) %>%
+  arrange(ID, year_diff) %>%
+  group_by(ID) %>%
+  # filter on the moving year that is closest to 30 years old
+  slice(1L) %>%
+  ungroup() %>%
+  # Create indicators for rural_30 variables
+  mutate(rural_30_var = paste0("lh_t004_", xth_resi, "_")) %>%
+  left_join(rural_mat %>% select(ID, contains("lh_t004_")), by = "ID") %>%
+  rowwise() %>%
+  # Fill the rural_30 variable with the values from the lh_t004 specific variables
+  mutate(rural_30 = pick(everything())[[rural_30_var]]) %>%
+  ungroup()
+
+rural_mat_filtered <- rural_mat %>%
+  select(ID, paste0("lh_t001b_", 1:25, "_")) %>%
+  filter(rowSums(is.na(across(paste0("lh_t001b_", 1:25, "_")))) < 25) %>%
+  rowwise() %>%
+  # Checking lh_t001b_1_1_ to lh_t001b_1_25_ for the first occurrence of 2 (not moving since then)
+  mutate(
+    # Find the position of the first occurrence of 2, return NA if not found
+    first_2 = suppressWarnings(min(which(c_across(paste0("lh_t001b_", 1:25, "_")) == 2), 
+                                   na.rm = TRUE)),
+    first_2 = case_when(is.infinite(first_2) ~ NA,
+                        TRUE ~ first_2),
+    # case_when is failing, use ifelse instead
+    indicator = ifelse(
+      is.na(first_2), 0,  # No 2 found
+      ifelse(
+        first_2 <= length(c_across(paste0("lh_t001b_", 1:25, "_"))) & 
+          all(c_across(paste0("lh_t001b_", 1:25, "_"))[
+            first_2:length(c_across(paste0("lh_t001b_", 1:25, "_")))] %in% c(2, NA)),
+        1,  # All later values are 2 or NA
+        2)))   # Some later values are 1 (need to check)
+
+# table(test$indicator, useNA = "ifany")
+# view(test %>% filter(indicator == 2)) # 38 participants with most of them got 2s later
+
+# # Check the rural_30 variables and original variables
+# test2 <- rural_mat %>%
+#   left_join(test %>% select(ID, indicator), by = "ID") %>%
+#   left_join(rural_30_mat %>% select(ID, rural_30), by = "ID") %>%
+#   mutate(rural_30_v2 = case_when(indicator == 1 ~ hrural_v2),
+#          rural_30_v3 = case_when(indicator != 0 ~ hrural_v2))
+# with(test2, table(rural_30_v2, rural_30_v3, useNA = "ifany"))
+# with(test2, table(rural_30_v2, rural_30, useNA = "ifany"))
+# test2 %>% filter(rural_30_v2 != rural_30) %>% 
+#   select(ID, hrural_v2, rural_30, rural_30_v2,
+#          paste0("lh_t004_", 1:25, "_"), 
+#          paste0("lh_t001b_", 1:25, "_")) %>% 
+#   select(where(~sum(!is.na(.)) > 0)) %>%
+#   view()
+# # With those conflicted values between rural_30 and hrural_v2, take rural_30
+# # as it reflect more as 30 years old residence
+
+rural_mat %<>%
+  left_join(rural_mat_filtered %>% select(ID, indicator), by = "ID") %>%
+  left_join(rural_30_mat %>% select(ID, rural_30), by = "ID") %>%
+  mutate(rural_30 = case_when(!is.na(rural_30) ~ rural_30,
+                              is.na(rural_30) & indicator != 0 ~ hrural_v2))
+
+charls %<>%
+  left_join(rural_mat %>% select(ID, rural_30), by = "ID")
+
 # Sanity check
-# table(residence_mat$lh_t004_1_, useNA = "ifany")
-# table(charls$lh_t004_1_, useNA = "ifany")
-# with(residence_mat, table(abs(rabyear_v2 - lh_t001b_1_10_) <= 5, useNA = "ifany"))
-
-residence_mat %<>%
-  mutate(rural_30 = case_when(
-    # residence at 25 - 35 (2nd reported residence)
-    abs(rabyear_v2 - lh_t001b_1_1_) <= 5 ~ lh_t004_1_,
-    # residence at 25 - 35 (3nd reported residence)
-    abs(rabyear_v2 - lh_t001b_1_2_) <= 5 ~ lh_t004_2_,
-    # residence at 25 - 35 (4th reported residence)
-    abs(rabyear_v2 - lh_t001b_1_3_) <= 5 ~ lh_t004_3_,
-    # residence at 25 - 35 (5th reported residence)
-    abs(rabyear_v2 - lh_t001b_1_4_) <= 5 ~ lh_t004_4_,
-    # residence at 25 - 35 (6th reported residence)
-    abs(rabyear_v2 - lh_t001b_1_5_) <= 5 ~ lh_t004_5_,
-    # residence at 25 - 35 (7th reported residence)
-    abs(rabyear_v2 - lh_t001b_1_6_) <= 5 ~ lh_t004_6_,
-    lh_t001b_1_ == 2 | lh_t001b_2_ == 2 | lh_t001b_3_ == 2 | lh_t001b_4_ == 2 |
-      lh_t001b_5_ == 2 | lh_t001b_6_ == 2 ~ hrural_v2))
-
-# Sanity check
-# proc_freq(residence_mat, rural_30)
-# with(residence_mat, table(rural_30, hrural_v2, useNA = "ifany"))
-# with(residence_mat, table(rural_30, h1rural, useNA = "ifany"))
-# with(residence_mat, table(rural_30, lh_t004_1_, useNA = "ifany"))
-
-# residence_mat %<>%
-#   mutate(lh_t001_date = case_when(
-#     !is.na(lh_t001b_2_1_) ~ 
-#       as.Date(paste0(lh_t001b_2_1_, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
-#     # Season
-#     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 1 ~ # Spring
-#       as.Date(paste0(3, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
-#     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 2 ~ # Summer
-#       as.Date(paste0(6, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
-#     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 3 ~ # Fall
-#       as.Date(paste0(9, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
-#     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 4 ~ # Winter
-#       as.Date(paste0(12, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
-#     # first half or second half of a year
-#     is.na(lh_t001b_2_1_) & is.na(lh_t001b_3_1_) & lh_t001b_4_1_ == 1 ~ # 1st half
-#       as.Date(paste0(4, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
-#     is.na(lh_t001b_2_1_) & is.na(lh_t001b_3_1_) & lh_t001b_4_1_ == 2 ~ # 2nd half
-#       as.Date(paste0(9, "/1/", lh_t001b_1_1_), "%m/%d/%Y")))
-
-# with(residence_mat %>% filter(is.na(lh_t001_date)), 
-#      table(lh_t001b_1_, useNA = "ifany")) # 13425 participants didn't move
-# with(residence_mat %>% filter(lh_t001b_1_ == 2),
-#      table(hrural_v2, useNA = "ifany")) # 13244 
-
-# with(residence_mat, table(lh_t001b_1_, useNA = "ifany"))
-
-# with(residence_mat %>% filter(is.na(lh_t001_date)),
-#      table(lh_t002e_1_1_, useNA = "ifany"))
-# with(residence_mat %>% filter(!is.na(lh_t001_date)), 
-#      table(lh_t001b_1_, useNA = "ifany"))
-
-charls$rural_30 <- residence_mat$rural_30
+proc_freq(rural_mat, rural_30)
+proc_freq(charls, rural_30)
 
 #---- Hukou history from harmonized LH ----
 hukou_long_mat <- charls %>%
@@ -1246,14 +1267,14 @@ hukou_long_mat <- charls %>%
 # Sanity check
 with(hukou_long_mat, table(Age, useNA = "ifany"))
 
-hukou_long_mat %>%
-  ggplot(aes(x = Age, y = as.factor(hkstate), group = ID, color = factor(ID))) +
-  geom_line() +
-  theme_classic() +
-  labs(x = "Age (year)",
-       y = "Hukou status",
-       title = paste0("Profile Plot of Hukou status across different age")) +
-  theme(legend.position = "none")
+# hukou_long_mat %>%
+#   ggplot(aes(x = Age, y = as.factor(hkstate), group = ID, color = factor(ID))) +
+#   geom_line() +
+#   theme_classic() +
+#   labs(x = "Age (year)",
+#        y = "Hukou status",
+#        title = paste0("Profile Plot of Hukou status across different age")) +
+#   theme(legend.position = "none")
 
 ##---- First hukou type ----
 first_hukou_mat <- hukou_long_mat %>%
@@ -1274,7 +1295,7 @@ charls %<>%
 proc_freq(first_hukou_mat, first_hukou)
 proc_freq(charls, first_hukou)
 
-##---- Hukou status at 30 (25-35 nonmissing closest to 30) -----
+##---- Hukou status at 30 (25-35 nonmissing closest to 30): hukou_30 -----
 nonmissing_30_hukou_mat <- hukou_long_mat %>%
   filter(!is.na(hkstate)) %>%
   mutate(age_30_abs = abs(Age - 30)) %>%
@@ -1301,7 +1322,7 @@ charls %<>%
 with(charls, table(hkstate30, hukou_30, useNA = "ifany"))
 proc_freq(charls, hukou_30)
 
-#---- Number of children at 30 ----
+#---- Number of children at 30: chldstate_30 ----
 childnum_long_mat <- charls %>%
   select(ID, rLHagey, contains("chldstate")) %>%
   pivot_longer(!c(ID, rLHagey), 
@@ -1329,35 +1350,42 @@ charls %<>%
 proc_freq(charls, chldstate30)
 with(charls, table(chldstate_30, chldstate30, useNA = "ifany"))
 
-#---- Weight ----
+#---- Weight: wtrespb ----
 charls %<>% dplyr::rename(r5wtrespb = w5_INDV_weight_ad2)
 
 #---- Dropping people ----
-##---- 1. Dropping those who still missing age and gender ----
+##---- 1. Dropping those who still missing age or gender ----
 # test <- charls %>%
-#   filter(is.na(female) & is.na(r1agey_v3)) %>%
-#   select(contains("edu"), contains("imrc"), contains("dlrc"))
-# table(colSums(is.na(test)))
+#   filter(is.na(female) | is.na(r1agey_v3)) %>%
+#   select(female, contains("agey_v3"), contains("childhood_edu"), 
+#          contains("continuing_edu"),
+#          contains("imrc"), contains("dlrc"))
+# # These 5 people did not have the outcome measures and the education variables
+# table(colSums(is.na(test %>% filter(is.na(female)))))
+# # Most of these 438 people did not have outcome measures or education variables
+# table(colSums(is.na(test %>% filter(is.na(r1agey_v3)))))
+# test %>% filter(is.na(r1agey_v3)) %>% view()
 
-# These 5 people did not have the outcome measures and the eductaion variables
+# n = 438 drop missing age or gender!
 charls %>%
-  filter(is.na(female) & is.na(r1agey_v3)) %>% nrow()
+  filter(is.na(female) | is.na(r1agey_v3)) %>% nrow()
 charls_selected <- charls %>%
-  filter(!is.na(female) | !is.na(r1agey_v3))
+  filter(!is.na(female) | !is.na(r1agey_v3)) # n = 26054
 
 ##---- 2. Dropping those who did not have any word recall scores ----
-# n = 1979
+# n = 1979 missing all immediate word recall scores or all delayed word recall scores
 charls_selected %>% 
-  filter((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc_cleaned) & is.na(r4imrc_cleaned) &
-            is.na(r5imrc_cleaned)) |
-           (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc_cleaned) & is.na(r4dlrc_cleaned) &
-              is.na(r5dlrc_cleaned))) %>% 
+  filter(rowSums(is.na(across(c("r1imrc", "r2imrc", "r3imrc_cleaned", 
+                                "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
+           (rowSums(is.na(across(c("r1dlrc", "r2dlrc", "r3dlrc_cleaned", 
+                                   "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5) %>% 
   nrow()
+
 charls_selected %<>% 
-  filter(!((is.na(r1imrc) & is.na(r2imrc) & is.na(r3imrc_cleaned) & is.na(r4imrc_cleaned) &
-              is.na(r5imrc_cleaned)) |
-             (is.na(r1dlrc) & is.na(r2dlrc) & is.na(r3dlrc_cleaned) & is.na(r4dlrc_cleaned) &
-                is.na(r5dlrc_cleaned))))
+  filter(!(rowSums(is.na(across(c("r1imrc", "r2imrc", "r3imrc_cleaned", 
+                                "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
+           (rowSums(is.na(across(c("r1dlrc", "r2dlrc", "r3dlrc_cleaned", 
+                                   "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5))  # n = 24070
 
 ##---- Select variables ----
 charls_selected %<>%
@@ -1381,7 +1409,7 @@ charls_selected %<>%
          # Marital status
          contains("first_maritalsts"), marital_30, maritalsts_30_age, 
          # Adulthood Rural and hukou
-         paste0("h", 1:5, "rural"), region_eng, province_eng, rural_30, 
+         paste0("h", 1:5, "rural"), hrural_v2, region_eng, province_eng, rural_30, 
          contains("first_hukou"), contains("hukou_30"), 
          # Number of children at 30 years old
          contains("chldstate_30"))
@@ -1393,6 +1421,76 @@ save(charls_selected,
      file = here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- OLD ----
+# # ---- Rural/urban residence 30 ----
+# residence_mat <- charls %>%
+#   select(ID, rayear_30, lh_t001b_1_1_, lh_t001b_1_2_, lh_t001b_1_3_, lh_t001b_1_4_,
+# residence_mat <- 
+#   charls %>% select(ID, contains(c("lh_t001b_", "lh_t004_", "rural"))) %>%
+#   mutate(across(paste0("lh_t004_", 1:25, "_"),
+#                 ~ case_when(. %in% c(1, 3, 5) ~ 1,
+#                             . %in% c(2, 4) ~ 0))) %>%
+#   mutate(rayear_30 = rabyear_v2 + 30)
+# 
+# residence_mat %<>%
+#   mutate(rural_30 = case_when(
+#     # residence at 25 - 35 (2nd reported residence)
+#     abs(rayear_30 - lh_t001b_1_1_) <= 5 ~ lh_t004_2_,
+#     # residence at 25 - 35 (3nd reported residence)
+#     abs(rayear_30 - lh_t001b_1_2_) <= 5 ~ lh_t004_3_,
+#     # residence at 25 - 35 (4th reported residence)
+#     abs(rayear_30 - lh_t001b_1_3_) <= 5 ~ lh_t004_4_,
+#     # residence at 25 - 35 (5th reported residence)
+#     abs(rayear_30 - lh_t001b_1_4_) <= 5 ~ lh_t004_5_,
+#     # residence at 25 - 35 (6th reported residence)
+#     abs(rayear_30 - lh_t001b_1_5_) <= 5 ~ lh_t004_6_,
+#     # residence at 25 - 35 (7th reported residence)
+#     abs(rayear_30 - lh_t001b_1_6_) <= 5 ~ lh_t004_7_,
+#     # residence at 25 - 35 (7th reported residence)
+#     abs(rayear_30 - lh_t001b_1_6_) <= 5 ~ lh_t004_7_,
+#     # residence at 25 - 35 (7th reported residence)
+#     abs(rayear_30 - lh_t001b_1_6_) <= 5 ~ lh_t004_7_,
+#     # If not moved since then, use the rural residence in harmonized dataset
+#     lh_t001b_1_ == 2 | lh_t001b_2_ == 2 | lh_t001b_3_ == 2 | lh_t001b_4_ == 2 |
+#       lh_t001b_5_ == 2 | lh_t001b_6_ == 2 ~ hrural_v2))
+# 
+# # # Sanity check
+# # proc_freq(residence_mat, rural_30)
+# # with(residence_mat, table(rural_30, hrural_v2, useNA = "ifany"))
+# # with(residence_mat, table(rural_30, h1rural, useNA = "ifany"))
+# # with(residence_mat, table(rural_30, lh_t004_1_, useNA = "ifany"))
+# 
+# # residence_mat %<>%
+# #   mutate(lh_t001_date = case_when(
+# #     !is.na(lh_t001b_2_1_) ~ 
+# #       as.Date(paste0(lh_t001b_2_1_, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+# #     # Season
+# #     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 1 ~ # Spring
+# #       as.Date(paste0(3, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+# #     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 2 ~ # Summer
+# #       as.Date(paste0(6, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+# #     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 3 ~ # Fall
+# #       as.Date(paste0(9, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+# #     is.na(lh_t001b_2_1_) & lh_t001b_3_1_ == 4 ~ # Winter
+# #       as.Date(paste0(12, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+# #     # first half or second half of a year
+# #     is.na(lh_t001b_2_1_) & is.na(lh_t001b_3_1_) & lh_t001b_4_1_ == 1 ~ # 1st half
+# #       as.Date(paste0(4, "/1/", lh_t001b_1_1_), "%m/%d/%Y"),
+# #     is.na(lh_t001b_2_1_) & is.na(lh_t001b_3_1_) & lh_t001b_4_1_ == 2 ~ # 2nd half
+# #       as.Date(paste0(9, "/1/", lh_t001b_1_1_), "%m/%d/%Y")))
+# 
+# # with(residence_mat %>% filter(is.na(lh_t001_date)), 
+# #      table(lh_t001b_1_, useNA = "ifany")) # 13425 participants didn't move
+# # with(residence_mat %>% filter(lh_t001b_1_ == 2),
+# #      table(hrural_v2, useNA = "ifany")) # 13244 
+# 
+# # with(residence_mat, table(lh_t001b_1_, useNA = "ifany"))
+# 
+# # with(residence_mat %>% filter(is.na(lh_t001_date)),
+# #      table(lh_t002e_1_1_, useNA = "ifany"))
+# # with(residence_mat %>% filter(!is.na(lh_t001_date)), 
+# #      table(lh_t001b_1_, useNA = "ifany"))
+# 
+# charls$rural_30 <- residence_mat$rural_30
 # #---- Hukou status ----
 # proc_freq(charls, r1hukou)
 # proc_freq(charls, lh_hukoutype) # First hukou status
