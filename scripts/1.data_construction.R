@@ -1370,10 +1370,10 @@ charls %<>% dplyr::rename(r5wtrespb = w5_INDV_weight_ad2)
 charls %>%
   filter(is.na(female) | is.na(r1agey_v3)) %>% nrow()
 charls_selected <- charls %>%
-  filter(!is.na(female) | !is.na(r1agey_v3)) # n = 26054
+  filter(!is.na(female) & !is.na(r1agey_v3)) # n = 25616
 
 ##---- 2. Dropping those who did not have any word recall scores ----
-# n = 1979 missing all immediate word recall scores or all delayed word recall scores
+# n = 1695 missing all immediate word recall scores or all delayed word recall scores
 charls_selected %>% 
   filter(rowSums(is.na(across(c("r1imrc", "r2imrc", "r3imrc_cleaned", 
                                 "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
@@ -1385,7 +1385,7 @@ charls_selected %<>%
   filter(!(rowSums(is.na(across(c("r1imrc", "r2imrc", "r3imrc_cleaned", 
                                   "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
              (rowSums(is.na(across(c("r1dlrc", "r2dlrc", "r3dlrc_cleaned", 
-                                     "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5))  # n = 24070
+                                     "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5))  # n = 23921
 
 ##---- Select variables ----
 charls_selected %<>%
