@@ -96,7 +96,7 @@ rm(dlrc_long, imrc_long, rctib_long, imp_pmm_40)
 #---- function ----
 # x0, x1 to be categorical (factored already)
 # Dataset were filtered to contain only one imputation before feed into the function
-joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
+# joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
   dataset <- test_dataset
   dataset_long <- test_long
   x0 = "childhood_edu"
@@ -448,8 +448,8 @@ joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
   
   # The results are very similar!
   
-  return(g_comp_results <- data.frame(coef(MSM_wtd_lmm)))
-}
+  # return(g_comp_results <- data.frame(coef(MSM_wtd_lmm)))
+# }
 
 #---- OLD ----
 # for (doX0_var in c("doX0", "doX0_0", "doX0_1", "doX0_2", "doX0_3")){
