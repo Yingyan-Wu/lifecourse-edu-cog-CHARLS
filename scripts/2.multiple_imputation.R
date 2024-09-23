@@ -100,7 +100,7 @@ ini_imp <- mice(impute_data, maxit = 0,
 
 #---- Run imputation ----
 tictoc::tic()
-imp_pmm_10 <- mice(impute_data, m = 10, maxit = 100, 
+imp_pmm_10 <- mice(impute_data, m = 10, maxit = 80, 
                    # increase iterations since some of the variables did not converge at 10 iterations
                    pred = pred, meth = meth,
                    n.burn = 10,
@@ -109,12 +109,13 @@ imp_pmm_10 <- mice(impute_data, m = 10, maxit = 100,
                    seed = 62283)
 tictoc::toc()
 # 60 iterations 10 imp: 13min
+# 80 iterations 10 imp: 17min
 # 100 iterations 10 imp: 23min
 
 imp_pmm_10$loggedEvents # NULL
 plot(imp_pmm_10)
 # Compared to 40 imputation version (30 iterations). It did not make too much difference.
-# stick with 10 imputations 100 iterations.
+# stick with 10 imputations 80 iterations.
 densityplot(imp_pmm_10)
 
 save(imp_pmm_10, file = here::here("data", "analysis_data", "imp_pmm_10.RData"))
