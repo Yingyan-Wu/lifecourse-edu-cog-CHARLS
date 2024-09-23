@@ -19,16 +19,15 @@ source(here::here("scripts", "functions.R"))
 load(here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- Check the missingness ----
+colnames(charls_selected)
 # Drop those derived variables for the dataset to be imputed
 charls_selected_forimp <- charls_selected %>%
-  select(-ID,
-         -paste0("r", 2:5, "agey_v3"),
-         -contains(c("imrc", "dlrc")), -province_eng, -edu_cat, 
-         -paste0("h", 1:5, "rural"), -first_maritalsts_age, -childhood_1st_resi,
-         -contains("first_hukou"), first_hukou,
-         -chldstate_30_age, -occupation_30_age, 
-         -hukou_30_age,
-         -contains("first_occupation"))
+  select(r1agey_v3, female, childhood_edu, continuing_edu,
+         first_child_v2, rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c,
+         childhood_1st_region, rarural_child, first_hukou,
+         chldstate_30, marital_30, rural_30, occupation_30, hukou_30,
+         r1wtrespb)
+
 DataExplorer::plot_missing(charls_selected_forimp)
 missing_summary <- DataExplorer::profile_missing(charls_selected_forimp) %>%
   mutate(pct_missing = pct_missing*100) %>%
@@ -64,7 +63,7 @@ binary_vars <-
 # Comment this out to treat them all as continuous variables
 ordinal_vars <- c("childhood_edu", "continuing_edu", "rameduc_c", "rafeduc_c")
 
-cat_vars <- c("hukou_30", "occupation_30", "childhood_1st_region", "region_eng",
+cat_vars <- c("hukou_30", "occupation_30", "childhood_1st_region", 
               "first_hukou")
 
 (cont_vars <- variable_length_mat %>%
@@ -100,26 +99,29 @@ ini_imp <- mice(impute_data, maxit = 0,
 (pred <- ini_imp$predictorMatrix)
 
 #---- Run imputation ----
-library(tictoc)
-tic()
-imp_pmm_40 <- mice(impute_data, m = 40, maxit = 30,
+tictoc::tic()
+imp_pmm_10 <- mice(impute_data, m = 10, maxit = 100, 
+                   # increase iterations since some of the variables did not converge at 10 iterations
                    pred = pred, meth = meth,
                    n.burn = 10,
+                   # burn in first 10 iterations
                    defaultMethod = c("pmm", "pmm", "pmm", "pmm"),
                    seed = 62283)
-toc()
+tictoc::toc()
+# 60 iterations 10 imp: 13min
+# 100 iterations 10 imp: 23min
 
-imp_pmm_40$loggedEvents %>% view()
-# all events are related to weights (wave 4 weights ~ wave 3 weights)
-plot(imp_pmm_40)
-# Thank god it's fine but the burnin argument seems not doing anything.
-densityplot(imp_pmm_40)
+imp_pmm_10$loggedEvents # NULL
+plot(imp_pmm_10)
+# Compared to 40 imputation version (30 iterations). It did not make too much difference.
+# stick with 10 imputations 100 iterations.
+densityplot(imp_pmm_10)
 
-save(imp_pmm_40, file = here::here("data", "analysis_data", "imp_pmm_40.RData"))
+save(imp_pmm_10, file = here::here("data", "analysis_data", "imp_pmm_10.RData"))
 
 #---- Stack imputed dataset ----
-load(here::here("data", "analysis_data", "imp_pmm_40.RData"))
-imp_num = 40
+load(here::here("data", "analysis_data", "imp_pmm_10.RData"))
+imp_num = 10
 imp_temp <- list()
 for (i in 1:imp_num){
   imp_temp[[i]] <- complete(get(paste0("imp_pmm_", imp_num)),
@@ -127,11 +129,7 @@ for (i in 1:imp_num){
   imp_temp[[i]] <- cbind(
     charls_selected %>%
       select(ID, paste0("r", 2:5, "agey_v3"),
-             contains(c("imrc", "dlrc")), -province_eng, -edu_cat, 
-             paste0("h", 1:5, "rural"), -first_maritalsts_age, -childhood_1st_resi,
-             -chldstate_30_age, -occupation_30_age, 
-             hukou_30_age,
-             contains("first_occupation")),
+             contains(c("imrc", "dlrc"))),
     imp_temp[[i]][, colnames(impute_data)])
   imp_temp[[i]][, "imp"] <- i
 }
@@ -158,4 +156,21 @@ impute_data %>%
 
 ###---- Save the data ----
 saveRDS(imp_pmm_stacked,
-        here::here("data", "analysis_data", "imp_pmm_40_stacked.RDS"))
+        here::here("data", "analysis_data", "imp_pmm_10_stacked.RDS"))
+
+#---- OLD ----
+# # tictoc::tic()
+# imp_pmm_40 <- mice(impute_data, m = 40, maxit = 30,
+#                    pred = pred, meth = meth,
+#                    n.burn = 10,
+#                    defaultMethod = c("pmm", "pmm", "pmm", "pmm"),
+#                    seed = 62283)
+# # tictoc::toc()
+# 
+# imp_pmm_40$loggedEvents %>% view()
+# # all events are related to weights (wave 4 weights ~ wave 3 weights)
+# plot(imp_pmm_40)
+# # Thank god it's fine but the burnin argument seems not doing anything.
+# densityplot(imp_pmm_40)
+# 
+# save(imp_pmm_40, file = here::here("data", "analysis_data", "imp_pmm_40.RData"))
