@@ -1383,9 +1383,9 @@ charls_selected %>%
 
 charls_selected %<>% 
   filter(!(rowSums(is.na(across(c("r1imrc", "r2imrc", "r3imrc_cleaned", 
-                                "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
-           (rowSums(is.na(across(c("r1dlrc", "r2dlrc", "r3dlrc_cleaned", 
-                                   "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5))  # n = 24070
+                                  "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
+             (rowSums(is.na(across(c("r1dlrc", "r2dlrc", "r3dlrc_cleaned", 
+                                     "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5))  # n = 24070
 
 ##---- Select variables ----
 charls_selected %<>%
@@ -1409,7 +1409,7 @@ charls_selected %<>%
          # Marital status
          contains("first_maritalsts"), marital_30, maritalsts_30_age, 
          # Adulthood Rural and hukou
-         paste0("h", 1:5, "rural"), hrural_v2, region_eng, province_eng, rural_30, 
+         hrural_v2, region_eng, province_eng, rural_30, 
          contains("first_hukou"), contains("hukou_30"), 
          # Number of children at 30 years old
          contains("chldstate_30"))
