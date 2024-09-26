@@ -130,6 +130,7 @@ for (i in 1:imp_num){
   imp_temp[[i]] <- cbind(
     charls_selected %>%
       select(ID, paste0("r", 2:5, "agey_v3"),
+             paste0("r", 2:5, "wtrespb"),
              contains(c("imrc", "dlrc"))),
     imp_temp[[i]][, colnames(impute_data)])
   imp_temp[[i]][, "imp"] <- i
@@ -154,6 +155,44 @@ imp_pmm_stacked %>%
 impute_data %>%
   select(all_of(cont_vars)) %>%
   apply(., 2, summary)
+imp_pmm_stacked %>%
+  map_dfr(class) %>% t()
+
+###---- prepare the data ----
+imp_pmm_stacked %<>%
+  dplyr::mutate(
+    childhood_edu = factor(as.character(childhood_edu)), # drop order
+    continuing_edu = factor(as.character(continuing_edu)), # drop order
+    occupation_30_5cat =
+      as.factor(case_when(occupation_30 %in% c(1, 2) ~ 1,
+                          occupation_30 %in% c(3, 4, 5) ~ 2,
+                          occupation_30 == 6 ~ 3,
+                          occupation_30 == 7 ~ 4,
+                          occupation_30 == 8 ~ 5)),
+    occupation_30_2cat = as.factor(case_when(occupation_30 %in% c(1, 2) ~ 0, # agriculture
+                                             occupation_30 %in% c(3:8) ~ 1)), # non-agriculture
+    rameduc_2cat = as.factor(case_when(rameduc_c %in% 1:3 ~ 1, # with formal edu
+                                       rameduc_c == 0 ~ 0)),# no formal edu
+    rafeduc_2cat = as.factor(case_when(rafeduc_c %in% 1:3 ~ 1, 
+                                       rafeduc_c == 0 ~ 0)),
+    first_hukou_2cat = as.factor(case_when(first_hukou == 1 ~ 0, # agricultural hukou
+                                           first_hukou %in% 2:3 ~ 1)), # non agricultural hukou
+    # childhood_edu = factor(as.character(childhood_edu)), # drop order
+    # continuing_edu = factor(as.character(continuing_edu)), # drop order
+    hukou_30_2cat = as.factor(case_when(hukou_30 == 1 ~ 0,
+                                        hukou_30 %in% 2:3 ~ 1)),
+    across(ends_with("agey_v3"), ~ .x - r1agey_v3,
+           .names = "{.col}_fu_time")) %>%
+  dplyr::rename_at(vars(ends_with("fu_time")),
+                   function(x) str_replace(x, "agey_v3", "")) %>%
+  group_by(imp) %>%
+  mutate(r1wtrespb_rescaled = r1wtrespb/mean(r1wtrespb)) %>%
+  ungroup()
+
+# # Sanity check
+# imp_pmm_stacked %>% group_by(imp) %>%
+#   summarise(mean(r1wtrespb_rescaled, na.rm = TRUE),
+#             sd(r1wtrespb_rescaled, na.rm = TRUE))
 
 ###---- Save the data ----
 saveRDS(imp_pmm_stacked,
