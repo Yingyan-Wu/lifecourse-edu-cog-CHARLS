@@ -11,6 +11,7 @@ output/
 manuscript/
 Abstract/
 scripts/sample_code/
+scripts/OLD/
 
 # files
 CHARLS_Dataset_construction_codebook.xlsx
