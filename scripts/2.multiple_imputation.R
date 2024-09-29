@@ -182,11 +182,13 @@ imp_pmm_stacked %<>%
     hukou_30_2cat = as.factor(case_when(hukou_30 == 1 ~ 0,
                                         hukou_30 %in% 2:3 ~ 1)),
     across(ends_with("agey_v3"), ~ .x - r1agey_v3,
-           .names = "{.col}_fu_time")) %>%
+           .names = "{.col}fu_time")) %>%
   dplyr::rename_at(vars(ends_with("fu_time")),
                    function(x) str_replace(x, "agey_v3", "")) %>%
   group_by(imp) %>%
   mutate(r1wtrespb_rescaled = r1wtrespb/mean(r1wtrespb)) %>%
+  # Rescale to have mean of 1 to make the survey weighted mixed model faster
+  # tested in previous attempts, the results are the same beofre and after rescaling
   ungroup()
 
 # # Sanity check
@@ -194,9 +196,39 @@ imp_pmm_stacked %<>%
 #   summarise(mean(r1wtrespb_rescaled, na.rm = TRUE),
 #             sd(r1wtrespb_rescaled, na.rm = TRUE))
 
+#---- Analytic dataset ----
+# Long dataset 
+rctib_long <- imp_pmm_stacked %>%
+  select(ID, imp, contains("agey_v3"), 
+         contains("fu_time"),
+         paste0("r", 1:2, "imrc"),
+         paste0("r", 3, "imrc_cleaned"),
+         paste0("r", 4:5, "imrc_eqt"),
+         paste0("r", 1:2, "dlrc"),
+         paste0("r", 3, "dlrc_cleaned"),
+         paste0("r", 4:5, "dlrc_eqt")) %>%
+  dplyr::rename_at(vars(contains(c("imrc", "dlrc"))),
+                   function(x) str_replace(x, "_eqt|_cleaned", "")) %>%
+  pivot_longer(cols = !c(ID, imp), 
+               names_to = c("wave", ".value"), 
+               names_pattern = "r(.)(.*)") %>%
+  mutate(wave = as.numeric(wave)) %>%
+  dplyr::arrange(ID, imp, agey_v3) %>%
+  filter(!is.na(imrc) & !is.na(dlrc)) %>%
+  mutate(
+    first_imrc = ifelse(!is.na(imrc) & row_number() == min(which(!is.na(imrc))), 1, 0),
+    first_dlrc = ifelse(!is.na(dlrc) & row_number() == min(which(!is.na(dlrc))), 1, 0))
+
+imp_pmm_long <- imp_pmm_stacked %>% 
+  select(-contains(c("imrc", "dlrc", "agey_v3", "fu_time"))) %>%
+  left_join(rctib_long, by = c("ID", "imp"))
+
 ###---- Save the data ----
 saveRDS(imp_pmm_stacked,
         here::here("data", "analysis_data", "imp_pmm_10_stacked.RDS"))
+
+saveRDS(imp_pmm_long,
+        file = here::here("data", "analysis_data", "imp_pmm_10_long.RDS"))
 
 #---- OLD ----
 # # tictoc::tic()
