@@ -1,204 +1,176 @@
-# Time-varying g comp function
+# Time-varying g comp -- cluster script
 # Created by: Yingyan Wu
+# Date: Aug.19.2024
 
-require(survey, nnet, magrittr) # package for multinomial logistic regression 
+#---- Argument ----
+# Read in the arguments listed in the:
+# R CMD BATCH --no-save --no-restore "--args scenario_num=$SGE_TASK_ID"  
+## expression:
+args = (commandArgs(TRUE))
+
+# Check to see if arguments are passed and set default values if not.
+# If so, parse the arguments. (I only have one argument here.)
+if (length(args) == 0) {
+  print("No arguments supplied.")
+  ##supply default values
+  scenario_num <- 1
+} else {
+  for (i in 1:length(args)) {
+    eval(parse(text = args[[i]])) # parse each argument (only have 1 here)
+  }
+}
+
+#---- Package loading + option specifications ----
+library(tidyverse)
+library(magrittr)
+library(survey)
+library(WeMix)
+# No scientific notation
 options(scipen = 999)
-pacman::p_load("haven", "magrittr", "plyr", "tidyverse", "survey", "nnet")
-select <- dplyr::select
+# Needed if plyr was loaded
+# select <- dplyr::select
 
-imp_pmm_40 <- readRDS(here::here("data", "analysis_data", "imp_pmm_40_stacked.RDS"))
-imp_pmm_40 %<>%
-  dplyr::mutate(occupation_30_5cat = 
-                  as.factor(case_when(occupation_30 %in% c(1, 2) ~ 1,
-                                      occupation_30 %in% c(3, 4, 5) ~ 2,
-                                      occupation_30 == 6 ~ 3,
-                                      occupation_30 == 7 ~ 4,
-                                      occupation_30 == 8 ~ 5)),
-                occupation_30_2cat = case_when(occupation_30 %in% c(1, 2) ~ 0, # agriculture
-                                               occupation_30 %in% c(3:8) ~ 1), # non-agriculture
-                rameduc_2cat = case_when(rameduc_c %in% 1:3 ~ 1, # with formal edu
-                                         rameduc_c == 0 ~ 0),# no formal edu
-                rafeduc_2cat = case_when(rafeduc_c %in% 1:3 ~ 1, 
-                                         rafeduc_c == 0 ~ 0),
-                first_hukou_2cat = case_when(first_hukou == 1 ~ 0, # agricultural hukou
-                                             first_hukou %in% 2:3 ~ 1), # non agricultural hukou
-                childhood_edu = factor(as.character(childhood_edu)),
-                continuing_edu = factor(as.character(continuing_edu)),
-                chld_edu_2cat_10 = case_when(childhood_edu == 1 ~ 1,
-                                             childhood_edu == 0 ~ 0),
-                chld_edu_2cat_20 = case_when(childhood_edu == 2 ~ 1,
-                                             childhood_edu == 0 ~ 0),
-                chld_edu_2cat_30 = case_when(childhood_edu == 3 ~ 1,
-                                             childhood_edu == 0 ~ 0),
-                ctn_edu_2cat_10 = case_when(continuing_edu == 1 ~ 1,
-                                            continuing_edu == 0 ~ 0),
-                ctn_edu_2cat_20 = case_when(continuing_edu == 2 ~ 1,
-                                            continuing_edu == 0 ~ 0),
-                hukou_30_2cat = case_when(hukou_30 == 1 ~ 0,
-                                          hukou_30 %in% 2:3 ~ 1))
-c0 <- c("r1agey_v3", "female_v2", "first_child_v2", 
-        "rameduc_2cat", "rafeduc_2cat", "ramoccup_c", "rafoccup_c",
-        "childhood_1st_region", "rarural_child", 
-        "first_hukou_2cat")
-c1_continuous <- c("chldstate_30")
-c1_binary <- c("marital_30", "rural_30", "occupation_30_2cat",
-               "hukou_30_2cat")
-# c1_multinomial <- c("hukou_30")
-c1 <- c(c1_continuous, c1_binary)
-# , c1_multinomial)
-num_imp = 1
+#---- Load the data ----
+# Paths (local)
+# imp_pmm_10 <- readRDS(here::here("data", "analysis_data", "imp_pmm_10_stacked.RDS"))
+# imp_pmm_long <- readRDS( here::here("data", "analysis_data", "imp_pmm_10_long.RDS"))
 
-test_dataset <- imp_pmm_40 %>% filter(imp == num_imp) %>%
-  select(ID, childhood_edu, continuing_edu, 
-         contains("chld_edu_"), contains("ctn_edu_"),
-         all_of(c0), all_of(c1),
-         paste0("r", 1:2, "imrc"),
-         paste0("r", 3, "imrc_cleaned"),
-         paste0("r", 4:5, "imrc_eqt"),
-         paste0("r", 1:2, "dlrc"),
-         paste0("r", 3, "dlrc_cleaned"),
-         paste0("r", 4:5, "dlrc_eqt"),
-         paste0("r", 1:5, "wtrespb")) %>%
-  dplyr::rename_at(vars(contains(c("imrc", "dlrc"))),
-                   function(x) str_replace(x, "_eqt|_cleaned", ""))
-  # head(1000)
+# # Paths cluster
+project_folder <- paste0("/u/home/y/yingyanw/edu_cog_CHARLS/")
+imp_pmm_10 <- readRDS(paste0(project_folder, "data/imp_pmm_10_stacked.RDS"))
+imp_pmm_long <- readRDS(paste0(project_folder, "data/imp_pmm_10_long.RDS")) %>%
+  mutate(w_obs = 1)
 
-rctib_long <- test_dataset %>%
-  select(ID, contains(c("imrc", "dlrc"))) %>%
-  pivot_longer(cols = !ID, 
-               names_to = c("wave", ".value"), 
-               names_pattern = "r(.)(.*)") %>%
-  mutate(wave = as.numeric(wave))
-
-imrc_long <- rctib_long %>% dplyr::select(-dlrc) %>%
-  na.omit() %>%
-  arrange(ID, wave) %>%
-  group_by(ID) %>%
-  dplyr::mutate(num_occ_imrc = 1:n()) %>%
-  ungroup()
-
-dlrc_long <- rctib_long %>% dplyr::select(-imrc) %>%
-  na.omit() %>%
-  arrange(ID, wave) %>%
-  group_by(ID) %>%
-  dplyr::mutate(num_occ_dlrc = 1:n()) %>%
-  ungroup()
-
-test_long <- test_dataset %>%
-  select(-contains(c("imrc", "dlrc"))) %>%
-  left_join(imrc_long, by = "ID") %>%
-  full_join(dlrc_long, by = c("ID", "wave")) %>%
-  mutate(first_imrc = ifelse(num_occ_imrc == 1, 1, 0),
-         first_dlrc = ifelse(num_occ_dlrc == 1, 1, 0))
-
-rm(dlrc_long, imrc_long, rctib_long, imp_pmm_40)
+#---- Test ----
+# # Test data
+# id_test <- head(unique(imp_pmm_10$ID), 100)
+# imp_pmm_test <- imp_pmm_10 %>% filter(ID %in% id_test)
+# imp_pmm_long_test <- imp_pmm_long %>% filter(ID %in% id_test) %>%
+#   mutate(w_obs = 1)
+# 
+# dataset <- imp_pmm_test
+# dataset_long <- imp_pmm_long_test
+# x0 = "childhood_edu"
+# x1 = "continuing_edu"
+# y = "imrc"
+# c0 = c0
+# c1 = c1
+# i_boot = 1
+# bootstrap = i_boot != 0
 
 #---- function ----
 # x0, x1 to be categorical (factored already)
 # Dataset were filtered to contain only one imputation before feed into the function
-joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
-  dataset <- test_dataset
-  dataset_long <- test_long
-  x0 = "childhood_edu"
-  x1 = "continuing_edu"
-  y = "imrc"
-  c0 = c0
-  c1 = c1
-  bootstrap = F
+joint_effect_g_comp <- function(dataset, dataset_long, 
+                                x0, x1, c0, c1, y, bootstrap = TRUE){
   
+  set.seed(i_boot*1000)
+  num_imp <- imp
+  
+  start_time <- Sys.time()
   if (bootstrap == T){
-    data_boot <- 
-      dataset[sample(nrow(dataset), nrow(dataset), replace = TRUE), ]
+    boot_ids <- sample(unique(dataset$ID), length(unique(dataset$ID)), replace = T)
   } else {
-    data_boot <- dataset
+    boot_ids <- unique(dataset$ID)
   }
   
-  data_boot %<>%
-    mutate(newid = 1:n())
+  # for confounders
+  data_boot <- tibble(
+    ID = boot_ids,
+    newid = 1:length(boot_ids)) %>%
+    left_join(dataset %>% filter(imp == num_imp), by = "ID")
   
-  n <- nrow(data_boot)
+  n <- length(boot_ids)
   
-  data_boot_long <- data_boot %>% select(ID, newid) %>%
-    left_join(dataset_long, by = "ID", relationship = "many-to-many") %>%
+  # for main model and MSM
+  data_boot_long <- data_boot %>%
+    select(ID, newid) %>%
+    left_join(dataset_long %>% filter(imp == num_imp), by = "ID",
+              relationship = "many-to-many") %>%
     filter(!is.na(!!sym(y)))
   
-  data_boot_svy <- svydesign(ids = ~newid, weights = ~r1wtrespb, 
+  # For weighted models for exposures and confounders
+  data_boot_svy <- svydesign(ids = ~newid, weights = ~r1wtrespb_rescaled, 
                              data = data_boot)
   
   #---- Step 1: Obtain f(x0), f(x1) from the observed distribution ----
-  #Estimating marginal expectation of X0 and X1
+  # Estimating marginal expectation of X0 and X1
   # ordered logistic regression intercept only model did not work here
   # multinomial logistic regression prediction does not work well (all in the categories with largest prop)
   chd_edu_prop <- svymean(~childhood_edu, data_boot_svy)
   ctn_edu_prop <- svymean(~continuing_edu, data_boot_svy)
   
   #---- Step 2: Fit a model for C1 given X0 and C0 (lambdas)----
-  # # The documentation of nnet::multinom about weights argument is not clear
-  # # In the doc "weights: optional case weights in fitting."
-  # # Test if weights in nnet::multinom is applying survey weight
-  # test1 <- nnet::multinom(ctn_edu_2cat_10 ~ female_v2 + rural_30,
-  #                         data = data_boot,
-  #                         weights = r1wtrespb)
-  # summary(test1)
-  # test2 <- svyglm(ctn_edu_2cat_10 ~ female_v2 + rural_30,
-  #                 design = data_boot_svy, 
-  #                 family = quasibinomial(link = "logit"))
-  # summary(test2)
-  # # The results are almost the same
-  
-  # # No multinomial variables any more
-  # for (c1_var in c1_multinomial){
-  #   c1_model_form <- paste0(c1_var, " ~ ", x0, " + ", 
-  #                           paste(c0, collapse = "+"))
-  #   model <- nnet::multinom(as.formula(c1_model_form), data = data_boot,
-  #                           weights = r1wtrespb)
-  #   assign(paste0("pc1_model_", c1_var), model)
-  # }
-  
   for (c1_var in c1_binary){
     c1_model_form <- paste0(c1_var, " ~ ", x0, " + ", 
                             paste(c0, collapse = "+"))
-    model <- svyglm(as.formula(c1_model_form),
-                    design = data_boot_svy,
-                    family = quasibinomial(link = "logit"))
+    warning_vec <- get(paste0("w_", c1_var))
+    tryCatch({
+      model <<- svyglm(as.formula(c1_model_form),
+                       design = data_boot_svy,
+                       family = quasibinomial(link = "logit"),
+                       control = list(maxit = 100))
+      # If no warnings, append 0s
+      warning_vec <<- c(warning_vec, 0)
+    }, warning = function(w) {
+      # If there's warning, append 1s
+      warning_vec <<- c(warning_vec, 1)
+      model <<- svyglm(as.formula(c1_model_form),
+                       design = data_boot_svy,
+                       family = quasibinomial(link = "logit"),
+                       control = list(maxit = 100))
+    })
     assign(paste0("pc1_model_", c1_var), model)
+    assign(paste0("w_", c1_var), warning_vec)
   }
   
   for (c1_var in c1_continuous){
     c1_model_form <- paste0(c1_var, " ~ ", x0, " + ", 
                             paste(c0, collapse = "+"))
-    model <- 
-      # lm(as.formula(c1_model_form), data = data_boot,
-      #    weights = r1wtrespb) # the same as svyglm
-      svyglm(as.formula(c1_model_form),
-             design = data_boot_svy,
-             family = gaussian(link = "identity"))
+    warning_vec <- get(paste0("w_", c1_var))
+    tryCatch({
+      model <<- svyglm(as.formula(c1_model_form),
+                       design = data_boot_svy,
+                       family = gaussian(link = "identity"))
+      # If no warnings, append 0s
+      warning_vec <<- c(warning_vec, 0)
+      assign(paste0("w_", c1_var), c(get(paste0("w_", c1_var)), 0))
+    }, warning = function(w) {
+      # If there's warning, append 1s
+      warning_vec <<- c(warning_vec, 1)
+      model <<- svyglm(as.formula(c1_model_form),
+                       design = data_boot_svy,
+                       family = gaussian(link = "identity"))
+    })
     assign(paste0("pc1_model_", c1_var), model)
+    assign(paste0("w_", c1_var), warning_vec)
   }
   
   #---- Step 3: Fit a model for Y given X0, X1, C0 and C1 (Q model, betas) ----
-  # p_load("usethis")
-  # usethis::edit_r_environ("project")
-  # change R_MAX_VSIZE=64000000000 in the environ file
-  data_boot_long %<>% mutate(w_obs = 1)
-  # a <- Sys.time()
-  # tictoc::tic()
-  # pYx0x1c0c1_model <- WeMix::mix(
-    # as.formula(paste0(y, " ~ wave + (1 + wave |newid) +", x0, " * wave *", x1, " + ",
-    #                   paste(c0, collapse = "+"), "+",
-    #                   paste(c1, collapse = "+"))),
-  #   data = data_boot_long,
-  #   weights = c("w_obs", "r1wtrespb"),
-  #   cWeights = TRUE)
-  # # 67s for n=1000, N=3874
-  # # 3.3 h for n = 24070, N = 82155
-  # tictoc::toc()
-  
-  # save(pYx0x1c0c1_model, file = here::here("data", "model_results", "q_model_imp1.Rdata"))
-  load(here::here("data", "model_results", "q_model_imp1.Rdata"))
+  q_start <- Sys.time()
+  pYx0x1c0c1_model <- WeMix::mix(
+    as.formula(paste0(y, " ~ agey_v3 + (1 + agey_v3 |newid) +", # age as time scale
+                      x0, " * agey_v3 *", x1, " + ",
+                      paste0("first_", y), "+", # practice effect term
+                      paste(c0, collapse = "+"), "+",
+                      paste(c1, collapse = "+"))),
+    data = data_boot_long,
+    weights = c("w_obs", "r1wtrespb_rescaled"),
+    cWeights = TRUE)
+  # Since tryCatch needs to run the model twice, to save time, use length(warnings)
+  if (length(warnings()) > 0){
+    w_qmodel <- c(w_qmodel, 1)
+    w_qmodel_msg <- c(w_qmodel_msg, attr(warnings(), "name"))
+  } else {
+    w_qmodel <- c(w_qmodel, 0)
+    w_qmodel_msg <- c(w_qmodel_msg, NA_character_)
+  }
+  q_end  <- Sys.time()
+  # In previous test runs
+  # 6.99mins for n=1000, N=3905
+  # 3.3 h for n = 24070, N = 82155
   
   #---- Step 4: Simulate post intervention DAG distribution----
-  set.seed(62283)
   data_boot %<>%
     dplyr::mutate(
       # Intervention X (categorical)
@@ -219,8 +191,8 @@ joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
                           predict(get(paste0("pc1_model_", c1_var)),
                                   newdata = data_boot %>% select(-all_of(x0)) %>%
                                     dplyr::rename(!!sym(x0) := "doX0"),
-                                  type = var_type)))
-    } else {
+                                  type = var_type)) %>% as.factor)
+    } else if (c1_var %in% c1_continuous){
       data_boot %<>%
         mutate(!!paste0(c1_var, "_doX0") :=
                  predict(get(paste0("pc1_model_", c1_var)),
@@ -231,35 +203,14 @@ joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
   }
   # Round simulated variables "# of children at 30" to integers
   data_boot %<>% mutate(chldstate_30_doX0 = round(chldstate_30_doX0))
-  # # # Sanity check
-  # data_boot %>% select(contains("doX0")) %>% apply(., 2, table)
-  # data_boot %>% select(contains("occupation_30_2cat")) %>% apply(., 2, table)
-  # data_boot %>% select(contains("hukou_30")) %>% apply(., 2, table)
   
   # Merge simulated variables with the long dataset
   data_boot_long %<>%
+    select(-contains(c("doX0", "doX1"))) %>%
     left_join(data_boot %>% select(newid, contains(c("doX0", "doX1"))), by = "newid")
   
-  # Pending on cleaning the variables!!!!
-  data_boot_long %<>%
-    mutate(marital_30_doX0 = as.factor(marital_30_doX0),
-           rural_30_doX0 = as.factor(rural_30_doX0))
-  
-  # Simulate Potential outcomes
-  # # Test to see what predict wemix model produce
-  # test_mat <- data_boot_long %>% head(1000) %>% 
-  #   select(newid, wave, all_of(x0), all_of(x1), w_obs, r1wtrespb, imrc)
-  # test <- WeMix::mix(
-  #   as.formula(paste0(y, " ~ wave + (wave|newid) +", x0, " * ", x1)), 
-  #   data = test_mat,
-  #   weights = c("w_obs", "r1wtrespb"),
-  #   cWeights = TRUE)
-  # test_mat$Y_test <- predict(test, 
-  #                   newdata = test_mat, type = "response")
-  # summary(test)
   # # predict(wemix) preduce the linear combination of coefficients and covariate 
   # # values + random intercept + random slope * wave.
-  
   data_boot_long %<>%
     mutate(
       Y_doX0_doX1 = predict(
@@ -272,115 +223,154 @@ joint_effect_g_comp <- function(dataset, x0, x1, c0, c1, y, bootstrap = TRUE){
       Y_doX0_doX1_round = round(Y_doX0_doX1, 2))
   
   #---- Step 5: MSM for potential outcomes ~ doX0*doX1 ----
-  # lmer_test <- lme4::lmer(
-  #   formula = Y_doX0_doX1_round ~ wave + (1 + wave |newid) + wave * doX0_ * doX1_,
-  #   data = data_boot_long %>% rename_at(vars(doX0, doX1), function(x) paste0(x, "_")),
-  #   control = lme4::lmerControl(optimizer = "Nelder_Mead"))
-  Sys.time()
-  tictoc::tic()
+  msm_start <- Sys.time()
   MSM_wtd_lmm <- WeMix::mix(
-    Y_doX0_doX1_round ~ wave + (1 + wave |newid) + doX0 * doX1 * wave,
+    Y_doX0_doX1_round ~ agey_v3 + (1 + agey_v3 |newid) + doX0 * doX1 * agey_v3,
     data = data_boot_long,
-    weights = c("w_obs", "r1wtrespb"),
+    weights = c("w_obs", "r1wtrespb_rescaled"),
     cWeights = TRUE)
-  tictoc::toc()
-  Sys.time()
-  # summary(MSM_wtd_lmm)
-  
-  coef <- summary(lmer_test)$coefficients %>% t() %>% as.data.frame() %>%
-    mutate(est = rownames(.)) %>% filter(est == "Estimate")
-  
-  slope_tib <- coef %>%
-    mutate(
-      slope_11_00 = doX0_1 + doX1_1 + `doX0_1:doX1_1` + `wave:doX0_1` + `wave:doX1_1` + `wave:doX0_1:doX1_1`,
-      slope_21_00 = doX0_2 + doX1_1 + `doX0_2:doX1_1` + `wave:doX0_2` + `wave:doX1_1` + `wave:doX0_2:doX1_1`,
-      slope_31_00 = doX0_3 + doX1_1 + `doX0_3:doX1_1` + `wave:doX0_3` + `wave:doX1_1` + `wave:doX0_3:doX1_1`,
-      slope_12_00 = doX0_1 + doX1_2 + `doX0_1:doX1_2` + `wave:doX0_1` + `wave:doX1_2` + `wave:doX0_1:doX1_2`,
-      slope_22_00 = doX0_2 + doX1_2 + `doX0_2:doX1_2` + `wave:doX0_2` + `wave:doX1_2` + `wave:doX0_2:doX1_2`,
-      slope_32_00 = doX0_3 + doX1_2 + `doX0_3:doX1_2` + `wave:doX0_3` + `wave:doX1_2` + `wave:doX0_3:doX1_2`,
-      slope_01_00 = doX1_1 + `wave:doX1_1`,
-      slope_02_00 = doX1_2 + `wave:doX1_2`,
-      slope_11_10 = doX1_1 + `doX0_1:doX1_1` + `wave:doX1_1` + `wave:doX0_1:doX1_1`,
-      slope_21_20 = doX1_1 + `doX0_2:doX1_1` + `wave:doX1_1` + `wave:doX0_2:doX1_1`,
-      slope_31_30 = doX1_1 + `doX0_3:doX1_1` + `wave:doX1_1` + `wave:doX0_3:doX1_1`,
-      slope_12_10 = doX1_2 + `doX0_1:doX1_2` + `wave:doX1_2` + `wave:doX0_1:doX1_2`,
-      slope_22_20 = doX1_2 + `doX0_2:doX1_2` + `wave:doX1_2` + `wave:doX0_2:doX1_2`,
-      slope_32_30 = doX1_2 + `doX0_3:doX1_2` + `wave:doX1_2` + `wave:doX0_3:doX1_2`,
-      slope_10_00 = doX0_1 + `wave:doX0_1`,
-      slope_20_00 = doX0_2 + `wave:doX0_2`,
-      slope_30_00 = doX0_3 + `wave:doX0_3`) %>%
-    select(contains("slope"))
-  
-  return(g_comp_results <- data.frame(coef(MSM_wtd_lmm)))
-}
-
-
-estimate_df <- function(dataframe){
-  estimate <- function(x){
-    stats <- c(length(x), 
-               mean(x,na.rm = T), 
-               median(x,na.rm = T),
-               sd(x,na.rm = T),
-               min(x,na.rm = T),
-               max(x,na.rm = T),
-               # sum(x,na.rm = T), sum(is.na(x)),
-               quantile(x,c(0.025, 0.975),na.rm = T)
-    )
-    names(stats) <- c("N", "Mean", "Median",
-                      "Sd", "Min", "Max",
-                      # "Sum", "Missing"
-                      "p2.5th", "p97.5th"
-    )
-    return(round(stats, 4))
+  # Since tryCatch needs to run the model twice, to save time, use length(warnings)
+  if (length(warnings()) > 0){
+    w_msm <- c(w_msm, 1)
+    w_msm_msg <- c(w_msm_msg, attr(warnings(), "name"))
+  } else {
+    w_msm <- c(w_msm, 0)
+    w_msm_msg <- c(w_msm_msg, NA_character_)
   }
+  msm_end <- Sys.time()
   
-  stats_tib <- dataframe %>%
-    select(where(is.numeric)) %>%
-    purrr::map_dfr(estimate) %>%
-    as_tibble() %>%
-    mutate("Effect" = colnames(dataframe)[-1]) %>%
-    select(Effect, everything())
+  coef_tib <- MSM_wtd_lmm$coef %>% t() %>% as.data.frame()
+  colnames(coef_tib) <- gsub("(doX)([0-9])([0-9])", "\\1\\2_\\3", colnames(coef_tib))
+  coef_tib %<>%
+    mutate(RI_var = MSM_wtd_lmm$vars[[1]], # newid.intercept
+           RS_var = MSM_wtd_lmm$vars[[2]], # newid.agey_v3 (slope)
+           RIRS_cor = summary(MSM_wtd_lmm)$varsmat[["Corr1"]][[2]],
+           res_var = MSM_wtd_lmm$vars[["Residual"]])
+  end_time <- Sys.time()
   
-  return(stats_tib)
+  results_tib <- tibble(
+    n_imp = imp,
+    i_boot = i_boot,
+    scenario_num = scenario_num,
+    computing_time_min = difftime(end_time, start_time, units = "hours"),
+    q_model_time_min = difftime(q_end, q_start, units = "hours"),
+    msm_model_time_min = difftime(msm_end, msm_start, units = "hours")) %>%
+    cbind(coef_tib)
+  
+  return(results_tib)
 }
 
-mediation_func_boot <- function(exposure, mediator, outcome){
-  if (exists("pb")){
-    pb$tick()$print()
-  }
-  map_dfr(1:bootsize, ~ mediation_func(exposure, mediator, outcome),
-          .id = "replication") %>% estimate_df() %>%
-    mutate(Exposure = exposure,
-           Mediator = mediator,
-           Outcome = outcome)
+#---- Variables ----
+c0 <- c(
+  # "r1agey_v3", # age as timesclae so drop this
+  "female", "first_child_v2", 
+  "rameduc_2cat", "rafeduc_2cat", "ramoccup_c", "rafoccup_c",
+  "childhood_1st_region", "rarural_child", 
+  "first_hukou_2cat")
+c1_continuous <- c("chldstate_30")
+c1_binary <- c("marital_30", "rural_30", "occupation_30_2cat",
+               "hukou_30_2cat")
+# c1_multinomial <- c("hukou_30")
+c1 <- c(c1_continuous, c1_binary)
+# , c1_multinomial)
+
+#---- Scenario tibble ----
+# n_imp = 10
+# n_bootstrap_per_job = 10
+# n_bootstrap = 1100
+
+# First run
+n_imp = 1
+n_bootstrap_per_job = 1
+n_bootstrap = 10
+
+scenario_tib <- expand_grid(
+  imp = 1:n_imp,
+  boot_i = c(paste0(seq(1, n_bootstrap - n_bootstrap_per_job + 1, 
+                        by = n_bootstrap_per_job), "-",
+                    seq(n_bootstrap_per_job, n_bootstrap, 
+                        by = n_bootstrap_per_job)))) %>%
+  separate(boot_i, into = c("boot_i_start", "boot_i_end"), sep = "-") %>%
+  mutate_at(vars(boot_i_start), ~ifelse(boot_i_start == 1, 0, .))
+
+# Make sure that scenario_num is not greater than all the scenario index
+if (scenario_num > nrow(scenario_tib)) {
+  print(paste0("out of bound senario number", scenario_num))
+  # supply default value
+  scenario_num <- 1
 }
+
+# print values just to make sure:
+print(scenario_num)
+scenario <- scenario_tib[scenario_num, ]
+boot_i_start <- scenario$boot_i_start
+boot_i_end <- scenario$boot_i_end
+imp <- scenario$imp
+
+print(boot_i_start)
+print(boot_i_end)
+print(imp)
+
+# Warning number capture vectors (start with 0)
+w_c1s <- setNames(rep(list(numeric()), length(c1)), paste0("w_", c1))
+list2env(w_c1s, envir = .GlobalEnv)
+
+w_qmodel <- w_msm <- numeric()
+w_qmodel_msg <- w_msm_msg <- vector()
+
+#---- bootstrap ----
+for (i_boot in boot_i_start:boot_i_end) {
+  print(i_boot)
+  # boot_i_start <- 0
+  # i_boot <- 1
+  start <- Sys.time() # record starting time
+  result <- 
+    joint_effect_g_comp(
+      imp_pmm_10, imp_pmm_long,
+      x0 = "childhood_edu", x1 = "continuing_edu", y = "imrc",
+      c0 = c0, c1 = c1, bootstrap = i_boot != 0)
+  end <- Sys.time() # record ending time
+  saveRDS(result, paste0(project_folder, "/model_results/",
+                         paste0("MSM_coef_", i_boot, ".RDS")))
+  
+  w_boot_i <- tibble(
+    i_boot = i_boot,
+    scenario = scenario_num,
+    duration = difftime(end, start, units = 'mins'),
+    w_qmodel = sum(w_qmodel),
+    w_msm = sum(w_msm),
+    w_qmodel_msg = w_qmodel_msg,
+    w_msm_msg = w_msm_msg) %>%
+    bind_cols(as.tibble(lapply(mget(paste0("w_", c1)), sum))) # c1 model warnings
+  saveRDS(w_boot_i, paste0(project_folder, "/warnings/",
+                           paste0("warnings_", i_boot, ".RDS")))
+}
+
+
 
 #---- OLD ----
-# # Differentiate by doX's value (proportional, 0 and 1)
-#   for (c1_var in c1){
-#     var_type <- case_when(c1_var %in% c1_continuous ~ "response",
-#                           c1_var %in% c1_binary ~ "response",
-#                           c1_var %in% c1_multinomial ~ "class")
-#     if (c1_var %in% c1_binary){
-#       for (doX0_var in c("doX0", "doX0_0", "doX0_1")){
-#         data_boot %<>%
-#           mutate(
-#             !!paste0(c1_var, "_", doX0_var) := 
-#               rbinom(n, size = 1, prob = 
-#                        predict(get(paste0("pc1_model_", c1_var)),
-#                                newdata = data_boot %>% select(-all_of(x0)) %>%
-#                                  dplyr::rename(!!sym(x0) := !!sym(doX0_var)),
-#                                type = var_type)))
-#       }
-#     } else {
-#       for (doX0_var in c("doX0", "doX0_0", "doX0_1")){
-#         data_boot %<>%
-#           mutate(!!paste0(c1_var, "_", doX0_var) :=
-#                    predict(get(paste0("pc1_model_", c1_var)),
-#                            newdata = data_boot %>% select(-all_of(x0)) %>%
-#                              dplyr::rename(!!sym(x0) := !!sym(doX0_var)),
-#                            type = var_type))
-#       }
-#     }
-#   }
+# Will move to bootstrap results script
+# coef_tib %>%
+#   mutate(
+#     # Both education vs. No formal education at all
+#     slope_11_00 = doX0_1 + doX1_1 + `doX0_1:doX1_1` + `wave:doX0_1` + `wave:doX1_1` + `wave:doX0_1:doX1_1`,
+#     slope_21_00 = doX0_2 + doX1_1 + `doX0_2:doX1_1` + `wave:doX0_2` + `wave:doX1_1` + `wave:doX0_2:doX1_1`,
+#     slope_31_00 = doX0_3 + doX1_1 + `doX0_3:doX1_1` + `wave:doX0_3` + `wave:doX1_1` + `wave:doX0_3:doX1_1`,
+#     slope_12_00 = doX0_1 + doX1_2 + `doX0_1:doX1_2` + `wave:doX0_1` + `wave:doX1_2` + `wave:doX0_1:doX1_2`,
+#     slope_22_00 = doX0_2 + doX1_2 + `doX0_2:doX1_2` + `wave:doX0_2` + `wave:doX1_2` + `wave:doX0_2:doX1_2`,
+#     slope_32_00 = doX0_3 + doX1_2 + `doX0_3:doX1_2` + `wave:doX0_3` + `wave:doX1_2` + `wave:doX0_3:doX1_2`,
+#     # Only continuing education vs. No formal education at all
+#     slope_01_00 = doX1_1 + `wave:doX1_1`,
+#     slope_02_00 = doX1_2 + `wave:doX1_2`,
+#     # Both education vs. No continuing education with the same early life edu intervention
+#     slope_11_10 = doX1_1 + `doX0_1:doX1_1` + `wave:doX1_1` + `wave:doX0_1:doX1_1`,
+#     slope_21_20 = doX1_1 + `doX0_2:doX1_1` + `wave:doX1_1` + `wave:doX0_2:doX1_1`,
+#     slope_31_30 = doX1_1 + `doX0_3:doX1_1` + `wave:doX1_1` + `wave:doX0_3:doX1_1`,
+#     slope_12_10 = doX1_2 + `doX0_1:doX1_2` + `wave:doX1_2` + `wave:doX0_1:doX1_2`,
+#     slope_22_20 = doX1_2 + `doX0_2:doX1_2` + `wave:doX1_2` + `wave:doX0_2:doX1_2`,
+#     slope_32_30 = doX1_2 + `doX0_3:doX1_2` + `wave:doX1_2` + `wave:doX0_3:doX1_2`,
+#     # Only early life education (no continuing education) vs. No formal education at all
+#     slope_10_00 = doX0_1 + `wave:doX0_1`,
+#     slope_20_00 = doX0_2 + `wave:doX0_2`,
+#     slope_30_00 = doX0_3 + `wave:doX0_3`)
 
