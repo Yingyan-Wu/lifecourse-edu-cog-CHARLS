@@ -60,12 +60,10 @@ imp_pmm_long <- readRDS(paste0(project_folder, "data/imp_pmm_10_long.RDS")) %>%
 
 #---- function ----
 # x0, x1 to be categorical (factored already)
-# Dataset were filtered to contain only one imputation before feed into the function
 joint_effect_g_comp <- function(dataset, dataset_long, 
                                 x0, x1, c0, c1, y, bootstrap = TRUE){
   
   set.seed(i_boot*1000)
-  num_imp <- imp
   
   start_time <- Sys.time()
   if (bootstrap == T){
@@ -249,7 +247,7 @@ joint_effect_g_comp <- function(dataset, dataset_long,
   end_time <- Sys.time()
   
   results_tib <- tibble(
-    n_imp = imp,
+    n_imp = num_imp,
     i_boot = i_boot,
     scenario_num = scenario_num,
     computing_time_min = difftime(end_time, start_time, units = "hours"),
@@ -305,11 +303,11 @@ print(scenario_num)
 scenario <- scenario_tib[scenario_num, ]
 boot_i_start <- scenario$boot_i_start
 boot_i_end <- scenario$boot_i_end
-imp <- scenario$imp
+num_imp <- scenario$imp
 
 print(boot_i_start)
 print(boot_i_end)
-print(imp)
+print(num_imp)
 
 # Warning number capture vectors (start with 0)
 w_c1s <- setNames(rep(list(numeric()), length(c1)), paste0("w_", c1))
@@ -330,7 +328,7 @@ for (i_boot in boot_i_start:boot_i_end) {
       x0 = "childhood_edu", x1 = "continuing_edu", y = "imrc",
       c0 = c0, c1 = c1, bootstrap = i_boot != 0)
   end <- Sys.time() # record ending time
-  saveRDS(result, paste0(project_folder, "/model_results/",
+  saveRDS(result, paste0(project_folder, "model_results/",
                          paste0("MSM_coef_", i_boot, ".RDS")))
   
   w_boot_i <- tibble(
@@ -342,7 +340,7 @@ for (i_boot in boot_i_start:boot_i_end) {
     w_qmodel_msg = w_qmodel_msg,
     w_msm_msg = w_msm_msg) %>%
     bind_cols(as.tibble(lapply(mget(paste0("w_", c1)), sum))) # c1 model warnings
-  saveRDS(w_boot_i, paste0(project_folder, "/warnings/",
+  saveRDS(w_boot_i, paste0(project_folder, "warnings/",
                            paste0("warnings_", i_boot, ".RDS")))
 }
 
