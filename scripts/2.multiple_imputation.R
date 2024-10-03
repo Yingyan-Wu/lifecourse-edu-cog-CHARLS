@@ -214,7 +214,7 @@ rctib_long <- imp_pmm_stacked %>%
                names_pattern = "r(.)(.*)") %>%
   mutate(wave = as.numeric(wave)) %>%
   dplyr::arrange(ID, imp, agey_v3) %>%
-  filter(!is.na(imrc) & !is.na(dlrc)) %>%
+  filter(!(is.na(imrc) & is.na(dlrc))) %>%
   mutate(
     first_imrc = ifelse(!is.na(imrc) & row_number() == min(which(!is.na(imrc))), 1, 0),
     first_dlrc = ifelse(!is.na(dlrc) & row_number() == min(which(!is.na(dlrc))), 1, 0))
