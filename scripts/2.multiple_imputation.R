@@ -100,7 +100,7 @@ ini_imp <- mice(impute_data, maxit = 0,
 
 #---- Run imputation ----
 tictoc::tic()
-imp_pmm_10 <- mice(impute_data, m = 10, maxit = 80, 
+imp_pmm_40 <- mice(impute_data, m = 40, maxit = 60, 
                    # increase iterations since some of the variables did not converge at 10 iterations
                    pred = pred, meth = meth,
                    n.burn = 10,
@@ -111,18 +111,19 @@ tictoc::toc()
 # 60 iterations 10 imp: 13min
 # 80 iterations 10 imp: 17min
 # 100 iterations 10 imp: 23min
+# 60 iterations 40 imp: 47.72 min
 
-imp_pmm_10$loggedEvents # NULL
-plot(imp_pmm_10)
+imp_pmm_40$loggedEvents # NULL
+plot(imp_pmm_40)
 # Compared to 40 imputation version (30 iterations). It did not make too much difference.
 # stick with 10 imputations 80 iterations.
-densityplot(imp_pmm_10)
+densityplot(imp_pmm_40)
 
-save(imp_pmm_10, file = here::here("data", "analysis_data", "imp_pmm_10.RData"))
+save(imp_pmm_40, file = here::here("data", "analysis_data", "imp_pmm_40.RData"))
 
 #---- Stack imputed dataset ----
-load(here::here("data", "analysis_data", "imp_pmm_10.RData"))
-imp_num = 10
+load(here::here("data", "analysis_data", "imp_pmm_40.RData"))
+imp_num = 40
 imp_temp <- list()
 for (i in 1:imp_num){
   imp_temp[[i]] <- complete(get(paste0("imp_pmm_", imp_num)),
@@ -159,7 +160,7 @@ imp_pmm_stacked %>%
   map_dfr(class) %>% t()
 
 #---- Save imputed data ----
-saveRDS(imp_pmm_stacked, here::here("data", "analysis_data", "imp_pmm_10_stacked.RDS"))
+saveRDS(imp_pmm_stacked, here::here("data", "analysis_data", "imp_pmm_40_stacked.RDS"))
 
 #---- OLD ----
 # # tictoc::tic()
