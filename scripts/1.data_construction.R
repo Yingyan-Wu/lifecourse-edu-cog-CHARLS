@@ -1354,7 +1354,7 @@ with(charls, table(chldstate_30, chldstate30, useNA = "ifany"))
 charls %<>% dplyr::rename(r5wtrespb = w5_INDV_weight_ad2)
 
 #---- Dropping people ----
-##---- 1. Dropping those who still missing age or gender ----
+##---- 1. Dropping those who still missing age or gender or not age 45 or older at each wave ----
 # test <- charls %>%
 #   filter(is.na(female) | is.na(r1agey_v3)) %>%
 #   select(female, contains("agey_v3"), contains("childhood_edu"), 
@@ -1372,8 +1372,14 @@ charls %>%
 charls_selected <- charls %>%
   filter(!is.na(female) & !is.na(r1agey_v3)) # n = 25616
 
+# n = 155 aged <= 45 wave 5
+charls_selected %>%
+  filter(r5agey_v3 < 45) %>% nrow()
+charls_selected %<>%
+  filter(r5agey_v3 >= 45)
+
 ##---- 2. Dropping those who did not have any word recall scores ----
-# n = 1695 missing all immediate word recall scores or all delayed word recall scores
+# n = 1682 missing all immediate word recall scores or all delayed word recall scores
 charls_selected %>% 
   filter(rowSums(is.na(across(c("r1imrc", "r2imrc", "r3imrc_cleaned", 
                                 "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
@@ -1385,7 +1391,7 @@ charls_selected %<>%
   filter(!(rowSums(is.na(across(c("r1imrc", "r2imrc", "r3imrc_cleaned", 
                                   "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
              (rowSums(is.na(across(c("r1dlrc", "r2dlrc", "r3dlrc_cleaned", 
-                                     "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5))  # n = 23921
+                                     "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5))  # n = 23779
 
 ##---- Select variables ----
 charls_selected %<>%
