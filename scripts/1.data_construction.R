@@ -335,7 +335,7 @@ charls %<>%
 #   view()
 
 #---- Age: agey_v3 ----
-# Wave 5 age
+##---- Wave 5 age ----
 age_w5 <- charls %>% select(ID, contains("w5_ba003"), contains("xrage"),
                             w5_imonth, w5_iyear) %>%
   dplyr::mutate(w5_iwd = as.Date(paste0(w5_imonth, "/1/", w5_iyear), "%m/%d/%Y"),
@@ -356,7 +356,8 @@ charls %<>%
 charls %>% select(contains("agey")) %>%
   apply(., 2, proc_sum)
 
-# Using birth year, birth month and interview dates to calculate age
+##---- age v2 ----
+# Using birth year, birth month and interview dates to calculate age 
 charls %<>%
   # birth dates (assuming at the first day of the month)
   mutate(rabdate_v2 = as.Date(paste0(rabmonth_v2, "/1/", rabyear_v2),
@@ -388,7 +389,10 @@ colSums(is.na(charls %>% filter(is.na(r2agey)) %>%
 
 charls %>% select(contains("agey_v2")) %>%
   apply(., 2, proc_sum, more = T)
+charls %>% select(contains("iwd_v2")) %>%
+  apply(., 2, table, useNA = "ifany")
 
+##---- age v3 ----
 # For those who are still missing ages, since interview dates were missing, 
 # impute them using the closest nonmissing values of age +/- 2 or +/-3 
 # depending on waves: 2011, 2013, 2015, 2018, 2020
@@ -412,28 +416,16 @@ with(charls %>% filter(is.na(r2agey_v3)),
 with(charls %>% filter(is.na(r4agey_v3) & !is.na(rLHagey)),
      table(!is.na(r4iwd_v2), !is.na(rLHiwm)))
 
-missingage_id <- charls%>%
-  filter(is.na(r1agey_v3) & is.na(r2agey_v3) & is.na(r3agey_v3) & 
-           is.na(r4agey_v3) & is.na(r5agey_v3)) %>%
-  pull(ID)
-
-charls_missingage <- charls %>%
-  filter(ID %in% missingage_id) %>%
-  select("ID", paste0("r", 1:5, "iwd_v2"), rabdate_v2, 
-         # Weights
-         paste0("r", 1:4, "wtrespb"),
-         "ragender",
-         "rabplace_c",
-         paste0("h", 1:4, "rural"),
-         paste0("r", 1:4, "hukou"),
-         "raeduc_c",
-         paste0("r", 1:4, "imrc"), # immediate word recall
-         paste0("r", 1:4, "dlrc"), # delayed word recall
-         # parent's edu & occupation
-         "rameduc_c", "rafeduc_c", "ramomoccup_c", 
-         "radadoccup_c")
-view(charls_missingage)
-# Will have to drop these people
+#---- follow up time: fu_time ----
+fu_time_mat <- charls %>% select(ID, contains("iwd_v2")) %>%
+  mutate(r1fu_time = 0,
+         r2fu_time = round(interval(start = r1iwd_v2, 
+                              end = r2iwd_v2) / 
+           duration(num = 1, units = "months"))/12,
+         r2fu_test = round(interval(start = r1iwd_v2, 
+                                    end = r2iwd_v2) / 
+                             duration(num = 1, units = "years"), 1))
+colSums(is.na(fu_time_mat))
 
 #---- Gender: female ----
 charls %<>% 
@@ -1355,6 +1347,29 @@ charls %<>% dplyr::rename(r5wtrespb = w5_INDV_weight_ad2)
 
 #---- Dropping people ----
 ##---- 1. Dropping those who still missing age or gender or not age 45 or older at each wave ----
+missingage_id <- charls%>%
+  filter(is.na(r1agey_v3) & is.na(r2agey_v3) & is.na(r3agey_v3) & 
+           is.na(r4agey_v3) & is.na(r5agey_v3)) %>%
+  pull(ID)
+
+charls_missingage <- charls %>%
+  filter(ID %in% missingage_id) %>%
+  select("ID", paste0("r", 1:5, "iwd_v2"), rabdate_v2, 
+         # Weights
+         paste0("r", 1:4, "wtrespb"),
+         "ragender",
+         "rabplace_c",
+         paste0("h", 1:4, "rural"),
+         paste0("r", 1:4, "hukou"),
+         "raeduc_c",
+         paste0("r", 1:4, "imrc"), # immediate word recall
+         paste0("r", 1:4, "dlrc"), # delayed word recall
+         # parent's edu & occupation
+         "rameduc_c", "rafeduc_c", "ramomoccup_c", 
+         "radadoccup_c")
+view(charls_missingage)
+# Will have to drop these people
+
 # test <- charls %>%
 #   filter(is.na(female) | is.na(r1agey_v3)) %>%
 #   select(female, contains("agey_v3"), contains("childhood_edu"), 
