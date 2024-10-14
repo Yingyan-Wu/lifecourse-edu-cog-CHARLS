@@ -68,7 +68,7 @@ covbal_comp_plot <- function(weighted_covbal_data, unweighted_covbal_data,
   
   plot <- covbal_toplot %>%
     ggplot(aes(x = std.eff.sz, y = label)) +
-    geom_point(aes(shape = IOW), size = 2, color = "#0072B2") +
+    geom_point(aes(shape = IOW), size = 3, color = "#0072B2") +
     scale_shape_manual(values = c(21, 16)) +
     geom_vline(xintercept = 0) +
     xlab(paste0("Standardized mean diff\nmean(Wave ",index, ") - mean(Wave ", ref,
