@@ -46,12 +46,12 @@ imp_pmm_40 %<>%
     across(ends_with("agey_v3"), ~ .x - r1agey_v3,
            .names = "{.col}fu_time")) %>%
   dplyr::rename_at(vars(ends_with("fu_time")),
-                   function(x) str_replace(x, "agey_v3", "")) %>%
-  group_by(imp) %>%
+                   function(x) str_replace(x, "agey_v3", ""))
+  # group_by(imp) %>%
   # mutate(r1wtrespb_rescaled = r1wtrespb/mean(r1wtrespb)) %>%
   # # Rescale to have mean of 1 to make the survey weighted mixed model faster
   # # tested in previous attempts, the results are the same beofre and after rescaling
-  ungroup()
+  # ungroup()
 
 # # Sanity check
 # imp_pmm_40 %>% group_by(imp) %>%
@@ -83,7 +83,8 @@ rctib_long <- imp_pmm_40 %>%
          paste0("r", 4:5, "imrc_eqt"),
          paste0("r", 1:2, "dlrc"),
          paste0("r", 3, "dlrc_cleaned"),
-         paste0("r", 4:5, "dlrc_eqt")) %>%
+         paste0("r", 4:5, "dlrc_eqt"),
+         ends_with("censor")) %>%
   dplyr::rename_at(vars(contains(c("imrc", "dlrc"))),
                    function(x) str_replace(x, "_eqt|_cleaned", "")) %>%
   pivot_longer(cols = !c(ID, imp), 
@@ -91,7 +92,7 @@ rctib_long <- imp_pmm_40 %>%
                names_pattern = "r(.)(.*)") %>%
   mutate(wave = as.numeric(wave)) %>%
   dplyr::arrange(ID, imp, agey_v3, fu_time) %>%
-  filter(!(is.na(imrc) & is.na(dlrc))) %>%
+  # filter(!(is.na(imrc) & is.na(dlrc))) %>% # will use ipcw!
   mutate(
     first_imrc = ifelse(!is.na(imrc) & row_number() == min(which(!is.na(imrc))), 1, 0),
     first_dlrc = ifelse(!is.na(dlrc) & row_number() == min(which(!is.na(dlrc))), 1, 0))
