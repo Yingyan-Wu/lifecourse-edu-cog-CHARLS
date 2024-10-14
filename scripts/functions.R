@@ -118,12 +118,22 @@ proc_univariate <- function(variable){
 # https://github.com/Mayeda-Research-Group/exposure-trajectories/blob/master/RScripts/functions/impute_ages.R
 
 impute_ages <- function(vector, survey_years){
-  #For complete vectors or vectors missing every value, do nothing
+  # For complete vectors or vectors missing every value, do nothing
   if(sum(is.na(vector)) == 0 | sum(is.na(vector)) == length(vector)){
     return(vector)
   } else{
     gap <- diff(survey_years)
-    last_age <- max(which(!is.na(vector)))
+    nonmissing_age <- which(!is.na(vector))
+    # Since wave 5 is not harmonized, use use previous waves if nonmissing
+    # If all missing but wave 5, use wave 5
+    if (max(nonmissing_age) == 5){
+      nonmissing_age_up <- nonmissing_age[nonmissing_age != 5]
+      last_age <- ifelse(length(nonmissing_age_up) == 0, 5,
+                         max(nonmissing_age_up))
+    } else{
+      last_age <- max(nonmissing_age)
+    }
+    
     missing_age <- which(is.na(vector))
     
     for (slot in missing_age){
@@ -153,4 +163,6 @@ impute_ages <- function(vector, survey_years){
 # vector <- c(75, 77, 79, 82, NA)
 # impute_ages(vector, survey_yrs)
 # vector <- c(75, NA, NA, 82, 84)
+# impute_ages(vector, survey_yrs)
+# vector <- c(NA, NA, 43, NA, 50)
 # impute_ages(vector, survey_yrs)
