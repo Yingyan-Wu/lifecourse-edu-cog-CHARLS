@@ -43,7 +43,27 @@ harmonized_variables <- c("ID", "householdID", "pnc", "communityID",
                           paste0("r", 1:4, "dlrc"), # delayed word recall
                           # parent's edu & occupation
                           "rameduc_c", "rafeduc_c", "ramomoccup_c", 
-                          "radadoccup_c")
+                          "radadoccup_c",
+                          # Self-rated health
+                          paste0("r", 1:4, "shlta"),
+                          # IADLs
+                          paste0("r", 1:4, "moneya"),
+                          paste0("r", 1:4, "medsa"),
+                          paste0("r", 1:4, "shopa"),
+                          paste0("r", 1:4, "mealsa"),
+                          paste0("r", 1:4, "housewka"),
+                          paste0("r", 2:4, "phonea"),
+                          # Health conditions
+                          paste0("r", 1:4, "hibpe"), # hbp
+                          paste0("r", 1:4, "diabe"), # diabetes
+                          paste0("r", 1:4, "cancre"), # cancer
+                          paste0("r", 1:4, "hearte"), # heart disease
+                          paste0("r", 1:4, "stroke"), # stroke
+                          paste0("r", 1:4, "cesd10"), # depressive symptoms
+                          paste0("r", 1:4, "cesd10m"), # depressive symptoms missing
+                          # Social network variables
+                          paste0("r", 1:4, "socwk") # participate in social activities
+)
 
 harmonized <- haven::read_dta(here::here("data", "raw_data", "harmonized",
                                          "H_CHARLS_D_Data.dta"),
@@ -58,6 +78,9 @@ harmonized_lh <- haven::read_dta(here::here("data", "raw_data", "harmonized",
                                             "H_CHARLS_LH_a.dta"))
 
 ##---- psu ----
+# Translate the 33 province names to English using deeplr package trial
+# Linked to community ID
+# auth_key is for YW's trial account
 # psuw1 <- haven::read_dta(here::here("data", "raw_data", "2011", 
 #                                     "chinese_characters_clean", "psu.dta"))
 # colnames(psuw1)
@@ -95,7 +118,7 @@ read_charls <- function(paths){
     haven::read_dta(paths)
   } else if (str_detect(paths, "2011")) {
     haven::read_dta(paths) %>%
-      select(-c("proxy")) # pending: can't figure out how to rename proxy automatically
+      select(-c("proxy")) 
   } else if (str_detect(paths, "Health_Status_and_Functioning") &
              str_detect(paths, "2015")){
     haven::read_dta(paths) %>%
@@ -417,15 +440,41 @@ with(charls %>% filter(is.na(r4agey_v3) & !is.na(rLHagey)),
      table(!is.na(r4iwd_v2), !is.na(rLHiwm)))
 
 #---- follow up time: fu_time ----
-fu_time_mat <- charls %>% select(ID, contains("iwd_v2")) %>%
-  mutate(r1fu_time = 0,
-         r2fu_time = round(interval(start = r1iwd_v2, 
-                              end = r2iwd_v2) / 
-           duration(num = 1, units = "months"))/12,
-         r2fu_test = round(interval(start = r1iwd_v2, 
-                                    end = r2iwd_v2) / 
-                             duration(num = 1, units = "years"), 1))
+charls %<>%
+  mutate(inwlh = case_when(ID %in% harmonized_lh$ID ~ 1,
+                           TRUE ~ 0),
+         inw5 = case_when(ID %in% wave5_ID$ID ~ 1,
+                          TRUE ~ 0),
+         across(inw1:inw4, ~replace_na(.x, 0)),
+         num_core_inw = rowSums(select(., c(contains("inw"), -contains("inwlh")))),
+         bl_iwd_v2 = case_when(inw1 == 1 ~ r1iwd_v2,
+                               inw2 == 1 ~ r2iwd_v2,
+                               inw3 == 1 ~ r3iwd_v2,
+                               inw4 == 1 ~ r4iwd_v2,
+                               inw5 == 1 ~ r5iwd_v2))
+
+for (w in 2:5){
+  charls %<>%
+    mutate(!!paste0("r", w, "fu_time") := # compare to baseline
+             round(interval(start = bl_iwd_v2,
+                            end = !!sym(paste0("r", w, "iwd_v2"))) /
+                     duration(num = 1, units = "years"), 1))
+}
+
+charls %<>%
+  mutate(r1fu_time = case_when(inw1 == 1 ~ 0))
+
+fu_time_mat <- charls %>% select(ID, contains("iwd_v2"), contains("inw"),
+                                 contains("fu_time"))
+
+# Sanity check
 colSums(is.na(fu_time_mat))
+table(fu_time_mat$num_core_inw, useNA = "ifany") # n = 187 only attended LH interview
+for (w in 1:5){
+  print(with(fu_time_mat, table(get(paste0("inw", w)), 
+                                !is.na(get(paste0("r", w, "iwd_v2"))), 
+                                useNA = "ifany")))
+}
 
 #---- Gender: female ----
 charls %<>% 
@@ -601,6 +650,17 @@ with(charls %>% filter(!is.na(rLHiwm)),
      table(lh_e004, lh_e002, useNA = "ifany"))
 
 #---- Outcome: r1imrc, r2imrc, r3imrc_cleaned, r4imrc_eqt, r5imrc_eqt ----
+# Word list
+with(charls, table(w1_dc006_version, w2_dc006_version, useNA = "ifany"))
+with(charls, table(w2_dc006_version, w3_dc006_version, useNA = "ifany"))
+
+charls %>% filter(!is.na(w1_dc006_version) & !is.na(w2_dc006_version) &
+                    !is.na(w3_dc006_version)) %>% nrow()
+charls %>% filter(w1_dc006_version == w2_dc006_version & 
+                    w2_dc006_version == w3_dc006_version) %>% nrow()
+charls %>% filter(w1_dc006_version == w2_dc006_version) %>% nrow()
+charls %>% filter(w3_dc006_version == w2_dc006_version) %>% nrow()
+
 ##---- Wave 5 ----
 with(charls, table(w5_dc012_s11, w5_dc012_s12, useNA = "ifany"))
 # There are 1244 participants with no responses (can't recall any of the words)
@@ -1344,6 +1404,294 @@ with(charls, table(chldstate_30, chldstate30, useNA = "ifany"))
 
 #---- Weight: wtrespb ----
 charls %<>% dplyr::rename(r5wtrespb = w5_INDV_weight_ad2)
+# Check the weight distribution across waves
+charls %>%
+  select(contains("wtrespb")) %>%
+  pivot_longer(cols = everything(),
+               names_to = "wave",
+               values_to = "wtrespb",
+               names_pattern = "r(.)wtrespb") %>%
+  filter(wtrespb < 150000) %>%
+  ggplot() +
+  geom_density(aes(x = wtrespb, color = wave), alpha = 0.5) +
+  theme_bw()
+# Check the weight change within person
+random_id <- charls %>%
+  filter(rowSums(is.na(across(contains("wtrespb")))) == 0) %>%
+  pull(ID) %>%
+  sample(., 1000, replace = F)
+charls %>%
+  filter(ID %in% random_id) %>%
+  select(ID, contains("wtrespb")) %>%
+  pivot_longer(cols = !ID,
+               names_to = "wave",
+               values_to = "wtrespb",
+               names_pattern = "r(.)wtrespb") %>%
+  ggplot() +
+  geom_line(aes(x = wave, y = wtrespb, group = ID, color = factor(ID))) +
+  theme_bw() +
+  theme(legend.position = "none")
+# The weights change drastically. goes up and down
+
+# Check the weighted sample size for 2011-2020
+# ranging from 562 M to 650 M
+charls %>%
+  select(contains("wtrespb")) %>%
+  apply(., 2, sum, na.rm = T)/1000000
+
+# Use the mean weight across waves
+charls %<>%
+  mutate(
+    bl_wtrespb = case_when(inw1 == 1 ~ r1wtrespb,
+                           inw2 == 1 ~ r2wtrespb,
+                           inw3 == 1 ~ r3wtrespb,
+                           inw4 == 1 ~ r4wtrespb,
+                           inw5 == 1 ~ r5wtrespb),
+    mean_wtrespb = rowMeans(across(paste0("r", 1:5, "wtrespb")), na.rm = T),
+    min_wtrespb = pmin(r1wtrespb, r2wtrespb, r3wtrespb, r4wtrespb, r5wtrespb, na.rm = T))
+
+charls$median_wtrespb <- apply(charls %>% select(contains("wtrespb")), 1, median, na.rm = T)
+
+# PENDINGH on checking after filtering
+
+#---- Covariates for IPCW ----
+#---- self-rated health ----
+table(charls$w5_da001, useNA = "ifany")
+
+charls %<>%
+  mutate(r5shlta = w5_da001)
+
+#---- IADLs ----
+iadl_items <- c("moneya", "medsa", "shopa", "mealsa", "housewka")
+iadl_items_add <- c(iadl_items, "phonea")
+
+charls %>%
+  select(paste0("w5_", "db0", c(22, 20, 16, 14, 12, 18))) %>%
+  apply(., 2, table, useNA = "ifany")
+
+# Harmonized variables
+charls %>%
+  select(contains(iadl_items_add)) %>%
+  apply(., 2, table, useNA = "ifany")
+# 2, 3, 4 from raw variable set to 1
+
+charls %<>%
+  mutate(across(paste0("w5_", "db0", c(22, 20, 16, 14, 12, 18)), 
+                ~ case_when(. %in% c(2, 3, 4) ~ 1,
+                            . == 1 ~ 0),
+                .names = "{.col}_2cat")) %>%
+  rename_at(vars(paste0("w5_", "db0", c(22, 20, 16, 14, 12, 18), "_2cat")), 
+            ~paste0("r5", iadl_items_add))
+
+# Sanity check
+with(charls, table(w5_db022, r5moneya, useNA = "ifany"))
+with(charls, table(w5_db020, r5medsa, useNA = "ifany"))
+with(charls, table(w5_db016, r5shopa, useNA = "ifany"))
+with(charls, table(w5_db014, r5mealsa, useNA = "ifany"))
+with(charls, table(w5_db012, r5housewka, useNA = "ifany"))
+with(charls, table(w5_db018, r5phonea, useNA = "ifany"))
+
+for (w in 1:5){
+  charls %<>%
+    mutate(!!paste0("r", w, "iadl") := 
+             ifelse(rowSums(is.na(across(paste0("r", w, iadl_items)))) == 
+                      length(iadl_items), NA_real_,
+                    rowSums(across(paste0("r", w, iadl_items)), na.rm = T)))
+}
+
+for (w in 2:5){
+  charls %<>%
+    mutate(!!paste0("r", w, "iadl_add") := 
+             ifelse(rowSums(is.na(across(paste0("r", w, iadl_items_add)))) == 
+                      length(iadl_items_add), NA_real_,
+                    rowSums(across(paste0("r", w, iadl_items_add)), na.rm = T)))
+}
+
+charls %<>%
+  mutate(across(contains("iadl"), ~ case_when(. == 0 ~ 1,
+                                              . == 1 ~ 0),
+                .names = "{.col}_2cat"))
+
+# Sanity check
+charls %>%
+  select(contains("iadl"), -contains("_2cat")) %>%
+  apply(., 2, table, useNA = "ifany")
+charls %>%
+  select(contains("_2cat")) %>%
+  apply(., 2, table, useNA = "ifany")
+
+#---- Health conditions ----
+# Wave 5 HBP, diabetes, cancer, heart disease, stroke
+charls %>%
+  select(contains("xchrodistype_")) %>%
+  apply(., 2, table, useNA = "ifany")
+
+table(charls$w5_xchrodistype_1_, useNA = "ifany")
+table(charls$w5_xchrodistype_2_, useNA = "ifany")
+
+charls %>%
+  select(ID, contains("xchrodistype_")) %>%
+  filter(w5_xchrodistype_1_ == "") %>%
+  view()
+
+charls %>%
+  select(contains("xchrodistype_")) %>%
+  head() %>% view()
+
+# According to harmonized dataset documentation
+# using have been diagnosed, disease compared to last time, doctor told
+# 1, hbp; 3, diabetes; 4, cancer; 7, heart disease; 8, stroke
+conditions <- c("hibpe", "diabe", "cancre", "hearte", "stroke")
+cond_index <- c(1, 3, 4, 7, 8)
+for (i in 1:length(conditions)){
+  charls %<>%
+    mutate(!!paste0("r5", conditions[i]) := 
+             case_when(!!sym(paste0("w5_da003_", cond_index[i], "_")) == 1 ~ 1,
+                       !!sym(paste0("w5_da003_", cond_index[i], "_")) == 2 ~ 0),
+           !!paste0("r4", conditions[i], "_v2") := 
+             case_when(!!sym(paste0("w5_da002_", cond_index[i], "_")) == 99 ~ 0, # 99: never had the disease
+                       TRUE ~ !!sym(paste0("r4", conditions[i]))))
+}
+
+# Sanity check
+with(charls, table(r4hibpe, r4hibpe_v2, useNA = "ifany"))
+with(charls, table(r4diabe, r4diabe_v2, useNA = "ifany"))
+with(charls, table(r4cancre, r4cancre_v2, useNA = "ifany"))
+with(charls, table(r4hearte, r4hearte_v2, useNA = "ifany"))
+with(charls, table(r4stroke, r4stroke_v2, useNA = "ifany"))
+
+# Depressive symptoms
+# Wave 5 depression
+charls %>%
+  select(paste0("w5_", c("dc018", "dc019", "dc022", "dc023", "dc024", "dc016", 
+                         "dc025", "dc017", "dc020", "dc021", "db045"))) %>%
+  apply(., 2, table, useNA = "ifany")
+
+charls %<>%
+  mutate(across(paste0("w5_", c("dc018", "dc019", "dc022", "dc023", "dc024", "dc016", 
+                                "dc025", "dc017", "dc020", "dc021", "db045")), 
+                ~case_when(. %in% c(997, 999) ~ NA_real_,
+                           TRUE ~ .))) %>%
+  mutate(r5depresl = w5_dc018 - 1,
+         r5effortl = w5_dc019 - 1,
+         r5sleeprl = w5_dc022 - 1,
+         r5whappyl = w5_dc023 - 1,
+         r5whappyl_rev = 3 - r5whappyl, # Reverse coded for CESD score
+         r5flonel = w5_dc024 - 1,
+         r5botherl = w5_dc016 - 1,
+         r5goingl = w5_dc025 - 1,
+         r5mindtsl = w5_dc017 - 1,
+         r5fhopel = w5_dc020 - 1,
+         r5fhopel_rev = 3 - r5fhopel, # Reverse coded for CESD score
+         r5fearll = w5_dc021 - 1) %>%
+  mutate(r5cesd10 = rowSums(across(
+    paste0("r5", c("depresl", "effortl", "sleeprl", "whappyl_rev", "flonel", 
+                   "botherl", "goingl", "mindtsl", "fhopel_rev", "fearll"))), 
+    na.rm = T),
+    r5cesd10m = rowSums(is.na(across(
+      paste0("r5", c("depresl", "effortl", "sleeprl", "whappyl_rev", "flonel", 
+                     "botherl", "goingl", "mindtsl", "fhopel_rev", "fearll"))))))
+
+charls %<>%
+  mutate(r1cesd10_cleaned = case_when(r1cesd10m == 10 ~ NA_real_,
+                                      TRUE ~ r1cesd10),
+         r2cesd10_cleaned = case_when(r2cesd10m == 10 ~ NA_real_,
+                                      TRUE ~ r2cesd10),
+         r3cesd10_cleaned = case_when(r3cesd10m == 10 ~ NA_real_,
+                                      TRUE ~ r3cesd10),
+         r4cesd10_cleaned = case_when(r4cesd10m == 10 ~ NA_real_,
+                                      TRUE ~ r4cesd10),
+         r5cesd10_cleaned = case_when(r5cesd10m == 10 ~ NA_real_,
+                                      TRUE ~ r5cesd10))
+
+# Sanity check
+charls %>%
+  select(paste0("r5", c("depresl", "effortl", "sleeprl", "whappyl_rev", "flonel", 
+                        "botherl", "goingl", "mindtsl", "fhopel_rev", "fearll"))) %>%
+  apply(., 2, table, useNA = "ifany")
+charls %>%
+  select(contains("cesd10")) %>%
+  apply(., 2, table, useNA = "ifany")
+with(charls, table(r5cesd10_cleaned, r5cesd10m, useNA = "ifany"))
+
+#---- Social network variables ----
+charls %>%
+  select(paste0("r", 1:4, "socwk")) %>%
+  apply(., 2, table, useNA = "ifany")
+
+# The social activities listed include:
+# 1. Interacted with friends
+# 2. Played Ma-jong, played chess, played cards, or went to community club
+# 3. Went to a sport, social, or other kind of club
+# 4. Took part in a community-related organization
+# 5. Done voluntary or charity work
+# 6. Attended an educational or training course
+charls %<>%
+  mutate(r5socwk = case_when(
+    rowSums(is.na(across(paste0("w5_", "da038_s", 1:6)))) == 6 ~ NA_real_,
+    rowSums(across(paste0("w5_", "da038_s", 1:6)), na.rm = T) >= 1 ~ 1,
+    rowSums(across(paste0("w5_", "da038_s", 1:6)), na.rm = T) == 0 ~ 0))
+# Sanity check
+charls %>%
+  select(paste0("r", 1:5, "socwk")) %>%
+  apply(., 2, table, useNA = "ifany")
+
+#---- Reframe the dataset ----
+# First visit baseline f1, and then f2-f5 F/U visits
+##---- Select variables ----
+charls_selected <- charls %>%
+  select(ID, 
+         paste0("inw", 1:5),
+         paste0("r", 1:5, "iwd_v2"),
+         paste0("r", 1:5, "fu_time"),
+         # Weights
+         paste0("r", 1:5, "wtrespb"),
+         # Age and gender
+         paste0("r", 1:5, "agey_v3"), female, 
+         # Education
+         childhood_edu, continuing_edu, edu_cat,
+         # Word recall scores
+         contains("imrc"), contains("dlrc"), 
+         # Childhood residence
+         childhood_1st_resi, childhood_1st_region, rarural_child, 
+         # Parental SES
+         rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c, 
+         # Birth order
+         first_child_v2, 
+         # Occupation
+         contains("first_occupation"), contains("occupation_30"), 
+         # Marital status
+         contains("first_maritalsts"), marital_30, maritalsts_30_age, 
+         # Adulthood Rural and hukou
+         hrural_v2, region_eng, province_eng, rural_30, 
+         contains("first_hukou"), contains("hukou_30"), 
+         # Number of children at 30 years old
+         contains("chldstate_30"),
+         # self-rated health
+         contains("shlta"),
+         # IADLs
+         contains(c("moneya", "medsa", "shopa", "meala", "housewka", "phonea")),
+         contains("iadl"),
+         # Health conditions
+         contains(c("hibpe", "diabe", "cancre", "hearte", "stroke")),
+         # CESD
+         contains("cesd10_cleaned"),
+         # Social network variables
+         contains("socwk"))
+
+##---- Baseline variables ----
+charls_reframe <- charls_selected %>%
+  mutate(across(!contains("inw", "")))
+mutate(across(contains("iwd_v2")), 
+       .fns = ~ case_when(
+         inw1 == 1 ~ get(paste0("r", 1, .col)),
+         inw2 == 1 ~ get(paste0("r", 2, .col)),
+         inw3 == 1 ~ get(paste0("r", 3, .col)),
+         inw4 == 1 ~ get(paste0("r", 4, .col)),
+         inw5 == 1 ~ get(paste0("r", 5, .col)), 
+         TRUE ~ NA_real_),
+       .names = "bl_{.col}")
+# charls_reframe <-
 
 #---- Dropping people ----
 ##---- 1. Dropping those who still missing age or gender or not age 45 or older at each wave ----
@@ -1408,32 +1756,21 @@ charls_selected %<>%
              (rowSums(is.na(across(c("r1dlrc", "r2dlrc", "r3dlrc_cleaned", 
                                      "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5))  # n = 23779
 
-##---- Select variables ----
-charls_selected %<>%
-  select(ID, 
-         # Weights
-         paste0("r", 1:5, "wtrespb"),
-         # Age and gender
-         paste0("r", 1:5, "agey_v3"), female, 
-         # Education
-         childhood_edu, continuing_edu, edu_cat,
-         # Word recall scores
-         contains("imrc"), contains("dlrc"), 
-         # Childhood residence
-         childhood_1st_resi, childhood_1st_region, rarural_child, 
-         # Parental SES
-         rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c, 
-         # Birth order
-         first_child_v2, 
-         # Occupation
-         contains("first_occupation"), contains("occupation_30"), 
-         # Marital status
-         contains("first_maritalsts"), marital_30, maritalsts_30_age, 
-         # Adulthood Rural and hukou
-         hrural_v2, region_eng, province_eng, rural_30, 
-         contains("first_hukou"), contains("hukou_30"), 
-         # Number of children at 30 years old
-         contains("chldstate_30"))
+# Long dataset
+test_long <- fu_time_mat %>%
+  select(-inwlh) %>%
+  rename_at(vars(contains("inw")), ~gsub("inw(\\d)", "r\\1inw", .)) %>%
+  pivot_longer(!c(ID, num_core_inw),
+               names_to = c("wave", ".value"),
+               names_pattern = "r(.)(.*)") %>%
+  na.omit() %>%
+  group_by(ID) %>%
+  arrange(wave) %>%
+  mutate(bl_wave = min(wave),
+         bl_iwd_v2 = min(iwd_v2)) %>%
+  ungroup()
+
+diffdf::diffdf(test_long, fu_time_long)
 
 #---- Save the data ----
 save(charls, 
