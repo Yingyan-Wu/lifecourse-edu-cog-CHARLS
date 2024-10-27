@@ -305,12 +305,15 @@ ggsave(here::here("output", "figures", "figure2_rc_dist_2015_20182020.eps"),
        device = "eps", dpi = 300, width = 7, height = 5, units = "in")
 
 ##---- Figure for slides ----
+p_load("ggdist")
 rc_long %>%
   filter(measure != "Equated") %>%
   mutate(measure = str_replace(measure, "Original |Original", ""),
          measure = str_replace(measure, "trial", "Trial")) %>%
-  ggplot() +
-  geom_boxplot(aes(x = measure, y = value, color = construct)) +
+  ggplot(aes(x = measure, y = value, color = construct)) +
+  ggdist::stat_halfeye(adjust = 17, width = .5, .width = 0, justification = -.3, 
+                       point_colour = NA) +
+  geom_boxplot(width = .2) +
   facet_grid(rows = vars(year), cols = vars(construct),
              scale = "free_x", space="free") +
   labs(x = element_blank(), y = "Word recall scores") +
@@ -326,6 +329,111 @@ rc_long %>%
 ggsave(here::here("output", "figures", "figure2_rc_dist_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
+rc_allwave_long <- harmonized_addw5_selected %>%
+  select(ID, contains(c("imrc", "dlrc"))) %>% 
+  pivot_longer(cols = !ID,
+               names_to = c("wave", "construct"),
+               names_pattern = "r(\\d)(.*)") %>%
+  na.omit() %>%
+  mutate(
+    year = case_when(wave == 1 ~ "Wave 2011",
+                     wave == 2 ~ "Wave 2013",
+                     wave == 3 ~ "Wave 2015",
+                     wave == 4 ~ "Wave 2018",
+                     wave == 5 ~ "Wave 2020"),
+    year_measure = case_when(
+      wave == 1 ~ "2011",
+      wave == 2 ~ "2013",
+      wave == 3 ~ "2015",
+      wave == 4 & construct == "imrc_cleaned" ~ "2018 trial 1",
+      wave == 4 & construct == "imrc_trial2" ~ "2018 trial 2",
+      wave == 4 & construct == "imrc_trial3" ~ "2018 trial 3",
+      wave == 5 & construct == "imrc_cleaned" ~ "2020 trial 1",
+      wave == 5 & construct == "imrc_trial2" ~ "2020 trial 2",
+      wave == 5 & construct == "imrc_trial3" ~ "2020 trial 3",
+      wave == 4 ~ "2018",
+      wave == 5 ~ "2020"),
+    measure = case_when(
+      str_detect(construct, "imrc_cleaned") ~ "Original trial 1",
+      str_detect(construct, "dlrc_cleaned") ~ "Original",
+      str_detect(construct, "trial2") ~ "Original trial 2",
+      str_detect(construct, "trial3") ~ "Original trial 3",
+      str_detect(construct, "eqt") ~ "Equated",
+      str_detect(construct, "imrc") & wave %in% c(1, 2) ~ "Original trial 1",
+      str_detect(construct, "dlrc") & wave %in% c(1, 2) ~ "Original"),
+    # measure = factor(measure, 
+    #                  levels = c(paste0("Original trial ", 1:3),
+    #                             "Original", "Equated")),
+    construct = case_when(str_detect(construct, "imrc") ~ "Immediate word recall",
+                          str_detect(construct, "dlrc") ~ "Delayed word recall"),
+    construct = factor(construct, levels = c("Immediate word recall", 
+                                             "Delayed word recall")))
+
+rc_allwave_long %>%
+  filter(measure != "Equated" & year_measure %in% c("2011", "2013", "2015")) %>%
+  mutate(measure = str_replace(measure, "Original |Original", ""),
+         measure = str_replace(measure, "trial", "Trial")) %>%
+  ggplot(aes(x = year_measure, y = value, color = construct)) +
+  ggdist::stat_halfeye(adjust = 15, width = .5, .width = 0, justification = -.3, 
+                       point_colour = NA) +
+  geom_boxplot(width = .2) +
+  # geom_boxplot(aes(x = year_measure, y = value, color = construct)) + 
+  facet_grid(cols = vars(construct),
+             scale = "free_x", space="free") +
+  labs(x = element_blank(), y = "Word recall scores") +
+  scale_color_manual(values = c("#67b4b0", "#6c4d86")) +
+  theme_bw() +
+  theme(legend.position = "none",
+        text = element_text(size = 12, color = "black"), 
+        strip.text.x = element_text(size = 12, color = "black"),
+        strip.text.y = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"), 
+        axis.text.y = element_text(size = 12, color = "black"))
+
+ggsave(here::here("output", "figures", "figure_rc_dist_2011_2015_slides.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
+
+rc_allwave_long %>%
+  filter(construct == "Immediate word recall") %>%
+  mutate(measure = str_replace(measure, "Original |Original", ""),
+         measure = str_replace(measure, "trial", "Trial")) %>%
+  ggplot(aes(x = year_measure, y = value, color = "#67b4b0")) +
+  ggdist::stat_halfeye(adjust = 15, width = .5, .width = 0, justification = -.3, 
+                       point_colour = NA) +
+  geom_boxplot(width = .2, color = "#67b4b0") +
+  # geom_boxplot(aes(x = year_measure, y = value, color = construct)) + 
+  labs(x = element_blank(), y = "Immediate word recall scores") +
+  theme_bw() +
+  theme(legend.position = "none",
+        text = element_text(size = 10, color = "black"), 
+        strip.text.x = element_text(size = 10, color = "black"),
+        strip.text.y = element_text(size = 10, color = "black"),
+        axis.text.x = element_text(size = 8, color = "black"), 
+        axis.text.y = element_text(size = 10, color = "black"))
+
+ggsave(here::here("output", "figures", "figure_rc_dist_2011_2020_imrc_slides.png"),
+       device = "png", dpi = 300, width = 9, height = 7, units = "in")
+
+rc_allwave_long %>%
+  filter(construct == "Delayed word recall") %>%
+  mutate(measure = str_replace(measure, "Original |Original", ""),
+         measure = str_replace(measure, "trial", "Trial")) %>%
+  ggplot(aes(x = year_measure, y = value, color = "#6c4d86")) +
+  ggdist::stat_halfeye(adjust = 15, width = .5, .width = 0, justification = -.3, 
+                       point_colour = NA) +
+  geom_boxplot(width = .2, color = "#6c4d86") +
+  # geom_boxplot(aes(x = year_measure, y = value, color = construct)) + 
+  labs(x = element_blank(), y = "Delayed word recall scores") +
+  theme_bw() +
+  theme(legend.position = "none",
+        text = element_text(size = 10, color = "black"), 
+        strip.text.x = element_text(size = 10, color = "black"),
+        strip.text.y = element_text(size = 10, color = "black"),
+        axis.text.x = element_text(size = 8, color = "black"), 
+        axis.text.y = element_text(size = 10, color = "black"))
+
+ggsave(here::here("output", "figures", "figure_rc_dist_2011_2020_dlrc_slides.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 #---- Figure 3. Covariate balance plot ----
 load(here::here("data", "analysis_data", "eqt_covbal_data_2015_20182020.RData"))
