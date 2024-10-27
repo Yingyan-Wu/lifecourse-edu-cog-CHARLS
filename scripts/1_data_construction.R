@@ -1464,7 +1464,8 @@ charls$median_wtrespb <- apply(charls %>% select(contains("wtrespb")), 1, median
 table(charls$w5_da001, useNA = "ifany")
 
 charls %<>%
-  mutate(r5shlta = w5_da001)
+  mutate(r5shlta = case_when(w5_da001 == 997 ~ NA_real_,
+                             TRUE ~ w5_da001))
 
 #---- IADLs ----
 iadl_items <- c("moneya", "medsa", "shopa", "mealsa", "housewka")
@@ -1644,6 +1645,7 @@ charls %>%
 #---- Reframe the dataset ----
 # First visit baseline f1, and then f2-f5 F/U visits
 ##---- Select variables ----
+conditions <- c("hibpe", "diabe", "cancre", "hearte", "stroke")
 charls_selected <- charls %>%
   # Clean up imrc and dlrc variables
   select(-paste0("r", 3:4, "imrc"), -contains("trial"),
@@ -1762,9 +1764,9 @@ charls_reframe %<>% select(-contains(paste0("r", 1:5)))
 ##---- 1. Dropping those who still missing age and gender or not age 45 or older at each wave ----
 table(charls_reframe$female, useNA = "ifany")
 summary(charls_reframe$n1_agey_v3)
-charls_reframe %>%
-  filter(is.na(n1_agey_v3)) %>%
-  view()
+# charls_reframe %>%
+#   filter(is.na(n1_agey_v3)) %>%
+#   view()
 
 # missingage_id <- charls %>%
 #   filter(is.na(r1agey_v3) & is.na(r2agey_v3) & is.na(r3agey_v3) & 
