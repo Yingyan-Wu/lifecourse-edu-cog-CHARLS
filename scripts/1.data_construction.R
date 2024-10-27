@@ -472,6 +472,11 @@ colSums(is.na(fu_time_mat))
 table(fu_time_mat$num_core_inw, useNA = "ifany") # n = 187 only attended LH interview
 for (w in 1:5){
   print(with(fu_time_mat, table(get(paste0("inw", w)), 
+                                num_core_inw, 
+                                useNA = "ifany")))
+}
+for (w in 1:5){
+  print(with(fu_time_mat, table(get(paste0("inw", w)), 
                                 !is.na(get(paste0("r", w, "iwd_v2"))), 
                                 useNA = "ifany")))
 }
@@ -1452,7 +1457,7 @@ charls %<>%
 
 charls$median_wtrespb <- apply(charls %>% select(contains("wtrespb")), 1, median, na.rm = T)
 
-# PENDINGH on checking after filtering
+# PENDING on checking after filtering
 
 #---- Covariates for IPCW ----
 #---- self-rated health ----
@@ -1640,7 +1645,20 @@ charls %>%
 # First visit baseline f1, and then f2-f5 F/U visits
 ##---- Select variables ----
 charls_selected <- charls %>%
+  # Clean up imrc and dlrc variables
+  select(-paste0("r", 3:4, "imrc"), -contains("trial"),
+         -paste0("r", 4:5, "imrc_cleaned"),
+         -paste0("r", 3:4, "dlrc"), 
+         -paste0("r", 4:5, "dlrc_cleaned")) %>%
+  # Rename cleaned variable to original variable name
+  rename_with(~str_remove(., "_cleaned"), contains("rc_cleaned")) %>%
+  rename_with(~str_remove(., "_eqt"), contains("_eqt")) %>%
+  # Use V2 version of health condition variables for wave 4
+  select(-paste0("r", 4, conditions)) %>%
+  rename_with(~str_remove(., "_v2"), contains(paste0(conditions, "_v2"))) %>%
   select(ID, 
+         num_core_inw,
+         bl_iwd_v2,
          paste0("inw", 1:5),
          paste0("r", 1:5, "iwd_v2"),
          paste0("r", 1:5, "fu_time"),
@@ -1670,8 +1688,9 @@ charls_selected <- charls %>%
          # self-rated health
          contains("shlta"),
          # IADLs
-         contains(c("moneya", "medsa", "shopa", "meala", "housewka", "phonea")),
-         contains("iadl"),
+         contains(c("moneya", "medsa", "shopa", "meala", "housewka")),
+         paste0("r", 1:5, "iadl"),
+         paste0("r", 1:5, "iadl_2cat"),
          # Health conditions
          contains(c("hibpe", "diabe", "cancre", "hearte", "stroke")),
          # CESD
@@ -1680,102 +1699,131 @@ charls_selected <- charls %>%
          contains("socwk"))
 
 ##---- Baseline variables ----
-charls_reframe <- charls_selected %>%
-  mutate(across(!contains("inw", "")))
-mutate(across(contains("iwd_v2")), 
-       .fns = ~ case_when(
-         inw1 == 1 ~ get(paste0("r", 1, .col)),
-         inw2 == 1 ~ get(paste0("r", 2, .col)),
-         inw3 == 1 ~ get(paste0("r", 3, .col)),
-         inw4 == 1 ~ get(paste0("r", 4, .col)),
-         inw5 == 1 ~ get(paste0("r", 5, .col)), 
-         TRUE ~ NA_real_),
-       .names = "bl_{.col}")
-# charls_reframe <-
+variables <- charls_selected %>%
+  select(starts_with(paste0("r", 1:5))) %>% colnames() %>%
+  str_remove_all("r[1-5]")
+# Sanity check
+table(variables)
+
+variables %<>% unique()
+
+charls_selected %<>%
+  mutate(n1_wave = case_when(inw1 == 1 ~ 1,
+                             inw2 == 1 ~ 2,
+                             inw3 == 1 ~ 3,
+                             inw4 == 1 ~ 4,
+                             inw5 == 1 ~ 5,
+                             TRUE ~ NA_real_),
+         n2_wave = case_when(n1_wave == 1 & inw2 == 1 ~ 2,
+                             n1_wave < 3 & inw3 == 1 ~ 3,
+                             n1_wave < 4 & inw4 == 1 ~ 4,
+                             n1_wave < 5 & inw5 == 1 ~ 5,
+                             TRUE ~ NA_real_),
+         n3_wave = case_when(n2_wave < 3 & inw3 == 1 ~ 3,
+                             n2_wave < 4 & inw4 == 1 ~ 4,
+                             n2_wave < 5 & inw5 == 1 ~ 5,
+                             TRUE ~ NA_real_),
+         n4_wave = case_when(n3_wave < 4 & inw4 == 1 ~ 4,
+                             n3_wave < 5 & inw5 == 1 ~ 5,
+                             TRUE ~ NA_real_),
+         n5_wave = case_when(n4_wave < 5 & inw5 == 1 ~ 5,
+                             TRUE ~ NA_real_))
+
+charls_reframe <- charls_selected
+for (var in variables){
+  charls_reframe %<>%
+    mutate(!!paste0("n1_", var) := 
+             case_when(n1_wave == 1 ~ !!sym(paste0("r", 1, var)),
+                       n1_wave == 2 ~ !!sym(paste0("r", 2, var)),
+                       n1_wave == 3 ~ !!sym(paste0("r", 3, var)),
+                       n1_wave == 4 ~ !!sym(paste0("r", 4, var)),
+                       n1_wave == 5 ~ !!sym(paste0("r", 5, var))),
+           !!paste0("n2_", var) :=
+             case_when(n2_wave == 2 ~ !!sym(paste0("r", 2, var)),
+                       n2_wave == 3 ~ !!sym(paste0("r", 3, var)),
+                       n2_wave == 4 ~ !!sym(paste0("r", 4, var)),
+                       n2_wave == 5 ~ !!sym(paste0("r", 5, var))),
+           !!paste0("n3_", var) :=
+             case_when(n3_wave == 3 ~ !!sym(paste0("r", 3, var)),
+                       n3_wave == 4 ~ !!sym(paste0("r", 4, var)),
+                       n3_wave == 5 ~ !!sym(paste0("r", 5, var))),
+           !!paste0("n4_", var) :=
+             case_when(n4_wave == 4 ~ !!sym(paste0("r", 4, var)),
+                       n4_wave == 5 ~ !!sym(paste0("r", 5, var))),
+           !!paste0("n5_", var) :=
+             case_when(n5_wave == 5 ~ !!sym(paste0("r", 5, var))))
+}
+
+colnames(charls_reframe)
+
+charls_reframe %<>% select(-contains(paste0("r", 1:5)))
 
 #---- Dropping people ----
-##---- 1. Dropping those who still missing age or gender or not age 45 or older at each wave ----
-missingage_id <- charls%>%
-  filter(is.na(r1agey_v3) & is.na(r2agey_v3) & is.na(r3agey_v3) & 
-           is.na(r4agey_v3) & is.na(r5agey_v3)) %>%
-  pull(ID)
+##---- 1. Dropping those who still missing age and gender or not age 45 or older at each wave ----
+table(charls_reframe$female, useNA = "ifany")
+summary(charls_reframe$n1_agey_v3)
+charls_reframe %>%
+  filter(is.na(n1_agey_v3)) %>%
+  view()
 
-charls_missingage <- charls %>%
-  filter(ID %in% missingage_id) %>%
-  select("ID", paste0("r", 1:5, "iwd_v2"), rabdate_v2, 
-         # Weights
-         paste0("r", 1:4, "wtrespb"),
-         "ragender",
-         "rabplace_c",
-         paste0("h", 1:4, "rural"),
-         paste0("r", 1:4, "hukou"),
-         "raeduc_c",
-         paste0("r", 1:4, "imrc"), # immediate word recall
-         paste0("r", 1:4, "dlrc"), # delayed word recall
-         # parent's edu & occupation
-         "rameduc_c", "rafeduc_c", "ramomoccup_c", 
-         "radadoccup_c")
-view(charls_missingage)
+# missingage_id <- charls %>%
+#   filter(is.na(r1agey_v3) & is.na(r2agey_v3) & is.na(r3agey_v3) & 
+#            is.na(r4agey_v3) & is.na(r5agey_v3)) %>%
+#   pull(ID)
+# 
+# charls_missingage <- charls %>%
+#   filter(ID %in% missingage_id) %>%
+#   select("ID", paste0("r", 1:5, "iwd_v2"), rabdate_v2,
+#          # Weights
+#          paste0("r", 1:4, "wtrespb"),
+#          "ragender",
+#          "rabplace_c",
+#          paste0("h", 1:4, "rural"),
+#          paste0("r", 1:4, "hukou"),
+#          "raeduc_c",
+#          paste0("r", 1:4, "imrc"), # immediate word recall
+#          paste0("r", 1:4, "dlrc"), # delayed word recall
+#          # parent's edu & occupation
+#          "rameduc_c", "rafeduc_c", "ramomoccup_c",
+#          "radadoccup_c")
+# 
+# view(charls_missingage)
 # Will have to drop these people
 
-# test <- charls %>%
-#   filter(is.na(female) | is.na(r1agey_v3)) %>%
-#   select(female, contains("agey_v3"), contains("childhood_edu"), 
-#          contains("continuing_edu"),
-#          contains("imrc"), contains("dlrc"))
-# # These 5 people did not have the outcome measures and the education variables
-# table(colSums(is.na(test %>% filter(is.na(female)))))
-# # Most of these 438 people did not have outcome measures or education variables
-# table(colSums(is.na(test %>% filter(is.na(r1agey_v3)))))
-# test %>% filter(is.na(r1agey_v3)) %>% view()
+# n =  drop missing age or gender!
+charls_reframe %>%
+  filter(is.na(female) | is.na(n1_agey_v3)) %>% nrow() # 438
+charls_reframe_filtered <- charls_reframe %>%
+  filter(!is.na(female) & !is.na(n1_agey_v3)) # n = 25616
 
-# n = 438 drop missing age or gender!
-charls %>%
-  filter(is.na(female) | is.na(r1agey_v3)) %>% nrow()
-charls_selected <- charls %>%
-  filter(!is.na(female) & !is.na(r1agey_v3)) # n = 25616
+# bl agey_v3 < 45
+charls_reframe_filtered %>%
+  filter(n1_agey_v3 < 45) %>% nrow() # n = 2017
+charls_reframe_filtered %<>%
+  filter(!n1_agey_v3 < 45) # n = 23599
 
-# n = 155 aged <= 45 wave 5
-charls_selected %>%
-  filter(r5agey_v3 < 45) %>% nrow()
-charls_selected %<>%
-  filter(r5agey_v3 >= 45)
-
-##---- 2. Dropping those who did not have any word recall scores ----
-# n = 1682 missing all immediate word recall scores or all delayed word recall scores
-charls_selected %>% 
-  filter(rowSums(is.na(across(c("r1imrc", "r2imrc", "r3imrc_cleaned", 
-                                "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
-           (rowSums(is.na(across(c("r1dlrc", "r2dlrc", "r3dlrc_cleaned", 
-                                   "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5) %>% 
-  nrow()
-
-charls_selected %<>% 
-  filter(!(rowSums(is.na(across(c("r1imrc", "r2imrc", "r3imrc_cleaned", 
-                                  "r4imrc_eqt", "r5imrc_eqt")))) == 5 |
-             (rowSums(is.na(across(c("r1dlrc", "r2dlrc", "r3dlrc_cleaned", 
-                                     "r4dlrc_eqt", "r5dlrc_eqt"))))) == 5))  # n = 23779
-
-# Long dataset
-test_long <- fu_time_mat %>%
-  select(-inwlh) %>%
-  rename_at(vars(contains("inw")), ~gsub("inw(\\d)", "r\\1inw", .)) %>%
-  pivot_longer(!c(ID, num_core_inw),
-               names_to = c("wave", ".value"),
-               names_pattern = "r(.)(.*)") %>%
-  na.omit() %>%
-  group_by(ID) %>%
-  arrange(wave) %>%
-  mutate(bl_wave = min(wave),
-         bl_iwd_v2 = min(iwd_v2)) %>%
-  ungroup()
-
-diffdf::diffdf(test_long, fu_time_long)
+# Do not drop these people
+summary(charls_reframe_filtered$n1_imrc)
+summary(charls_reframe_filtered$n1_dlrc)
+# < 20% missingness for the imrc and dlrc scores
+# ---- 2. Dropping those who did not have any word recall scores ----
+# # n = 1434 missing all immediate word recall scores or all delayed word recall scores
+# # missing baseline word recall scores
+# charls_reframe_filtered %>%
+#   filter(rowSums(is.na(across(paste0("n", 1:5, "_imrc")))) == 5 &
+#            rowSums(is.na(across(paste0("n", 1:5, "_dlrc")))) == 5) %>%
+#   nrow()
+# 
+# charls_reframe_filtered %>%
+#   filter(rowSums(is.na(across(paste0("n", 1:5, "_imrc")))) == 5 &
+#            rowSums(is.na(across(paste0("n", 1:5, "_dlrc")))) == 5) %>%
+#   select(ID, paste0("inw", 1:5), paste0("n", 1:5, "_imrc"), paste0("n", 1:5, "_dlrc")) %>%
+#   view()
 
 #---- Save the data ----
-save(charls, 
+save(charls, charls_reframe,
      file = here::here("data", "analysis_data", "charls_cleaned.RData"))
-save(charls_selected, 
+save(charls_selected, charls_reframe_filtered, 
      file = here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- OLD ----
