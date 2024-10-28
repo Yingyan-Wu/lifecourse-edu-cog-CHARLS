@@ -113,9 +113,9 @@ tictoc::toc()
 # 60 iterations 10 imp: 13min
 # 80 iterations 10 imp: 17min
 # 100 iterations 10 imp: 23min
-# 60 iterations 20 imp: 
+# 60 iterations 20 imp: 87.6 miun
 
-imp_pmm_20$loggedEvents # shlta out
+imp_pmm_20$loggedEvents # null
 plot(imp_pmm_20)
 # Compared to 40 imputation version (30 iterations). It did not make too much difference.
 # stick with 10 imputations 80 iterations.
