@@ -19,17 +19,18 @@ source(here::here("scripts", "functions.R"))
 load(here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- Check the missingness ----
-colnames(charls_selected)
+colnames(charls_reframe_filtered)
 # Drop those derived variables for the dataset to be imputed
-charls_selected_forimp <- charls_selected %>%
-  select(r1agey_v3, female, childhood_edu, continuing_edu,
+charls_forimp <- charls_reframe_filtered %>%
+  select(n1_agey_v3, female, childhood_edu, continuing_edu,
          first_child_v2, rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c,
          childhood_1st_region, rarural_child, first_hukou,
          chldstate_30, marital_30, rural_30, occupation_30, hukou_30,
-         r1wtrespb)
+         n1_wtrespb, starts_with("n1_"), -contains("iadl"),
+         -c("n1_iwd_v2", "n1_fu_time", "n1_wave"))
 
-DataExplorer::plot_missing(charls_selected_forimp)
-missing_summary <- DataExplorer::profile_missing(charls_selected_forimp) %>%
+DataExplorer::plot_missing(charls_forimp)
+missing_summary <- DataExplorer::profile_missing(charls_forimp) %>%
   mutate(pct_missing = pct_missing*100) %>%
   arrange(pct_missing) %>%
   print(n = Inf)
@@ -42,7 +43,7 @@ ordered_var_list <- c(paste0(missing_summary$feature))
 #---- Data prep ----
 # Running single imputation
 # prep data by ordering by missingness
-impute_data <- charls_selected_forimp[, ordered_var_list] %>%
+impute_data <- charls_forimp[, ordered_var_list] %>%
   as.data.frame() %>% print()
 ncol(impute_data)
 colnames(impute_data)
@@ -61,7 +62,8 @@ binary_vars <-
   variable_length_mat[variable_length_mat$length %in% c(2, 3), "Var"][["Var"]]
 
 # Comment this out to treat them all as continuous variables
-ordinal_vars <- c("childhood_edu", "continuing_edu", "rameduc_c", "rafeduc_c")
+ordinal_vars <- c("childhood_edu", "continuing_edu", "rameduc_c", "rafeduc_c",
+                  "n1_shlta")
 
 cat_vars <- c("hukou_30", "occupation_30", "childhood_1st_region", 
               "first_hukou")
@@ -100,7 +102,7 @@ ini_imp <- mice(impute_data, maxit = 0,
 
 #---- Run imputation ----
 tictoc::tic()
-imp_pmm_40 <- mice(impute_data, m = 40, maxit = 60, 
+imp_pmm_20 <- mice(impute_data, m = 20, maxit = 60, 
                    # increase iterations since some of the variables did not converge at 10 iterations
                    pred = pred, meth = meth,
                    n.burn = 10,
@@ -111,28 +113,34 @@ tictoc::toc()
 # 60 iterations 10 imp: 13min
 # 80 iterations 10 imp: 17min
 # 100 iterations 10 imp: 23min
-# 60 iterations 40 imp: 47.72 min
+# 60 iterations 20 imp: 
 
-imp_pmm_40$loggedEvents # NULL
-plot(imp_pmm_40)
+imp_pmm_20$loggedEvents # shlta out
+plot(imp_pmm_20)
 # Compared to 40 imputation version (30 iterations). It did not make too much difference.
 # stick with 10 imputations 80 iterations.
-densityplot(imp_pmm_40)
+densityplot(imp_pmm_20)
 
-save(imp_pmm_40, file = here::here("data", "analysis_data", "imp_pmm_40.RData"))
+save(imp_pmm_20, file = here::here("data", "analysis_data", "imp_pmm_20_refradt.RData"))
 
 #---- Stack imputed dataset ----
-load(here::here("data", "analysis_data", "imp_pmm_40.RData"))
-imp_num = 40
+load(here::here("data", "analysis_data", "imp_pmm_20_refradt.RData"))
+imp_num = 20
 imp_temp <- list()
 for (i in 1:imp_num){
   imp_temp[[i]] <- complete(get(paste0("imp_pmm_", imp_num)),
                             action = i)
   imp_temp[[i]] <- cbind(
-    charls_selected %>%
-      select(ID, paste0("r", 2:5, "agey_v3"),
-             paste0("r", 2:5, "wtrespb"),
-             contains(c("imrc", "dlrc"))),
+    charls_reframe_filtered %>%
+      select(ID, paste0("n", 2:5, "_agey_v3"),
+             paste0("n", 2:5, "_wtrespb"),
+             paste0("n", 1:5, "_wave"),
+             paste0("n", 1:5, "_iwd_v2"),
+             paste0("n", 1:5, "_fu_time"),
+             paste0("n", 2:5, "_iadl"),
+             paste0("n", 2:5, "_iadl_2cat"),
+             paste0("n", 2:5, "_imrc"),
+             paste0("n", 2:5, "_dlrc")),
     imp_temp[[i]][, colnames(impute_data)])
   imp_temp[[i]][, "imp"] <- i
 }
@@ -160,7 +168,7 @@ imp_pmm_stacked %>%
   map_dfr(class) %>% t()
 
 #---- Save imputed data ----
-saveRDS(imp_pmm_stacked, here::here("data", "analysis_data", "imp_pmm_40_stacked.RDS"))
+saveRDS(imp_pmm_stacked, here::here("data", "analysis_data", "imp_pmm_20_stacked.RDS"))
 
 #---- OLD ----
 # # tictoc::tic()
