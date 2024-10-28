@@ -1695,7 +1695,7 @@ charls_selected <- charls %>%
          # self-rated health
          contains("shlta"),
          # IADLs
-         contains(c("moneya", "medsa", "shopa", "meala", "housewka")),
+         contains(c("moneya", "medsa", "shopa", "mealsa", "housewka")),
          paste0("r", 1:5, "iadl"),
          paste0("r", 1:5, "iadl_2cat"),
          # Health conditions
@@ -1705,7 +1705,7 @@ charls_selected <- charls %>%
          # Social network variables
          contains("socwk"))
 
-##---- Baseline variables ----
+##---- Reconstruct dataset ----
 variables <- charls_selected %>%
   select(starts_with(paste0("r", 1:5))) %>% colnames() %>%
   str_remove_all("r[1-5]")
@@ -1813,7 +1813,7 @@ charls_reframe_filtered %<>%
 summary(charls_reframe_filtered$n1_imrc)
 summary(charls_reframe_filtered$n1_dlrc)
 # < 20% missingness for the imrc and dlrc scores
-# ---- 2. Dropping those who did not have any word recall scores ----
+## ---- 2. Dropping those who did not have any word recall scores ----
 # # n = 1434 missing all immediate word recall scores or all delayed word recall scores
 # # missing baseline word recall scores
 # charls_reframe_filtered %>%
@@ -1828,9 +1828,9 @@ summary(charls_reframe_filtered$n1_dlrc)
 #   view()
 
 #---- Save the data ----
-save(charls, charls_reframe,
+save(charls, charls_reframe, charls_selected,
      file = here::here("data", "analysis_data", "charls_cleaned.RData"))
-save(charls_selected, charls_reframe_filtered, 
+save(charls_reframe_filtered, 
      file = here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- OLD ----
