@@ -1514,8 +1514,8 @@ for (w in 2:5){
 }
 
 charls %<>%
-  mutate(across(contains("iadl"), ~ case_when(. == 0 ~ 1,
-                                              . == 1 ~ 0),
+  mutate(across(contains("iadl"), ~ case_when(. >= 1 ~ 1,
+                                              . == 0 ~ 0),
                 .names = "{.col}_2cat"))
 
 # Sanity check
@@ -1525,6 +1525,11 @@ charls %>%
 charls %>%
   select(contains("_2cat")) %>%
   apply(., 2, table, useNA = "ifany")
+for (wave in 1:5){
+  print(with(charls, table(get(paste0("r", wave, "iadl")), 
+                           get(paste0("r", wave, "iadl_2cat")), useNA = "ifany")))
+}
+
 
 #---- Health conditions ----
 # Wave 5 HBP, diabetes, cancer, heart disease, stroke
