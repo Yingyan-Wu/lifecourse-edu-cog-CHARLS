@@ -16,10 +16,11 @@ p_load("haven", "magrittr", "plyr", "tidyverse", "mice", "DataExplorer")
 source(here::here("scripts", "functions.R"))
 
 #---- Load the dataset ----
-imp_pmm_40 <- readRDS(here::here("data", "analysis_data", "imp_pmm_40_stacked.RDS"))
+imp_pmm_stacked <- readRDS(here::here("data", "analysis_data", "imp_pmm_20_stacked.RDS"))
+load(here::here("data", "analysis_data", "charls_selected.RData"))
 
 ###---- prepare the data ----
-imp_pmm_40 %<>%
+imp_pmm_stacked %<>%
   dplyr::mutate(
     childhood_edu = factor(as.character(childhood_edu)), # drop order
     continuing_edu = factor(as.character(continuing_edu)), # drop order
@@ -39,68 +40,115 @@ imp_pmm_40 %<>%
                                        rafeduc_c == 0 ~ 0)),
     first_hukou_2cat = as.factor(case_when(first_hukou == 1 ~ 0, # agricultural hukou
                                            first_hukou %in% 2:3 ~ 1)), # non agricultural hukou
-    # childhood_edu = factor(as.character(childhood_edu)), # drop order
-    # continuing_edu = factor(as.character(continuing_edu)), # drop order
     hukou_30_2cat = as.factor(case_when(hukou_30 == 1 ~ 0,
                                         hukou_30 %in% 2:3 ~ 1)),
-    across(ends_with("agey_v3"), ~ .x - r1agey_v3,
-           .names = "{.col}fu_time")) %>%
-  dplyr::rename_at(vars(ends_with("fu_time")),
-                   function(x) str_replace(x, "agey_v3", ""))
-  # group_by(imp) %>%
-  # mutate(r1wtrespb_rescaled = r1wtrespb/mean(r1wtrespb)) %>%
-  # # Rescale to have mean of 1 to make the survey weighted mixed model faster
-  # # tested in previous attempts, the results are the same beofre and after rescaling
-  # ungroup()
+    across(paste0("n1_", c("moneya", "medsa", "shopa", "mealsa", "housewka")), 
+           ~as.numeric(as.character(.))),
+    n1_iadl = 
+      rowSums(across(paste0("n1_", c("moneya", "medsa", "shopa", "mealsa", "housewka")))),
+    n1_iadl_2cat = case_when(n1_iadl == 0 ~ 0,
+                             n1_iadl > 0 ~ 1)) %>%
+  group_by(imp) %>%
+  mutate(mean_wtrespb = rowMeans(across(paste0("n", 1:5, "_wtrespb")), na.rm = T),
+         min_wtrespb = pmin(n1_wtrespb, n2_wtrespb, n3_wtrespb, 
+                            n4_wtrespb, n5_wtrespb, na.rm = T)) %>%
+  ungroup()
 
 # # Sanity check
-# imp_pmm_40 %>% group_by(imp) %>%
+# imp_pmm_stacked %>% group_by(imp) %>%
 #   summarise(mean(r1wtrespb_rescaled, na.rm = TRUE),
 #             sd(r1wtrespb_rescaled, na.rm = TRUE))
+# imp_pmm_stacked %>%
+#   select(contains(c("moneya", "medsa", "shopa", "mealsa", "housewka", "iadl"))) %>%
+#   apply(., 2, table, useNA = "ifany")
+# imp_pmm_stacked %>%
+#   filter(imp == 1) %>%
+#   select(contains("wtrespb")) %>%
+#   apply(., 2, sum, na.rm = T)/1000000
+# charls_selected %>%
+#   select(contains("wtrespb")) %>%
+#   apply(., 2, sum, na.rm = T)/1000000
 
-# Create censor indicator
-rc_temp <- imp_pmm_40 %>%
-  select(paste0("r", 1:2, "imrc"),
-         paste0("r", 3, "imrc_cleaned"),
-         paste0("r", 4:5, "imrc_eqt"),
-         paste0("r", 1:2, "dlrc"),
-         paste0("r", 3, "dlrc_cleaned"),
-         paste0("r", 4:5, "dlrc_eqt")) %>%
-  set_colnames(c(paste0("r", 1:5, "imrc"), paste0("r", 1:5, "dlrc"))) %>%
-  mutate(across(everything(), 
-                function(x) ifelse(is.na(x), 1, 0),
-                .names = "{.col}_censor"))
 
-imp_pmm_40 <- cbind(imp_pmm_40, rc_temp %>% select(ends_with("_censor")))
+# Create censor indictor
+for (n_fu in 1:5){
+  imp_pmm_stacked %<>%
+    mutate(!!paste0("n", n_fu, "_imrc_inw") := 
+             case_when(!is.na(!!sym(paste0("n", n_fu, "_imrc"))) ~ 1,
+                       is.na(!!sym(paste0("n", n_fu, "_imrc"))) ~ 0),
+           !!paste0("n", n_fu, "_dlrc_inw") := 
+             case_when(!is.na(!!sym(paste0("n", n_fu, "_dlrc"))) ~ 1,
+                       is.na(!!sym(paste0("n", n_fu, "_dlrc"))) ~ 0))
+}
+
+for (n_fu in 1:5){
+  print(with(imp_pmm_stacked, table(
+    get(paste0("n", n_fu, "_imrc_inw")), 
+    !is.na(get(paste0("n", n_fu, "_imrc"))), useNA = "ifany")))
+}
+
+for (n_fu in 1:5){
+  print(with(imp_pmm_stacked, table(
+    get(paste0("n", n_fu, "_dlrc_inw")), 
+    !is.na(get(paste0("n", n_fu, "_dlrc"))), useNA = "ifany")))
+}
 
 #---- Analytic dataset ----
-# Long dataset 
-rctib_long <- imp_pmm_40 %>%
-  select(ID, imp, contains("agey_v3"), 
-         contains("fu_time"),
-         paste0("r", 1:2, "imrc"),
-         paste0("r", 3, "imrc_cleaned"),
-         paste0("r", 4:5, "imrc_eqt"),
-         paste0("r", 1:2, "dlrc"),
-         paste0("r", 3, "dlrc_cleaned"),
-         paste0("r", 4:5, "dlrc_eqt"),
-         ends_with("censor")) %>%
-  dplyr::rename_at(vars(contains(c("imrc", "dlrc"))),
-                   function(x) str_replace(x, "_eqt|_cleaned", "")) %>%
-  pivot_longer(cols = !c(ID, imp), 
-               names_to = c("wave", ".value"), 
-               names_pattern = "r(.)(.*)") %>%
-  mutate(wave = as.numeric(wave)) %>%
-  dplyr::arrange(ID, imp, agey_v3, fu_time) %>%
-  # filter(!(is.na(imrc) & is.na(dlrc))) %>% # will use ipcw!
-  mutate(
-    first_imrc = ifelse(!is.na(imrc) & row_number() == min(which(!is.na(imrc))), 1, 0),
-    first_dlrc = ifelse(!is.na(dlrc) & row_number() == min(which(!is.na(dlrc))), 1, 0))
-
-imp_pmm_long <- imp_pmm_40 %>% 
-  select(-contains(c("imrc", "dlrc", "agey_v3", "fu_time"))) %>%
-  left_join(rctib_long, by = c("ID", "imp"))
+# Long only on outcome variables and follow up time
+imp_pmm_long <- imp_pmm_stacked %>%
+  pivot_longer(cols = ends_with(c("imrc", "dlrc", "fu_time")),
+               # starts_with(paste0("n", 1:5)), 
+               names_to = c("n_fu", ".value"),
+               names_pattern = "n(.)_(.*)") %>%
+  mutate(n_fu = as.numeric(as.character(n_fu)))
 
 ###---- Save the data ----
-save(imp_pmm_40, imp_pmm_long,
-     file = here::here("data", "analysis_data", "imp_pmm_40_wide_long.RData"))
+save(imp_pmm_stacked, imp_pmm_long,
+     file = here::here("data", "analysis_data", "imp_pmm_20_wide_long.RData"))
+
+#---- OLD ----
+# mutate(r1wtrespb_rescaled = r1wtrespb/mean(r1wtrespb)) %>%
+#   # Rescale to have mean of 1 to make the survey weighted mixed model faster
+#   # tested in previous attempts, the results are the same beofre and after rescaling
+
+# # Create censor indicator
+# rc_temp <- imp_pmm_stacked %>%
+#   select(paste0("r", 1:2, "imrc"),
+#          paste0("r", 3, "imrc_cleaned"),
+#          paste0("r", 4:5, "imrc_eqt"),
+#          paste0("r", 1:2, "dlrc"),
+#          paste0("r", 3, "dlrc_cleaned"),
+#          paste0("r", 4:5, "dlrc_eqt")) %>%
+#   set_colnames(c(paste0("r", 1:5, "imrc"), paste0("r", 1:5, "dlrc"))) %>%
+#   mutate(across(everything(), 
+#                 function(x) ifelse(is.na(x), 1, 0),
+#                 .names = "{.col}_censor"))
+# 
+# imp_pmm_stacked <- cbind(imp_pmm_stacked, rc_temp %>% select(ends_with("_censor")))
+#---- Analytic dataset ----
+# # Long dataset 
+# rctib_long <- imp_pmm_stacked %>%
+#   select(ID, imp, contains("agey_v3"), 
+#          contains("fu_time"),
+#          paste0("r", 1:2, "imrc"),
+#          paste0("r", 3, "imrc_cleaned"),
+#          paste0("r", 4:5, "imrc_eqt"),
+#          paste0("r", 1:2, "dlrc"),
+#          paste0("r", 3, "dlrc_cleaned"),
+#          paste0("r", 4:5, "dlrc_eqt"),
+#          ends_with("censor")) %>%
+#   dplyr::rename_at(vars(contains(c("imrc", "dlrc"))),
+#                    function(x) str_replace(x, "_eqt|_cleaned", "")) %>%
+#   pivot_longer(cols = !c(ID, imp), 
+#                names_to = c("wave", ".value"), 
+#                names_pattern = "r(.)(.*)") %>%
+#   mutate(wave = as.numeric(wave)) %>%
+#   dplyr::arrange(ID, imp, agey_v3, fu_time) %>%
+#   # filter(!(is.na(imrc) & is.na(dlrc))) %>% # will use ipcw!
+#   mutate(
+#     first_imrc = ifelse(!is.na(imrc) & row_number() == min(which(!is.na(imrc))), 1, 0),
+#     first_dlrc = ifelse(!is.na(dlrc) & row_number() == min(which(!is.na(dlrc))), 1, 0))
+# 
+# imp_pmm_long <- imp_pmm_stacked %>% 
+#   select(-contains(c("imrc", "dlrc", "agey_v3", "fu_time"))) %>%
+#   left_join(rctib_long, by = c("ID", "imp"))
