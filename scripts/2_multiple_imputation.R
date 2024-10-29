@@ -137,10 +137,9 @@ for (i in 1:imp_num){
              paste0("n", 1:5, "_wave"),
              paste0("n", 1:5, "_iwd_v2"),
              paste0("n", 1:5, "_fu_time"),
-             paste0("n", 2:5, "_iadl"),
-             paste0("n", 2:5, "_iadl_2cat"),
              paste0("n", 2:5, "_imrc"),
-             paste0("n", 2:5, "_dlrc")),
+             paste0("n", 2:5, "_dlrc"),
+             contains(paste0("n", 2:5, "_"))),
     imp_temp[[i]][, colnames(impute_data)])
   imp_temp[[i]][, "imp"] <- i
 }
