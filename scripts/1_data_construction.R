@@ -1721,20 +1721,24 @@ charls_selected %<>%
                              inw4 == 1 ~ 4,
                              inw5 == 1 ~ 5,
                              TRUE ~ NA_real_),
-         n2_wave = case_when(n1_wave == 1 & inw2 == 1 ~ 2,
-                             n1_wave < 3 & inw3 == 1 ~ 3,
-                             n1_wave < 4 & inw4 == 1 ~ 4,
-                             n1_wave < 5 & inw5 == 1 ~ 5,
-                             TRUE ~ NA_real_),
-         n3_wave = case_when(n2_wave < 3 & inw3 == 1 ~ 3,
-                             n2_wave < 4 & inw4 == 1 ~ 4,
-                             n2_wave < 5 & inw5 == 1 ~ 5,
-                             TRUE ~ NA_real_),
-         n4_wave = case_when(n3_wave < 4 & inw4 == 1 ~ 4,
-                             n3_wave < 5 & inw5 == 1 ~ 5,
-                             TRUE ~ NA_real_),
-         n5_wave = case_when(n4_wave < 5 & inw5 == 1 ~ 5,
-                             TRUE ~ NA_real_))
+         n2_wave = n1_wave + 1,
+         n3_wave = n2_wave + 1,
+         n4_wave = n3_wave + 1,
+         n5_wave = n4_wave + 1)
+# n2_wave = case_when(n1_wave == 1 & inw2 == 1 ~ 2,
+#                     n1_wave < 3 & inw3 == 1 ~ 3,
+#                     n1_wave < 4 & inw4 == 1 ~ 4,
+#                     n1_wave < 5 & inw5 == 1 ~ 5,
+#                     TRUE ~ NA_real_),
+# n3_wave = case_when(n2_wave < 3 & inw3 == 1 ~ 3,
+#                     n2_wave < 4 & inw4 == 1 ~ 4,
+#                     n2_wave < 5 & inw5 == 1 ~ 5,
+#                     TRUE ~ NA_real_),
+# n4_wave = case_when(n3_wave < 4 & inw4 == 1 ~ 4,
+#                     n3_wave < 5 & inw5 == 1 ~ 5,
+#                     TRUE ~ NA_real_),
+# n5_wave = case_when(n4_wave < 5 & inw5 == 1 ~ 5,
+#                     TRUE ~ NA_real_))
 
 charls_reframe <- charls_selected
 for (var in variables){
