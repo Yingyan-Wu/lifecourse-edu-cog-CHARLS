@@ -1809,11 +1809,14 @@ charls_reframe_filtered %>%
 charls_reframe_filtered %<>%
   filter(!n1_agey_v3 < 45) # n = 23599
 
+charls_selected %<>%
+  filter(ID %in% charls_reframe_filtered$ID)
+
 # Do not drop these people
 summary(charls_reframe_filtered$n1_imrc)
 summary(charls_reframe_filtered$n1_dlrc)
 # < 20% missingness for the imrc and dlrc scores
-## ---- 2. Dropping those who did not have any word recall scores ----
+## 2. Dropping those who did not have any word recall scores 
 # # n = 1434 missing all immediate word recall scores or all delayed word recall scores
 # # missing baseline word recall scores
 # charls_reframe_filtered %>%
@@ -1828,9 +1831,9 @@ summary(charls_reframe_filtered$n1_dlrc)
 #   view()
 
 #---- Save the data ----
-save(charls, charls_reframe, charls_selected,
+save(charls, charls_reframe, 
      file = here::here("data", "analysis_data", "charls_cleaned.RData"))
-save(charls_reframe_filtered, 
+save(charls_reframe_filtered, charls_selected,
      file = here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- OLD ----
