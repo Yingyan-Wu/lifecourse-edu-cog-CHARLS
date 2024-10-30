@@ -44,7 +44,7 @@ load(paste0(project_folder, "data/imp_pmm_20_wide_long.RData"))
 
 #---- Scenario tibble ----
 n_imp = 20
-n_bootstrap_per_job = 500 # Setting 200 bootstrap per job as GEE is super fast
+n_bootstrap_per_job = 1000
 n_bootstrap = 1000
 
 scenario_tib <- expand_grid(
@@ -420,54 +420,29 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
 for (i_boot in boot_i_start:boot_i_end) {
   print(i_boot)
   # boot_i_start <- 0
-  # i_boot <- 0
+  # i_boot <- 1000
   (start <- Sys.time()) # starting time
   result <- 
     joint_effect_g_comp(imp_pmm_stacked, imp_pmm_long,
                         bootstrap = i_boot != 0)
   (end <- Sys.time()) # ending time
   saveRDS(result, paste0(project_folder, "/model_results/",
-                         paste0("MSM_coef_", y, "_", i_boot, ".RDS")))
+                         paste0("MSM_coef_", y, 
+                                "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
   
   w_boot_i <- tibble(
     i_boot = i_boot,
+    imp = num_imp,
     scenario = scenario_num,
     duration = difftime(end, start, units = 'sec'),
     w_qmodel = sum(w_qmodel),
     w_msm = sum(w_msm),
-    w_qmodel_msg = w_qmodel_msg,
-    w_msm_msg = w_msm_msg) %>%
+    w_qmodel_msg = paste(w_qmodel_msg,collapse="\n"),
+    w_msm_msg = paste(w_msm_msg, collapse="\n")) %>%
     bind_cols(as_tibble(do.call(rbind, lapply(w_c1s, sum)) %>% t()))
     # bind_cols(as_tibble(lapply(mget(paste0("w_", c1)), sum))) # c1 model warnings
   saveRDS(w_boot_i, paste0(project_folder, "/warnings/",
-                           paste0("warnings_", y, "_", i_boot, ".RDS")))
+                           paste0("warnings_", y, 
+                                  "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
 }
-
-
-
-#---- OLD ----
-# Will move to bootstrap results script
-# coef_tib %>%
-#   mutate(
-#     # Both education vs. No formal education at all
-#     slope_11_00 = doX0_1 + doX1_1 + `doX0_1:doX1_1` + `wave:doX0_1` + `wave:doX1_1` + `wave:doX0_1:doX1_1`,
-#     slope_21_00 = doX0_2 + doX1_1 + `doX0_2:doX1_1` + `wave:doX0_2` + `wave:doX1_1` + `wave:doX0_2:doX1_1`,
-#     slope_31_00 = doX0_3 + doX1_1 + `doX0_3:doX1_1` + `wave:doX0_3` + `wave:doX1_1` + `wave:doX0_3:doX1_1`,
-#     slope_12_00 = doX0_1 + doX1_2 + `doX0_1:doX1_2` + `wave:doX0_1` + `wave:doX1_2` + `wave:doX0_1:doX1_2`,
-#     slope_22_00 = doX0_2 + doX1_2 + `doX0_2:doX1_2` + `wave:doX0_2` + `wave:doX1_2` + `wave:doX0_2:doX1_2`,
-#     slope_32_00 = doX0_3 + doX1_2 + `doX0_3:doX1_2` + `wave:doX0_3` + `wave:doX1_2` + `wave:doX0_3:doX1_2`,
-#     # Only continuing education vs. No formal education at all
-#     slope_01_00 = doX1_1 + `wave:doX1_1`,
-#     slope_02_00 = doX1_2 + `wave:doX1_2`,
-#     # Both education vs. No continuing education with the same early life edu intervention
-#     slope_11_10 = doX1_1 + `doX0_1:doX1_1` + `wave:doX1_1` + `wave:doX0_1:doX1_1`,
-#     slope_21_20 = doX1_1 + `doX0_2:doX1_1` + `wave:doX1_1` + `wave:doX0_2:doX1_1`,
-#     slope_31_30 = doX1_1 + `doX0_3:doX1_1` + `wave:doX1_1` + `wave:doX0_3:doX1_1`,
-#     slope_12_10 = doX1_2 + `doX0_1:doX1_2` + `wave:doX1_2` + `wave:doX0_1:doX1_2`,
-#     slope_22_20 = doX1_2 + `doX0_2:doX1_2` + `wave:doX1_2` + `wave:doX0_2:doX1_2`,
-#     slope_32_30 = doX1_2 + `doX0_3:doX1_2` + `wave:doX1_2` + `wave:doX0_3:doX1_2`,
-#     # Only early life education (no continuing education) vs. No formal education at all
-#     slope_10_00 = doX0_1 + `wave:doX0_1`,
-#     slope_20_00 = doX0_2 + `wave:doX0_2`,
-#     slope_30_00 = doX0_3 + `wave:doX0_3`)
 
