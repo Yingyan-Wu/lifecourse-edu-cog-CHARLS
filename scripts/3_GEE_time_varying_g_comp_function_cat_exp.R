@@ -44,7 +44,7 @@ load(paste0(project_folder, "data/imp_pmm_20_wide_long.RData"))
 
 #---- Scenario tibble ----
 n_imp = 20
-n_bootstrap_per_job = 1000
+n_bootstrap_per_job = 500
 n_bootstrap = 1000
 
 scenario_tib <- expand_grid(
@@ -426,9 +426,14 @@ for (i_boot in boot_i_start:boot_i_end) {
     joint_effect_g_comp(imp_pmm_stacked, imp_pmm_long,
                         bootstrap = i_boot != 0)
   (end <- Sys.time()) # ending time
-  saveRDS(result, paste0(project_folder, "/model_results/",
-                         paste0("MSM_coef_", y, 
-                                "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
+  # saveRDS(result, paste0(project_folder, "/model_results/",
+  #                        paste0("MSM_coef_", y, 
+  #                               "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
+  
+  # save the bootstraps
+  write_csv(result, append = T, 
+            file = paste0(project_folder, "/appended_model_results/", 
+                          "MSM_coef_", y, "_scenario_", scenario_num, ".csv"))
   
   w_boot_i <- tibble(
     i_boot = i_boot,
@@ -440,9 +445,12 @@ for (i_boot in boot_i_start:boot_i_end) {
     w_qmodel_msg = paste(w_qmodel_msg,collapse="\n"),
     w_msm_msg = paste(w_msm_msg, collapse="\n")) %>%
     bind_cols(as_tibble(do.call(rbind, lapply(w_c1s, sum)) %>% t()))
-    # bind_cols(as_tibble(lapply(mget(paste0("w_", c1)), sum))) # c1 model warnings
-  saveRDS(w_boot_i, paste0(project_folder, "/warnings/",
-                           paste0("warnings_", y, 
-                                  "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
+  # bind_cols(as_tibble(lapply(mget(paste0("w_", c1)), sum))) # c1 model warnings
+  # saveRDS(w_boot_i, paste0(project_folder, "/warnings/",
+  #                          paste0("warnings_", y, 
+  #                                 "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
+  write_csv(w_boot_i, append = T, 
+            file = paste0(project_folder, "/appended_warnings/", 
+                          "warnings_", y, "_scenario_", scenario_num, ".csv"))
 }
 
