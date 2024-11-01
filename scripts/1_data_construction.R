@@ -1457,8 +1457,6 @@ charls %<>%
 
 charls$median_wtrespb <- apply(charls %>% select(contains("wtrespb")), 1, median, na.rm = T)
 
-# PENDING on checking after filtering
-
 #---- Covariates for IPCW ----
 #---- self-rated health ----
 table(charls$w5_da001, useNA = "ifany")

@@ -19,7 +19,7 @@ source(here::here("scripts", "functions.R"))
 imp_pmm_stacked <- readRDS(here::here("data", "analysis_data", "imp_pmm_20_stacked.RDS"))
 load(here::here("data", "analysis_data", "charls_selected.RData"))
 
-###---- prepare the data ----
+#---- Prepare the data ----
 imp_pmm_stacked %<>%
   left_join(charls_selected %>% select(ID, paste0("inw", 1:5)), by = "ID")
 # Participating in waves indicators
@@ -105,16 +105,63 @@ imp_pmm_stacked %<>%
 # imp_pmm_stacked %>%
 #   select(contains(c("moneya", "medsa", "shopa", "mealsa", "housewka", "iadl"))) %>%
 #   apply(., 2, table, useNA = "ifany")
-# imp_pmm_stacked %>%
-#   filter(imp == 1) %>%
-#   select(contains("wtrespb")) %>%
-#   apply(., 2, sum, na.rm = T)/1000000
-# charls_selected %>%
-#   select(contains("wtrespb")) %>%
-#   apply(., 2, sum, na.rm = T)/1000000
+
+#---- Check survey weight ----
+imp_pmm_1 <- imp_pmm_stacked %>%
+  filter(imp == 1)
+imp_pmm_1 %>%
+  select(contains(paste0("n", 1:5, "_wtrespb")), contains("wtrespb")) %>%
+  apply(., 2, sum, na.rm = T)/1000000
+with(imp_pmm_1, table(n1_wave, useNA = "ifany"))
+charls_selected %>%
+  select(contains("wtrespb")) %>%
+  apply(., 2, sum, na.rm = T)/1000000
 
 
-# Create censor indictor
+imp_pmm_1 %>% select(contains("wtrespb")) %>% view()
+colSums(is.na(imp_pmm_1 %>% select(contains("wtrespb"))))
+
+# Check the weight distribution across waves
+charls_selected %>%
+  select(contains("wtrespb")) %>%
+  pivot_longer(cols = everything(),
+               names_to = "wave",
+               values_to = "wtrespb",
+               names_pattern = "r(.)wtrespb") %>%
+  filter(wtrespb < 150000) %>%
+  ggplot() +
+  geom_density(aes(x = wtrespb, color = wave), alpha = 0.5) +
+  theme_bw()
+# Check the weight change within person
+random_id <- charls_selected %>%
+  filter(rowSums(is.na(across(contains("wtrespb")))) == 0) %>%
+  pull(ID) %>%
+  sample(., 1000, replace = F)
+charls_selected %>%
+  filter(ID %in% random_id) %>%
+  select(ID, contains("wtrespb")) %>%
+  pivot_longer(cols = !ID,
+               names_to = "wave",
+               values_to = "wtrespb",
+               names_pattern = "r(.)wtrespb") %>%
+  ggplot() +
+  geom_line(aes(x = wave, y = wtrespb, group = ID, color = factor(ID))) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+imp_pmm_1 %>%
+  filter(ID %in% random_id) %>%
+  select(ID, paste0("n", 1:5, "_wtrespb")) %>%
+  pivot_longer(cols = !ID,
+               names_to = "follow_up",
+               values_to = "wtrespb",
+               names_pattern = "n(.)_wtrespb") %>%
+  ggplot() +
+  geom_line(aes(x = follow_up, y = wtrespb, group = ID, color = factor(ID))) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+#---- Create censor indicator ----
 for (n_fu in 1:5){
   imp_pmm_stacked %<>%
     mutate(!!paste0("n", n_fu, "_imrc_inw") := 
