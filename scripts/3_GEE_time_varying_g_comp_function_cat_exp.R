@@ -83,7 +83,7 @@ print(y)
 x0 = "childhood_edu"
 x1 = "continuing_edu_2cat"
 # y = "imrc"
-svy_wt = "min_wtrespb"
+svy_wt = "n1_wtrespb_rscl"
 c0 <- c(
   "n1_agey_v3", # Follow up time as time scale
   "female", "first_child_v2", 
