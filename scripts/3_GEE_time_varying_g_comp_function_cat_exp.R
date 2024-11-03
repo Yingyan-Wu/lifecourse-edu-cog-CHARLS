@@ -82,7 +82,7 @@ print(y)
 #---- Variables ----
 x0 = "childhood_edu"
 x1 = "continuing_edu_2cat"
-# y = "imrc"
+print(y)
 svy_wt = "n1_wtrespb_rscl"
 c0 <- c(
   "n1_agey_v3", # Follow up time as time scale
@@ -453,4 +453,3 @@ for (i_boot in boot_i_start:boot_i_end) {
             file = paste0(project_folder, "/appended_warnings/", 
                           "warnings_", y, "_scenario_", scenario_num, ".csv"))
 }
-
