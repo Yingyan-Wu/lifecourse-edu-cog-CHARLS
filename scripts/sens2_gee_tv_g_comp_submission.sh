@@ -25,5 +25,5 @@ export OMP_NUM_THREADS=1 #uses max 1 thread (needs to match -pe shared)
 
 echo "======"
 echo SGE_TASK_ID=$SGE_TASK_ID      
-R CMD BATCH --no-save --no-restore "--args scenario_num=$SGE_TASK_ID"  /u/home/y/yingyanw/edu_cog_CHARLS/scripts/4_sens2_restricted_sample_bootstrap_cluster.R /u/home/y/yingyanw/edu_cog_CHARLS/console_output/output.$JOB_ID.$SGE_TASK_ID
-echo R CMD BATCH --no-save --no-restore "--args scenario_num=$SGE_TASK_ID"  /u/home/y/yingyanw/edu_cog_CHARLS/scripts/4_sens2_restricted_sample_bootstrap_cluster.R /u/home/y/yingyanw/edu_cog_CHARLS/console_output/output.$JOB_ID.$SGE_TASK_ID
+R CMD BATCH --no-save --no-restore "--args scenario_num=$SGE_TASK_ID"  /u/home/y/yingyanw/edu_cog_CHARLS/scripts/3.2_sens2_restricted_sample_bootstrap_cluster.R /u/home/y/yingyanw/edu_cog_CHARLS/console_output/output.$JOB_ID.$SGE_TASK_ID
+echo R CMD BATCH --no-save --no-restore "--args scenario_num=$SGE_TASK_ID"  /u/home/y/yingyanw/edu_cog_CHARLS/scripts/3.2_sens2_restricted_sample_bootstrap_cluster.R /u/home/y/yingyanw/edu_cog_CHARLS/console_output/output.$JOB_ID.$SGE_TASK_ID
