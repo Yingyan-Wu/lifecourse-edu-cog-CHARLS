@@ -247,11 +247,11 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   cloned_data_long <- data_boot %>%
     select(newid, imp) %>%
     expand_grid(n_fu = 1:5) %>%
-    mutate(fu_time = case_when(n_fu == 1 ~ 0,
-                               n_fu == 2 ~ 2,
-                               n_fu == 3 ~ 2,
-                               n_fu == 4 ~ 3,
-                               n_fu == 5 ~ 2)) %>%
+    mutate(fu_time = case_when(n_fu == 1 ~ 0, # 2011
+                               n_fu == 2 ~ 2, # 2013
+                               n_fu == 3 ~ 4, # 2015
+                               n_fu == 4 ~ 7, # 2018
+                               n_fu == 5 ~ 9)) %>% # 2020
     left_join(data_boot %>% select(newid, all_of(c0), 
                                    contains(c("doX0", "doX1"))),
               by = "newid")
