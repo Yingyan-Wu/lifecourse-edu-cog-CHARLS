@@ -11,7 +11,7 @@
 #$ -m bea #sends you an email (b) when the job begins (e) when job ends (a) when job is aborted (error)
 # submit array job:
 # run an array of n jobs; this corresponds to $SGE_TASK_ID, nrow of scenario_tib
-#$ -t 1-160:1
+#$ -t 1-80:1
 ## 
 
 # load the job environment:
@@ -25,5 +25,5 @@ export OMP_NUM_THREADS=1 #uses max 1 thread (needs to match -pe shared)
 
 echo "======"
 echo SGE_TASK_ID=$SGE_TASK_ID      
-R CMD BATCH --no-save --no-restore "--args scenario_num=$SGE_TASK_ID"  /u/home/y/yingyanw/edu_cog_CHARLS/scripts/3_GEE_time_varying_g_comp_function_cat_exp.R /u/home/y/yingyanw/edu_cog_CHARLS/console_output/output.$JOB_ID.$SGE_TASK_ID
-echo R CMD BATCH --no-save --no-restore "--args scenario_num=$SGE_TASK_ID"  /u/home/y/yingyanw/edu_cog_CHARLS/scripts/3_GEE_time_varying_g_comp_function_cat_exp.R /u/home/y/yingyanw/edu_cog_CHARLS/console_output/output.$JOB_ID.$SGE_TASK_ID
+R CMD BATCH --no-save --no-restore "--args scenario_num=$SGE_TASK_ID"  /u/home/y/yingyanw/edu_cog_CHARLS/scripts/3.1_main_sens_bootstrap_cluster.R /u/home/y/yingyanw/edu_cog_CHARLS/console_output/output.$JOB_ID.$SGE_TASK_ID
+echo R CMD BATCH --no-save --no-restore "--args scenario_num=$SGE_TASK_ID"  /u/home/y/yingyanw/edu_cog_CHARLS/scripts/3.1_main_sens_bootstrap_cluster.R /u/home/y/yingyanw/edu_cog_CHARLS/console_output/output.$JOB_ID.$SGE_TASK_ID
