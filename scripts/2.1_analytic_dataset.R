@@ -91,7 +91,8 @@ imp_pmm_stacked %<>%
     n4_fu_time = case_when(is.na(n4_fu_time) ~ n3_fu_time + 3,
                            TRUE ~ n4_fu_time),
     n5_fu_time = case_when(is.na(n5_fu_time) ~ n4_fu_time + 2,
-                           TRUE ~ n5_fu_time)) %>%
+                           TRUE ~ n5_fu_time),
+    unweight = 1) %>%
   group_by(imp) %>%
   mutate(mean_wtrespb = rowMeans(across(paste0("n", 1:5, "_wtrespb")), na.rm = T),
          min_wtrespb = pmin(n1_wtrespb, n2_wtrespb, n3_wtrespb, 
