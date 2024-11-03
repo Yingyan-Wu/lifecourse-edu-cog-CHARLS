@@ -115,10 +115,9 @@ imp_pmm_1 %>%
 with(imp_pmm_1, table(n1_wave, useNA = "ifany"))
 charls_selected %>%
   select(contains("wtrespb")) %>%
-  apply(., 2, sum, na.rm = T)/1000000
+  apply(., 2, sum, na.rm = T)
 
-
-imp_pmm_1 %>% select(contains("wtrespb")) %>% view()
+# imp_pmm_1 %>% select(contains("wtrespb")) %>% view()
 colSums(is.na(imp_pmm_1 %>% select(contains("wtrespb"))))
 
 # Check the weight distribution across waves
@@ -161,6 +160,26 @@ imp_pmm_1 %>%
   theme_bw() +
   theme(legend.position = "none")
 
+##---- Rescale weights ----
+mean_charls_rep_ss <- charls_selected %>%
+  select(contains("wtrespb")) %>%
+  apply(., 2, sum, na.rm = T) %>% as.vector() %>% mean() %>% print()
+
+imp_pmm_stacked %<>% 
+  group_by(imp) %>%
+  mutate(n1_wtrespb_rscl = n1_wtrespb * (mean_charls_rep_ss/sum(n1_wtrespb))) %>%
+  ungroup()
+
+# Sanity check
+imp_pmm_stacked %>%
+  group_by(imp) %>%
+  select(contains("wtrespb_rscl")) %>%
+  dplyr::summarize(sum = sum(n1_wtrespb_rscl),
+                   mean = mean(n1_wtrespb_rscl),
+                   min = min(n1_wtrespb_rscl),
+                   max = max(n1_wtrespb_rscl),
+                   median = median(n1_wtrespb_rscl))
+
 #---- Create censor indicator ----
 for (n_fu in 1:5){
   imp_pmm_stacked %<>%
@@ -195,9 +214,25 @@ imp_pmm_long <- imp_pmm_stacked %>%
   left_join(imp_pmm_stacked %>% select(ID, imp, contains(c("imrc", "dlrc"))),
             by = c("ID", "imp"))
 
-###---- Save the data ----
+#---- Restrict to 2011 participants only ----
+imp_pmm_2011 <- imp_pmm_stacked %>%
+  filter(n1_wave == 1)
+
+imp_pmm_long_2011 <- imp_pmm_2011 %>%
+  pivot_longer(cols = contains(c("imrc", "dlrc", "fu_time")),
+               # starts_with(paste0("n", 1:5)), 
+               names_to = c("n_fu", ".value"),
+               names_pattern = "n(.)_(.*)") %>%
+  mutate(n_fu = as.numeric(as.character(n_fu))) %>%
+  left_join(imp_pmm_2011 %>% select(ID, imp, contains(c("imrc", "dlrc"))),
+            by = c("ID", "imp"))
+
+#---- Save the data ----
 save(imp_pmm_stacked, imp_pmm_long,
      file = here::here("data", "analysis_data", "imp_pmm_20_wide_long.RData"))
+save(imp_pmm_2011, imp_pmm_long_2011,
+     file = here::here("data", "analysis_data", "imp_pmm_20_wide_long_2011.RData"))
+
 
 #---- OLD ----
 # mutate(r1wtrespb_rescaled = r1wtrespb/mean(r1wtrespb)) %>%
