@@ -126,7 +126,7 @@ for (i_boot in boot_i_start:boot_i_end) {
   #                               "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
   
   # save the bootstraps
-  write_csv(result, append = T, 
+  write_csv(result, append = (i_boot != boot_i_start), 
             file = paste0(project_folder, "/sens2_model_results/", 
                           "MSM_coef_", y, "_scenario_", scenario_num, ".csv"))
   
@@ -144,7 +144,7 @@ for (i_boot in boot_i_start:boot_i_end) {
   # saveRDS(w_boot_i, paste0(project_folder, "/warnings/",
   #                          paste0("warnings_", y, 
   #                                 "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
-  write_csv(w_boot_i, append = T, 
+  write_csv(w_boot_i, append = (i_boot != boot_i_start), 
             file = paste0(project_folder, "/sens2_warnings/", 
                           "warnings_", y, "_scenario_", scenario_num, ".csv"))
 }

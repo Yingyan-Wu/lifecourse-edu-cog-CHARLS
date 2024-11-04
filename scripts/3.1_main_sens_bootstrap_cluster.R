@@ -106,6 +106,7 @@ ipcw_c <- c("n1_agey_v3", "n1_iadl_2cat", "n1_cesd10_cleaned",
 
 #---- bootstrap ----
 for (svy_wt in svy_weights){
+  # svy_wt = "n1_wtrespb_rscl"
   # Warning number capture vectors (start with 0)
   # Warnings for C1 models
   w_c1s <- setNames(rep(list(numeric()), length(c1)), paste0("w_", c1))
@@ -135,7 +136,7 @@ for (svy_wt in svy_weights){
     #                               "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
     
     # save the bootstraps
-    write_csv(result, append = T, 
+    write_csv(result, append = (i_boot != boot_i_start), # Append after the first one
               file = paste0(project_folder, results_folder, "_model_results/",
                             "MSM_coef_", y, "_scenario_", scenario_num, ".csv"))
     
@@ -153,7 +154,7 @@ for (svy_wt in svy_weights){
     # saveRDS(w_boot_i, paste0(project_folder, "/warnings/",
     #                          paste0("warnings_", y, 
     #                                 "_imp_", num_imp,"_boot_", i_boot, ".RDS")))
-    write_csv(w_boot_i, append = T, 
+    write_csv(w_boot_i, append = (i_boot != boot_i_start), # Append after the first one
               file = paste0(project_folder, results_folder, "_warnings/",
                             "warnings_", y, "_scenario_", scenario_num, ".csv"))
   }

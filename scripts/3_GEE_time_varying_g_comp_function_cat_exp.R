@@ -242,7 +242,6 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   # Round simulated variables "# of children at 30" to integers
   data_boot %<>% mutate(chldstate_30_doX0 = round(chldstate_30_doX0))
   
-  
   # Create a balanced long dataset
   cloned_data_long <- data_boot %>%
     select(newid, imp) %>%
@@ -267,6 +266,14 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
           rename_with(~ gsub("_doX0", "", .x)),
         type = "response"))
   # Y_doX0_doX1_round = round(Y_doX0_doX1, 2))
+  
+  ##---- Step 4.1: mean potential outcomes at each time point for each intervention ----
+  mean_pred <- cloned_data_long %>%
+    select(newid, doX0, doX1, fu_time, Y_doX0_doX1) %>%
+    group_by(fu_time, doX0, doX1) %>%
+    summarise(mean_PO = mean(Y_doX0_doX1, na.rm = TRUE)) %>%
+    pivot_wider(names_from = c("doX0", "doX1", "fu_time"), values_from = mean_PO,
+                names_glue = "mean_PO_{doX0}{doX1}_yr{fu_time}")
   
   #---- Step 5: MSM for potential outcomes ~ doX0*doX1 ----
   msm_start <- Sys.time()
@@ -301,7 +308,8 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
     computing_time_sec = difftime(end_time, start_time, units = "secs"),
     q_model_time_sec = difftime(q_end, q_start, units = "secs"),
     msm_model_time_sec = difftime(msm_end, msm_start, units = "secs")) %>%
-    cbind(coef_tib)
+    cbind(coef_tib) %>%
+    cbind(mean_pred)
   
   return(results_tib)
 }
