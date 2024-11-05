@@ -213,7 +213,15 @@ imp_pmm_long <- imp_pmm_stacked %>%
                names_pattern = "n(.)_(.*)") %>%
   mutate(n_fu = as.numeric(as.character(n_fu))) %>%
   left_join(imp_pmm_stacked %>% select(ID, imp, contains(c("imrc", "dlrc"))),
-            by = c("ID", "imp"))
+            by = c("ID", "imp")) %>%
+  mutate(first_imrc = case_when(fu_time == 0 & !is.na(imrc) ~ 1,
+                                TRUE ~ 0),
+         first_dlrc = case_when(fu_time == 0 & !is.na(dlrc) ~ 1,
+                                TRUE ~ 0))
+
+# # Sanity check
+# with(imp_pmm_long, table(fu_time == 0, first_imrc, useNA = "ifany"))
+# with(imp_pmm_long, table(fu_time == 0, first_dlrc, useNA = "ifany"))
 
 #---- Restrict to 2011 participants only ----
 imp_pmm_2011 <- imp_pmm_stacked %>%
@@ -226,14 +234,20 @@ imp_pmm_long_2011 <- imp_pmm_2011 %>%
                names_pattern = "n(.)_(.*)") %>%
   mutate(n_fu = as.numeric(as.character(n_fu))) %>%
   left_join(imp_pmm_2011 %>% select(ID, imp, contains(c("imrc", "dlrc"))),
-            by = c("ID", "imp"))
+            by = c("ID", "imp")) %>%
+  mutate(first_imrc = case_when(fu_time == 0 & !is.na(imrc) ~ 1,
+                                TRUE ~ 0),
+         first_dlrc = case_when(fu_time == 0 & !is.na(dlrc) ~ 1,
+                                TRUE ~ 0))
+# # Sanity check
+# with(imp_pmm_long, table(fu_time == 0, first_imrc, useNA = "ifany"))
+# with(imp_pmm_long, table(fu_time == 0, first_dlrc, useNA = "ifany"))
 
 #---- Save the data ----
 save(imp_pmm_stacked, imp_pmm_long,
      file = here::here("data", "analysis_data", "imp_pmm_20_wide_long.RData"))
 save(imp_pmm_2011, imp_pmm_long_2011,
      file = here::here("data", "analysis_data", "imp_pmm_20_wide_long_2011.RData"))
-
 
 #---- OLD ----
 # mutate(r1wtrespb_rescaled = r1wtrespb/mean(r1wtrespb)) %>%
