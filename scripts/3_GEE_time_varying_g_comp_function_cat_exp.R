@@ -58,9 +58,11 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
                        family = quasibinomial(link = "logit"),
                        control = list(maxit = 100))
       # If no warnings, append 0s
+      # w_c1s[[paste0("w_", c1_var)]] <- c(warning_vec, 0) # For testing the function
       w_c1s[[paste0("w_", c1_var)]] <<- c(warning_vec, 0)
     }, warning = function(w) {
       # If there's warning, append 1s
+      # w_c1s[[paste0("w_", c1_var)]] <- c(warning_vec, 1)
       w_c1s[[paste0("w_", c1_var)]] <<- c(warning_vec, 1)
       model <<- svyglm(as.formula(c1_model_form),
                        design = data_boot_svy,
@@ -79,9 +81,11 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
                        design = data_boot_svy,
                        family = gaussian(link = "identity"))
       # If no warnings, append 0s
+      # w_c1s[[paste0("w_", c1_var)]] <- c(warning_vec, 0) # For testing the function
       w_c1s[[paste0("w_", c1_var)]] <<- c(warning_vec, 0)
     }, warning = function(w) {
       # If there's warning, append 1s
+      # w_c1s[[paste0("w_", c1_var)]] <- c(warning_vec, 1)
       w_c1s[[paste0("w_", c1_var)]] <<- c(warning_vec, 1)
       model <<- svyglm(as.formula(c1_model_form),
                        design = data_boot_svy,
@@ -167,36 +171,34 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   # 
   q_start <- Sys.time()
   tryCatch({
-    qmodel_gee <<- geepack::geeglm(as.formula(paste0(y, " ~ ", x0, " * fu_time * ", 
-                                                     x1, " + ", 
-                                                     paste(c0, collapse = "+"), " + ", 
-                                                     paste(c1, collapse = "+"))),
-                                   data = data_boot_long,
-                                   id = newid,
-                                   waves = n_fu,
-                                   weights = svy_ipcw,
-                                   family = gaussian)
+    qmodel_gee <<- geepack::geeglm(
+      as.formula(paste0(y, " ~ ", x0, " * fu_time * ", x1, " + ", 
+                        paste0("first_", y), " + ",
+                        paste(c0, collapse = "+"), " + ", 
+                        paste(c1, collapse = "+"))),
+      data = data_boot_long,
+      id = newid, waves = n_fu,
+      weights = svy_ipcw, family = gaussian)
     w_qmodel <<- c(w_qmodel, 0)
     w_qmodel_msg <<- c(w_qmodel_msg, NA_character_)
   }, warning = function(w) {
     # If there's warning, append 1s
     w_qmodel <<- c(w_qmodel, 1)
     w_qmodel_msg <<- c(w_qmodel_msg, attr(warnings(), "name"))
-    qmodel_gee <<- geepack::geeglm(as.formula(paste0(y, " ~ ", x0, " * fu_time * ", 
-                                                     x1, " + ", 
-                                                     paste(c0, collapse = "+"), " + ", 
-                                                     paste(c1, collapse = "+"))),
-                                   data = data_boot_long,
-                                   id = newid,
-                                   waves = n_fu,
-                                   weights = svy_ipcw,
-                                   family = gaussian)
+    qmodel_gee <<- geepack::geeglm(
+      as.formula(paste0(y, " ~ ", x0, " * fu_time * ", x1, " + ", 
+                        paste0("first_", y), " + ",
+                        paste(c0, collapse = "+"), " + ", 
+                        paste(c1, collapse = "+"))),
+      data = data_boot_long,
+      id = newid, waves = n_fu,
+      weights = svy_ipcw, family = gaussian)
   })
   q_end  <- Sys.time()
-  # 
-  # test <- geepack::geeglm(as.formula(paste0(y, " ~ ", x0, " * fu_time * ", 
-  #                                           x1, " + n_fu +", 
-  #                                           paste(c0, collapse = "+"), " + ", 
+  
+  # test <- geepack::geeglm(as.formula(paste0(y, " ~ ", x0, " * fu_time * ",
+  #                                           x1, " + n_fu +",
+  #                                           paste(c0, collapse = "+"), " + ",
   #                                           paste(c1, collapse = "+"))),
   #                         data = data_boot_long,
   #                         id = newid,
@@ -206,7 +208,7 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   # 
   # QIC(qmodel_gee)
   # QIC(test) # original model has a lower QIC than the model adding num follow up indicator (as practice effect)
-  # summary(q_model_gee)
+  # summary(qmodel_gee)
   
   #---- Step 4: Simulate post intervention DAG distribution----
   data_boot %<>%
@@ -253,7 +255,9 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
                                n_fu == 5 ~ 9)) %>% # 2020
     left_join(data_boot %>% select(newid, all_of(c0), 
                                    contains(c("doX0", "doX1"))),
-              by = "newid")
+              by = "newid") %>%
+    mutate(!!paste0("first_", y) := case_when(n_fu == 1 ~ 1,
+                                              TRUE ~ 0))
   
   # Predict potential outcomes
   cloned_data_long %<>%
@@ -278,22 +282,20 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   #---- Step 5: MSM for potential outcomes ~ doX0*doX1 ----
   msm_start <- Sys.time()
   tryCatch({
-    msm_gee <<- geepack::geeglm(Y_doX0_doX1 ~ fu_time + doX0 * doX1 * fu_time,
-                                data = cloned_data_long,
-                                id = newid,
-                                waves = n_fu,
-                                family = gaussian)
+    msm_gee <<- geepack::geeglm(as.formula(paste0(
+      "Y_doX0_doX1 ~ fu_time + doX0 * doX1 * fu_time + ", "first_", y)),
+      data = cloned_data_long, 
+      id = newid, waves = n_fu, family = gaussian)
     w_msm <<- c(w_msm, 0)
     w_msm_msg <<- c(w_msm_msg, NA_character_)
   }, warning = function(w) {
     # If there's warning, append 1s
     w_msm <<- c(w_msm, 1)
     w_msm_msg <<- c(w_msm_msg, attr(warnings(), "name"))
-    msm_gee <<- geepack::geeglm(Y_doX0_doX1 ~ fu_time + doX0 * doX1 * fu_time,
-                                data = cloned_data_long,
-                                id = newid,
-                                waves = n_fu,
-                                family = gaussian)
+    msm_gee <<- geepack::geeglm(as.formula(paste0(
+      "Y_doX0_doX1 ~ fu_time + doX0 * doX1 * fu_time + ", "first_", y)),
+      data = cloned_data_long, 
+      id = newid, waves = n_fu, family = gaussian)
   })
   msm_end <- Sys.time()
   

@@ -31,11 +31,11 @@ options(scipen = 999)
 # select <- dplyr::select
 
 #---- Load the data & function ----
-# Paths (local)
+# # Paths (local)
 # load(here::here("data", "analysis_data", "imp_pmm_20_wide_long.RData"))
 # source(here::here("scripts", "3_GEE_time_varying_g_comp_function_cat_exp.R"))
 
-# # Paths cluster
+# Paths cluster
 project_folder <- paste0("/u/home/y/yingyanw/edu_cog_CHARLS/")
 load(paste0(project_folder, "data/imp_pmm_20_wide_long.RData"))
 source(paste0(project_folder, "scripts/3_GEE_time_varying_g_comp_function_cat_exp.R"))
@@ -125,7 +125,7 @@ for (svy_wt in svy_weights){
     print(i_boot)
     print(svy_wt)
     # boot_i_start <- 0
-    # i_boot <- 1000
+    # i_boot <- 501
     (start <- Sys.time()) # starting time
     result <- 
       joint_effect_g_comp(imp_pmm_stacked, imp_pmm_long,
