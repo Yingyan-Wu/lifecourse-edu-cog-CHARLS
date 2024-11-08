@@ -511,9 +511,6 @@ charls %<>%
 with(charls, table(raeduc_c_v2, r5educ_c, useNA = "ifany"))
 
 ##---- Adult Education ----
-# No adult education info available for wave 5 participants (it's ok, cuz for
-# those who joined the cohort in wave 5, we'll have to exclude them anyway
-# due to only one occurrence of cognitive test measures)
 charls %<>%
   mutate_at(vars(starts_with("w4_bd007_w4_1_s")), 
             function(x) ifelse(x == 0, NA, x)) %>%
