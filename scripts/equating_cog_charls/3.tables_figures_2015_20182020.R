@@ -230,6 +230,28 @@ ggsave(eqted_empirical_plot,
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 ##---- Figure for slides ----
+###---- cleaned scores ----
+harmonized_empirical_balanced %>%
+  filter(type == "cleaned" & str_detect(variable, "Immediate")) %>%
+  ggplot(aes(x = year, y = mean, color = variable)) +
+  geom_errorbar(aes(ymin = mean - 2*se, ymax = mean + 2*se), width=.1, size = 1) + # size = 1 for poster
+  geom_line(size = 1) + # size = 2 for poster
+  geom_point(size = 2) + # size = 2 for poster
+  geom_text(aes(label = round(mean, 2), y = mean + 5*se), show.legend = FALSE) +
+  scale_x_continuous(breaks = c(2011, 2013, 2015, 2018, 2020)) +
+  scale_y_continuous(limits = c(2.3, 5.2), breaks = seq(3, 5, by = 0.5)) +
+  scale_color_manual(values = c("#67b4b0", "#6c4d86")) +
+  theme_classic() +
+  theme(legend.position = "none",
+        text = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"),
+        axis.text.y = element_text(size = 12, color = "black"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12)) +
+  labs(x = "Year", y = "Word recall scores")
+ggsave(filename = here::here("output", "figures", "figure1_immediate_cleaned_empirical_plot_slides.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
+
 harmonized_empirical_balanced %>%
   filter(type == "cleaned") %>%
   ggplot(aes(x = year, y = mean,
@@ -240,32 +262,105 @@ harmonized_empirical_balanced %>%
   geom_point(size = 2) + # size = 2 for poster
   geom_text(aes(label = round(mean, 2), y = mean + 5*se), show.legend = FALSE) +
   scale_x_continuous(breaks = c(2011, 2013, 2015, 2018, 2020)) +
-  # scale_y_continuous(limits = c(2.4, 5.2), breaks = seq(3, 5, by = 0.5)) +
-  scale_color_manual(name = "Variable",
-                     values = c("#67b4b0", "#6c4d86"),
-                     labels = c("Immediate word recall",
-                                "Delayed word recall")) +
+  scale_y_continuous(limits = c(2.3, 5.2), breaks = seq(3, 5, by = 0.5)) +
+  scale_color_manual(values = c("#67b4b0", "#6c4d86")) +
   theme_classic() +
-  theme(
-    # legend.position = "bottom", legend.direction = "horizontal",
-    legend.position = "none",
-    text = element_text(size = 12, color = "black"),
-    axis.text.x = element_text(size = 12, color = "black"),
-    axis.text.y = element_text(size = 12, color = "black"),
-    legend.title = element_blank(),
-    legend.text = element_text(size = 12)) +
+  theme(legend.position = "none",
+        text = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"),
+        axis.text.y = element_text(size = 12, color = "black"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 12)) +
   labs(x = "Year", y = "Word recall scores")
 
-ggsave(filename = here::here("output", "figures", "figure1_empirical_plot_pre.png"),
+ggsave(filename = here::here("output", "figures", "figure1_cleaned_empirical_plot_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
-eqted_empirical_plot +
+###---- Equated scores ----
+# Immediate
+harmonized_empirical_balanced %>%
+  filter(str_detect(variable, "Immediate")) %>%
+  ggplot(aes(x = year, y = mean,
+             group = interaction(variable, type),
+             color = interaction(variable, type))) +
   geom_errorbar(aes(ymin = mean - 2*se, ymax = mean + 2*se), width=.1, size = 1) + # size = 1 for poster
   geom_line(aes(linetype = interaction(variable, type)), size = 1) + # size = 2 for poster
-  geom_point(aes(shape = interaction(variable, type)), size = 2) +
-  theme(legend.position = "none")
+  geom_point(aes(shape = interaction(variable, type)), size = 2) + # size = 2 for poster
+  geom_text(aes(label = round(mean, 2), y = mean + 5*se), show.legend = FALSE) +
+  scale_x_continuous(breaks = c(2011, 2013, 2015, 2018, 2020)) +
+  scale_y_continuous(limits = c(2.3, 5.2), breaks = seq(3, 5, by = 0.5)) +
+  scale_color_manual(values = c("#67b4b0", "#67b4b0")) +
+  scale_linetype_manual(values = c(1, 2)) +
+  scale_shape_manual(values = c(19, 17)) +
+  theme_classic() +
+  theme(legend.position = "none", legend.direction = "horizontal",
+        legend.title = element_blank(),
+        text = element_text(size = 10, color = "black"),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        legend.text = element_text(size = 10)) +
+  guides(shape = guide_legend(nrow = 2),
+         color = guide_legend(nrow = 2)) +
+  labs(x = "Year", y = "Word recall scores")
 
-ggsave(filename = here::here("output", "figures", "figure1_empirical_plot_eqt_pre.png"),
+ggsave(filename = here::here("output", "figures", "figure1_immediate_empirical_plot_slides.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
+
+# Delayed
+harmonized_empirical_balanced %>%
+  filter(str_detect(variable, "Immediate") | 
+           str_detect(variable, "Delayed") & type == "cleaned") %>%
+  ggplot(aes(x = year, y = mean,
+             group = interaction(variable, type),
+             color = interaction(variable, type))) +
+  geom_errorbar(aes(ymin = mean - 2*se, ymax = mean + 2*se), width=.1, size = 1) + # size = 1 for poster
+  geom_line(aes(linetype = interaction(variable, type)), size = 1) + # size = 2 for poster
+  geom_point(aes(shape = interaction(variable, type)), size = 2) + # size = 2 for poster
+  geom_text(aes(label = round(mean, 2), y = mean + 5*se), show.legend = FALSE) +
+  scale_x_continuous(breaks = c(2011, 2013, 2015, 2018, 2020)) +
+  scale_y_continuous(limits = c(2.3, 5.2), breaks = seq(3, 5, by = 0.5)) +
+  scale_color_manual(values = c("#67b4b0", "#6c4d86", "#67b4b0")) +
+  scale_linetype_manual(values = c(1, 1, 2)) +
+  scale_shape_manual(values = c(19, 19, 17)) +
+  theme_classic() +
+  theme(legend.position = "none", legend.direction = "horizontal",
+        legend.title = element_blank(),
+        text = element_text(size = 10, color = "black"),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        legend.text = element_text(size = 10)) +
+  guides(shape = guide_legend(nrow = 2),
+         color = guide_legend(nrow = 2)) +
+  labs(x = "Year", y = "Word recall scores")
+
+ggsave(filename = here::here("output", "figures", "figure1_delayed1_empirical_plot_slides.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
+
+harmonized_empirical_balanced %>%
+  ggplot(aes(x = year, y = mean,
+             group = interaction(variable, type),
+             color = interaction(variable, type))) +
+  geom_errorbar(aes(ymin = mean - 2*se, ymax = mean + 2*se), width=.1, size = 1) + # size = 1 for poster
+  geom_line(aes(linetype = interaction(variable, type)), size = 1) + # size = 2 for poster
+  geom_point(aes(shape = interaction(variable, type)), size = 2) + # size = 2 for poster
+  geom_text(aes(label = round(mean, 2), y = mean + 5*se), show.legend = FALSE) +
+  scale_x_continuous(breaks = c(2011, 2013, 2015, 2018, 2020)) +
+  scale_y_continuous(limits = c(2.3, 5.2), breaks = seq(3, 5, by = 0.5)) +
+  scale_color_manual(values = c("#67b4b0", "#6c4d86", "#67b4b0", "#6c4d86")) +
+  scale_linetype_manual(values = c(1, 1, 2, 2)) +
+  scale_shape_manual(values = c(19, 19, 17, 17)) +
+  theme_classic() +
+  theme(legend.position = "none", legend.direction = "horizontal",
+        legend.title = element_blank(),
+        text = element_text(size = 10, color = "black"),
+        axis.text.x = element_text(size = 10, color = "black"),
+        axis.text.y = element_text(size = 10, color = "black"),
+        legend.text = element_text(size = 10)) +
+  guides(shape = guide_legend(nrow = 2),
+         color = guide_legend(nrow = 2)) +
+  labs(x = "Year", y = "Word recall scores")
+
+ggsave(filename = here::here("output", "figures", "figure1_full_empirical_plot_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 #---- Figure 2. distribution of different trials of imrc -----
@@ -306,28 +401,6 @@ ggsave(here::here("output", "figures", "figure2_rc_dist_2015_20182020.eps"),
 
 ##---- Figure for slides ----
 p_load("ggdist")
-rc_long %>%
-  filter(measure != "Equated") %>%
-  mutate(measure = str_replace(measure, "Original |Original", ""),
-         measure = str_replace(measure, "trial", "Trial")) %>%
-  ggplot(aes(x = measure, y = value, color = construct)) +
-  ggdist::stat_halfeye(adjust = 17, width = .5, .width = 0, justification = -.3, 
-                       point_colour = NA) +
-  geom_boxplot(width = .2) +
-  facet_grid(rows = vars(year), cols = vars(construct),
-             scale = "free_x", space="free") +
-  labs(x = element_blank(), y = "Word recall scores") +
-  scale_color_manual(values = c("#67b4b0", "#6c4d86")) +
-  theme_bw() +
-  theme(legend.position = "none",
-        text = element_text(size = 12, color = "black"), 
-        strip.text.x = element_text(size = 12, color = "black"),
-        strip.text.y = element_text(size = 12, color = "black"),
-        axis.text.x = element_text(size = 12, color = "black"), 
-        axis.text.y = element_text(size = 12, color = "black"))
-
-ggsave(here::here("output", "figures", "figure2_rc_dist_slides.png"),
-       device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 rc_allwave_long <- harmonized_addw5_selected %>%
   select(ID, contains(c("imrc", "dlrc"))) %>% 
@@ -370,20 +443,48 @@ rc_allwave_long <- harmonized_addw5_selected %>%
                                              "Delayed word recall")))
 
 rc_allwave_long %>%
+  filter(measure != "Equated" & str_detect(year_measure, "2018|2020")) %>%
+  mutate(measure = str_replace(measure, "Original |Original", ""),
+         measure = str_replace(measure, "trial", "Trial"),
+         year_measure = factor(
+           year_measure, 
+           levels = c(paste0("2018 trial ", 1:3), "2018",
+                      paste0("2020 trial ", 1:3), "2020"))) %>%
+  ggplot(aes(x = year_measure, y = value, color = construct)) +
+  # ggdist::stat_halfeye(adjust = 17, width = .5, .width = 0, justification = -.3, 
+  #                      point_colour = NA) +
+  geom_boxplot(width = .2, position = position_dodge((width = 1))) +
+  # facet_grid(rows = vars(year), cols = vars(construct),
+  #            scale = "free_x", space="free") +
+  labs(x = element_blank(), y = "Word recall scores") +
+  scale_x_discrete(labels = rep(c(paste0("trial ", 1:3), ""), 2)) +
+  scale_color_manual(name = "", values = c("#67b4b0", "#6c4d86")) +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        text = element_text(size = 12, color = "black"), 
+        strip.text.x = element_text(size = 12, color = "black"),
+        strip.text.y = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"), 
+        axis.text.y = element_text(size = 12, color = "black"))
+
+ggsave(here::here("output", "figures", "figure2_rc_dist_slides.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
+
+rc_allwave_long %>%
   filter(measure != "Equated" & year_measure %in% c("2011", "2013", "2015")) %>%
   mutate(measure = str_replace(measure, "Original |Original", ""),
          measure = str_replace(measure, "trial", "Trial")) %>%
   ggplot(aes(x = year_measure, y = value, color = construct)) +
-  ggdist::stat_halfeye(adjust = 15, width = .5, .width = 0, justification = -.3, 
-                       point_colour = NA) +
-  geom_boxplot(width = .2) +
+  # ggdist::stat_halfeye(adjust = 15, width = .5, .width = 0, justification = -.3, 
+  #                      point_colour = NA) +
+  geom_boxplot(width = .2, position = position_dodge((width = 1))) +
   # geom_boxplot(aes(x = year_measure, y = value, color = construct)) + 
-  facet_grid(cols = vars(construct),
-             scale = "free_x", space="free") +
+  # facet_grid(cols = vars(construct),
+  #            scale = "free_x", space="free") +
   labs(x = element_blank(), y = "Word recall scores") +
-  scale_color_manual(values = c("#67b4b0", "#6c4d86")) +
+  scale_color_manual(name = "", values = c("#67b4b0", "#6c4d86")) +
   theme_bw() +
-  theme(legend.position = "none",
+  theme(legend.position = "bottom",
         text = element_text(size = 12, color = "black"), 
         strip.text.x = element_text(size = 12, color = "black"),
         strip.text.y = element_text(size = 12, color = "black"),
@@ -394,6 +495,7 @@ ggsave(here::here("output", "figures", "figure_rc_dist_2011_2015_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 rc_allwave_long %>%
+  filter(measure != "Equated") %>%
   filter(construct == "Immediate word recall") %>%
   mutate(measure = str_replace(measure, "Original |Original", ""),
          measure = str_replace(measure, "trial", "Trial")) %>%
