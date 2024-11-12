@@ -110,7 +110,8 @@ for (anlys in c("main", "sens", "sens2")){
     
     temp_pred_fu <- expand_grid(n_imp = 1:20,
                                 i_boot = 0:1000,
-                                fu_time_yrs = c(0, 2, 4, 7, 9)) %>%
+                                fu_time_yrs = c(0, 2, 4, 7, 9),
+                                first_outcome = c(1, 0, 0, 0, 0)) %>%
       left_join(get(paste0(y, "_MSM_coef_", anlys)), by = c("n_imp", "i_boot")) %>%
       mutate(rc_00 = `(Intercept)` + fu_time*fu_time_yrs,
              rc_10 = `(Intercept)` + doX0_1 + fu_time*fu_time_yrs + `fu_time:doX0_1`*fu_time_yrs,
@@ -318,10 +319,10 @@ PO_CI_forplot <- imrc_dlrc_mean_PO_CI %>%
   arrange(outcome, fu_time_yrs, intervention)
 
 PO_CI_forplot %<>%
-  mutate(label = factor(label, levels = unique(pred_CI_forplot$label)),
-         label_adult = factor(label_adult, levels = unique(pred_CI_forplot$label_adult)),
+  mutate(label = factor(label, levels = unique(PO_CI_forplot$label)),
+         label_adult = factor(label_adult, levels = unique(PO_CI_forplot$label_adult)),
          comp_adult_childhood = factor(
-           comp_adult_childhood, levels = unique(pred_CI_forplot$comp_adult_childhood))) %>%
+           comp_adult_childhood, levels = unique(PO_CI_forplot$comp_adult_childhood))) %>%
   mutate(outcome = factor(case_when(outcome == "imrc" ~ "Immediate word recall",
                                     outcome == "dlrc" ~ "Delayed word recall"),
                           levels = c("Immediate word recall", "Delayed word recall")))
