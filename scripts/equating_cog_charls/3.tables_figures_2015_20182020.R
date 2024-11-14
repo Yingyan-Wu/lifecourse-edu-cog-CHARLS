@@ -293,12 +293,12 @@ harmonized_empirical_balanced %>%
   scale_linetype_manual(values = c(1, 2)) +
   scale_shape_manual(values = c(19, 17)) +
   theme_classic() +
-  theme(legend.position = "none", legend.direction = "horizontal",
+  theme(legend.position = "none",
+        text = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"),
+        axis.text.y = element_text(size = 12, color = "black"),
         legend.title = element_blank(),
-        text = element_text(size = 10, color = "black"),
-        axis.text.x = element_text(size = 10, color = "black"),
-        axis.text.y = element_text(size = 10, color = "black"),
-        legend.text = element_text(size = 10)) +
+        legend.text = element_text(size = 12)) +
   guides(shape = guide_legend(nrow = 2),
          color = guide_legend(nrow = 2)) +
   labs(x = "Year", y = "Word recall scores")
@@ -323,12 +323,12 @@ harmonized_empirical_balanced %>%
   scale_linetype_manual(values = c(1, 1, 2)) +
   scale_shape_manual(values = c(19, 19, 17)) +
   theme_classic() +
-  theme(legend.position = "none", legend.direction = "horizontal",
+  theme(legend.position = "none",
+        text = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"),
+        axis.text.y = element_text(size = 12, color = "black"),
         legend.title = element_blank(),
-        text = element_text(size = 10, color = "black"),
-        axis.text.x = element_text(size = 10, color = "black"),
-        axis.text.y = element_text(size = 10, color = "black"),
-        legend.text = element_text(size = 10)) +
+        legend.text = element_text(size = 12)) +
   guides(shape = guide_legend(nrow = 2),
          color = guide_legend(nrow = 2)) +
   labs(x = "Year", y = "Word recall scores")
@@ -350,12 +350,12 @@ harmonized_empirical_balanced %>%
   scale_linetype_manual(values = c(1, 1, 2, 2)) +
   scale_shape_manual(values = c(19, 19, 17, 17)) +
   theme_classic() +
-  theme(legend.position = "none", legend.direction = "horizontal",
+  theme(legend.position = "none",
+        text = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"),
+        axis.text.y = element_text(size = 12, color = "black"),
         legend.title = element_blank(),
-        text = element_text(size = 10, color = "black"),
-        axis.text.x = element_text(size = 10, color = "black"),
-        axis.text.y = element_text(size = 10, color = "black"),
-        legend.text = element_text(size = 10)) +
+        legend.text = element_text(size = 12)) +
   guides(shape = guide_legend(nrow = 2),
          color = guide_legend(nrow = 2)) +
   labs(x = "Year", y = "Word recall scores")
