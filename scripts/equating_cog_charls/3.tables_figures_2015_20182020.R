@@ -223,10 +223,10 @@ eqted_empirical_plot <-
 
 eqted_empirical_plot
 ggsave(eqted_empirical_plot,
-       filename = here::here("output", "figures", "figure1_empirical_plot_eqted_2015_20182020.eps"),
+       filename = here::here("output", "figures", "charls_equating", "figure1_empirical_plot_eqted_2015_20182020.eps"),
        device = "eps", dpi = 300, width = 7, height = 5, units = "in")
 ggsave(eqted_empirical_plot,
-       filename = here::here("output", "figures", "figure1_empirical_plot_eqted_2015_20182020.png"),
+       filename = here::here("output", "figures", "charls_equating", "figure1_empirical_plot_eqted_2015_20182020.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 ##---- Figure for slides ----
@@ -249,7 +249,7 @@ harmonized_empirical_balanced %>%
         legend.title = element_blank(),
         legend.text = element_text(size = 12)) +
   labs(x = "Year", y = "Word recall scores")
-ggsave(filename = here::here("output", "figures", "figure1_immediate_cleaned_empirical_plot_slides.png"),
+ggsave(filename = here::here("output", "figures", "charls_equating", "figure1_immediate_cleaned_empirical_plot_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 harmonized_empirical_balanced %>%
@@ -273,7 +273,7 @@ harmonized_empirical_balanced %>%
         legend.text = element_text(size = 12)) +
   labs(x = "Year", y = "Word recall scores")
 
-ggsave(filename = here::here("output", "figures", "figure1_cleaned_empirical_plot_slides.png"),
+ggsave(filename = here::here("output", "figures", "charls_equating", "figure1_cleaned_empirical_plot_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 ###---- Equated scores ----
@@ -303,7 +303,7 @@ harmonized_empirical_balanced %>%
          color = guide_legend(nrow = 2)) +
   labs(x = "Year", y = "Word recall scores")
 
-ggsave(filename = here::here("output", "figures", "figure1_immediate_empirical_plot_slides.png"),
+ggsave(filename = here::here("output", "figures", "charls_equating", "figure1_immediate_empirical_plot_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 # Delayed
@@ -333,7 +333,7 @@ harmonized_empirical_balanced %>%
          color = guide_legend(nrow = 2)) +
   labs(x = "Year", y = "Word recall scores")
 
-ggsave(filename = here::here("output", "figures", "figure1_delayed1_empirical_plot_slides.png"),
+ggsave(filename = here::here("output", "figures", "charls_equating", "figure1_delayed1_empirical_plot_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 harmonized_empirical_balanced %>%
@@ -360,7 +360,7 @@ harmonized_empirical_balanced %>%
          color = guide_legend(nrow = 2)) +
   labs(x = "Year", y = "Word recall scores")
 
-ggsave(filename = here::here("output", "figures", "figure1_full_empirical_plot_slides.png"),
+ggsave(filename = here::here("output", "figures", "charls_equating", "figure1_full_empirical_plot_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 #---- Figure 2. distribution of different trials of imrc -----
@@ -396,7 +396,7 @@ rc_long %>%
   labs(x = element_blank(), y = "Word recall scores") +
   theme_bw()
 
-ggsave(here::here("output", "figures", "figure2_rc_dist_2015_20182020.eps"),
+ggsave(here::here("output", "figures", "charls_equating", "figure2_rc_dist_2015_20182020.eps"),
        device = "eps", dpi = 300, width = 7, height = 5, units = "in")
 
 ##---- Figure for slides ----
@@ -467,7 +467,7 @@ rc_allwave_long %>%
         axis.text.x = element_text(size = 12, color = "black"), 
         axis.text.y = element_text(size = 12, color = "black"))
 
-ggsave(here::here("output", "figures", "figure2_rc_dist_slides.png"),
+ggsave(here::here("output", "figures", "charls_equating", "figure2_rc_dist_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 rc_allwave_long %>%
@@ -491,7 +491,7 @@ rc_allwave_long %>%
         axis.text.x = element_text(size = 12, color = "black"), 
         axis.text.y = element_text(size = 12, color = "black"))
 
-ggsave(here::here("output", "figures", "figure_rc_dist_2011_2015_slides.png"),
+ggsave(here::here("output", "figures", "charls_equating", "figure_rc_dist_2011_2015_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 rc_allwave_long %>%
@@ -513,7 +513,7 @@ rc_allwave_long %>%
         axis.text.x = element_text(size = 8, color = "black"), 
         axis.text.y = element_text(size = 10, color = "black"))
 
-ggsave(here::here("output", "figures", "figure_rc_dist_2011_2020_imrc_slides.png"),
+ggsave(here::here("output", "figures", "charls_equating", "figure_rc_dist_2011_2020_imrc_slides.png"),
        device = "png", dpi = 300, width = 9, height = 7, units = "in")
 
 rc_allwave_long %>%
@@ -534,7 +534,7 @@ rc_allwave_long %>%
         axis.text.x = element_text(size = 8, color = "black"), 
         axis.text.y = element_text(size = 10, color = "black"))
 
-ggsave(here::here("output", "figures", "figure_rc_dist_2011_2020_dlrc_slides.png"),
+ggsave(here::here("output", "figures", "charls_equating", "figure_rc_dist_2011_2020_dlrc_slides.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 #---- Figure 3. Covariate balance plot ----
@@ -557,28 +557,65 @@ figure2_covbal <-
         axis.text.y = element_text(size = 12, color = "black"))
 figure2_covbal
 ggsave(figure2_covbal,
-       filename = here::here("output", "figures", "figure3_covbal_plot_2015_20182020.eps"),
+       filename = here::here("output", "figures", "charls_equating", "figure3_covbal_plot_2015_20182020.eps"),
        device = "eps", dpi = 300, width = 9, height = 7, units = "in")
 ggsave(figure2_covbal,
-       filename = here::here("output", "figures", "figure3_covbal_plot_2015_20182020.png"),
+       filename = here::here("output", "figures", "charls_equating", "figure3_covbal_plot_2015_20182020.png"),
        device = "png", dpi = 300, width = 9, height = 7, units = "in")
 
 ##---- Figure for slides ----
-covbal_comp_plot(w4b_test$covbal_data, unw_test$covbal_data,
-                 "2015", "2018/2020")
-covbal_comp_plot(w4b_test$covbal_data, unw_test$covbal_data,
-                 "2015", "2018/2020")  +
-  xlab("Standardized mean difference") +
+# Only showing unweighted
+covbal_toplot <- w4b_test$covbal_data %>% mutate(IOW = "1") %>%
+  rbind(unw_test$covbal_data %>% mutate(IOW = "0"))
+
+covbal_toplot %>%
+  ggplot(aes(x = std.eff.sz, y = label)) +
+  geom_point(aes(shape = IOW, color = IOW), size = 3) +
   scale_shape_manual(name = element_blank(),
                      values = c(21, 16), labels = c("Unweighted", "Weighted")) +
-  scale_x_continuous(breaks = seq(-0.4, 0.4, by = 0.1)) +
-  theme(legend.position = "bottom", legend.direction = "horizontal",
+  scale_color_manual(name = element_blank(),
+                     values = c("#0072B2", "#00000000"), 
+                     labels = c("Unweighted", "Weighted")) +
+  geom_vline(xintercept = 0) +
+  xlab("Standardized mean difference") +
+  theme_bw() +
+  # geom_vline(xintercept = c(-0.2, 0.2), linetype = "dashed",
+  #            color = "dark grey") +
+  theme(aspect.ratio = 5/3,
+        panel.grid.minor.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.position = "bottom", legend.direction = "horizontal",
         legend.title.align = 0.5,
         legend.text = element_text(size = 12),
         text = element_text(size = 12, color = "black"), 
         axis.text.x = element_text(size = 12, color = "black"), 
-        axis.text.y = element_text(size = 12, color = "black"))
-ggsave(filename = here::here("output", "figures", "figure3_covbal_plot_pre.png"),
+        axis.text.y = element_text(size = 12, color = "black", face = "bold"))
+ggsave(filename = here::here("output", "figures", "charls_equating", "figure3_covbal_plot_pre_unwtd.png"),
+       device = "png", dpi = 300, width = 7, height = 5, units = "in")
+
+covbal_toplot %>%
+  ggplot(aes(x = std.eff.sz, y = label)) +
+  geom_point(aes(shape = IOW, color = IOW), size = 3) +
+  scale_shape_manual(name = element_blank(),
+                     values = c(21, 16), labels = c("Unweighted", "Weighted")) +
+  scale_color_manual(name = element_blank(),
+                     values = c("#0072B2", "#0072B2"), 
+                     labels = c("Unweighted", "Weighted")) +
+  geom_vline(xintercept = 0) +
+  xlab("Standardized mean difference") +
+  theme_bw() +
+  # geom_vline(xintercept = c(-0.2, 0.2), linetype = "dashed",
+  #            color = "dark grey") +
+  theme(aspect.ratio = 5/3,
+        panel.grid.minor.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.position = "bottom", legend.direction = "horizontal",
+        legend.title.align = 0.5,
+        legend.text = element_text(size = 12),
+        text = element_text(size = 12, color = "black"), 
+        axis.text.x = element_text(size = 12, color = "black"), 
+        axis.text.y = element_text(size = 12, color = "black", face = "bold"))
+ggsave(filename = here::here("output", "figures", "charls_equating", "figure3_covbal_plot_pre.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
 #---- Figure 4. equated equating plot ----
@@ -646,7 +683,7 @@ ggsave(filename = here::here("output", "figures", "figure3_covbal_plot_pre.png")
 #   # theme_classic(base_size = 20) + # for poster
 #   # theme(legend.position = "none") + # for poster
 #   labs(x = "Year", y = "Word recall scores")
-# # ggsave(filename = here::here("output", "figures", "figure0_empirical_plot_uneqted.png"),
+# # ggsave(filename = here::here("output", "figures", "charls_equating", "figure0_empirical_plot_uneqted.png"),
 # #        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 # 
 ##---- stacked plot ----
@@ -665,5 +702,5 @@ ggsave(filename = here::here("output", "figures", "figure3_covbal_plot_pre.png")
 # figure1_panel_final  
 # # theme(plot.margin = unit(c(t = 21, r = 10, b = 10, l = 0), unit = "pt")) +
 # ggsave(figure1_panel_final,
-#        filename = here::here("output", "figures", "figure1_empirical_plot.png"),
+#        filename = here::here("output", "figures", "charls_equating", "figure1_empirical_plot.png"),
 #        device = "png", dpi = 300, width = 7, height = 5, units = "in")
