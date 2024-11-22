@@ -17,40 +17,34 @@ p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "glue",
 source(here::here("scripts", "functions.R"))
 
 #---- Load the data ----
-imp_pmm_40 <- readRDS(here::here("data", "analysis_data", "imp_pmm_40_stacked.RDS"))
-imp_pmm_40 %<>%
+load(here::here("data", "analysis_data", "imp_pmm_20_wide_long.RData"))
+
+imp_pmm_stacked %<>%
   mutate(occupation_30_5cat = case_when(occupation_30 %in% c(1, 2) ~ 1,
                                         occupation_30 %in% c(3, 4, 5) ~ 2,
                                         occupation_30 == 6 ~ 3,
                                         occupation_30 == 7 ~ 4,
                                         occupation_30 == 8 ~ 5),
          edu_cat =  case_when(
-           childhood_edu == 0 & continuing_edu == 0 ~ 0,
-           childhood_edu == 0 & continuing_edu == 1 ~ 1,
-           childhood_edu == 0 & continuing_edu == 2 ~ 2,
-           childhood_edu == 1 & continuing_edu == 0 ~ 3,
-           childhood_edu == 1 & continuing_edu == 1 ~ 4,
-           childhood_edu == 1 & continuing_edu == 2 ~ 5,
-           childhood_edu == 2 & continuing_edu == 0 ~ 6,
-           childhood_edu == 2 & continuing_edu == 1 ~ 7,
-           childhood_edu == 2 & continuing_edu == 2 ~ 8,
-           childhood_edu == 3 & continuing_edu == 0 ~ 9,
-           childhood_edu == 3 & continuing_edu == 1 ~ 10,
-           childhood_edu == 3 & continuing_edu == 2 ~ 11))
+           childhood_edu == 0 & continuing_edu_2cat == 0 ~ 0,
+           childhood_edu == 0 & continuing_edu_2cat == 1 ~ 1,
+           childhood_edu == 1 & continuing_edu_2cat == 0 ~ 2,
+           childhood_edu == 1 & continuing_edu_2cat == 1 ~ 3,
+           childhood_edu == 2 & continuing_edu_2cat == 0 ~ 4,
+           childhood_edu == 2 & continuing_edu_2cat == 1 ~ 5,
+           childhood_edu == 3 & continuing_edu_2cat == 0 ~ 6,
+           childhood_edu == 3 & continuing_edu_2cat == 1 ~ 7))
 
-#---- Table 1 ----
-n_imp = 40
-labelled_data <- imp_pmm_40 %>%
-  filter(r1agey_v3 >= 45) %>%
-  dplyr::mutate(across(c("female_v2", "first_child_v2", "rarural_child",
-                         "marital_30", "rural_30"),
+#---- Labelled data for Table 1 ----
+labelled_data <- imp_pmm_stacked %>%
+  dplyr::mutate(across(c("female", "first_child_v2", "rarural_child",
+                         "continuing_edu_2cat",
+                         "marital_30", "rural_30", 
+                         "n1_iadl_2cat",  "n1_hibpe", "n1_stroke", 
+                         "n1_hearte", "n1_cancre", "n1_diabe"),
                        function(x) factor(x, levels = c(1, 0),
                                           labels = c("Yes", "No")))) %>%
   dplyr::mutate(
-    continuing_edu = factor(continuing_edu, levels = c(0, 1, 2),
-                            labels = c("No continuing edu", 
-                                       "Continuing edu w/o a diploma",
-                                       "Continuing edu w/ a diploma")),
     rameduc_c = factor(rameduc_c, levels = c(0, 1, 2, 3),
                        labels = c("No formal education (illiterate)",
                                   "Elementary school or less",
@@ -84,26 +78,21 @@ labelled_data <- imp_pmm_40 %>%
     hukou_30 = factor(hukou_30, levels = c(1, 2, 3, 4),
                       labels = c("Agricultural hukou", "Non-agricultural hukou",
                                  "Unified residence hukou", "Do not have hukou")),
-    edu_cat = factor(edu_cat, levels = 0:11,
+    edu_cat = factor(edu_cat, levels = 0:7,
                      labels = c("No Formal Education (Illiterate)",
-                                "No formal education + continuing education without a diploma",
-                                "No formal education + continuing education with diploma",
-                                "Elementary school or less + no continuing education",
-                                "Elementary school or less + continuing education without a diploma",
-                                "Elementary school or less + continuing education with a diploma",
-                                "Vocational school/middle school/high school + no continuing education",
-                                "Vocational school/middle school/high school + continuing education without a diploma",
-                                "Vocational school/middle school/high school + continuing education with a diploma",
-                                "College & above + no continuing education",
-                                "College & above + continuing education without a diploma",
-                                "College & above + continuing education with a diploma"))
-  ) %>%
+                                "Only adulthood education",
+                                "Elementary school or less only",
+                                "Elementary school or less + adulthood education",
+                                "Middle school level only",
+                                "Middle school level + adulthood education",
+                                "College and above only",
+                                "College and above + adulthood education"))) %>%
   labelled::set_variable_labels(
-    r1agey_v3 = "Baseline age at 2011 in years",
-    continuing_edu = "Continuing education level (%)",
+    n1_agey_v3 = "Baseline age (first participated wave) in years",
+    continuing_edu_2cat = "Adulthood education",
     edu_cat = "Education level (%)",
     # rabyear_v2 = "Birth year",
-    female_v2 = "Female (%)",
+    female = "Female (%)",
     first_child_v2 = "Birth order: first child (%)",
     rameduc_c = "Mother's education level (%)", 
     rafeduc_c = "Father's education level (%)", 
@@ -119,23 +108,165 @@ labelled_data <- imp_pmm_40 %>%
     rural_30 = "Rural residence at age 30 (%)",
     hukou_30 = "Hukou status at age 30 (%)",
     chldstate_30 = "Number of Children at age 30",
-    r1imrc = "Baseline Immediate word recall", 
-    r1dlrc = "Baseline delayed word recall")
+    # Baseline health vars
+    n1_iadl_2cat = "IADL difficulty (%)",
+    n1_cesd10_cleaned = "CESD-10 score",
+    n1_hibpe = "Self-reported hypertension (%)",
+    n1_stroke = "Self-reported stroke (%)",
+    n1_hearte = "Self-reported heart disease (%)",
+    n1_cancre = "Self-reported cancer (%)",
+    n1_diabe = "Self-reported diabetes (%)",
+    # Baseline cognitive vars
+    n1_imrc = "Baseline Immediate word recall",
+    n1_dlrc = "Baseline delayed word recall")
 
-
+#---- Stratified table 1 ----
+n_imp = 20
 ##---- categorical ----
 cat_imp_svy <- labelled_data %>%
-  select(# Early life predictors
-         female_v2,
-         edu_cat,
+  select(continuing_edu_2cat,
+         # Early life predictors
+         female,
+         childhood_edu,
          first_child_v2, 
          rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c, 
          childhood_1st_region, rarural_child, 
          first_hukou, 
          # Early-adulthood predictors
-        occupation_30_5cat, marital_30, hukou_30, rural_30,
-         r1wtrespb) %>%
-  survey::svydesign(~ 1, data = ., weights = ~r1wtrespb)
+         occupation_30_5cat, marital_30, hukou_30, rural_30,
+         n1_iadl_2cat, n1_hibpe, n1_stroke, n1_hearte, n1_cancre, n1_diabe,
+         # baseline weights
+         n1_wtrespb_rscl) %>%
+  survey::svydesign(~ 1, data = ., weights = ~n1_wtrespb_rscl)
+
+temp_cat_weighted <- tbl_svysummary(
+  data = cat_imp_svy,
+  statistic = list(all_categorical() ~ c("{n_unweighted} {p}")), # For latter splitting
+  digits = all_categorical() ~ 1,
+  by = "continuing_edu_2cat",
+  missing = "no")
+
+temp_cat_weighted %>% as_flex_table()
+
+tbl_svysummary(
+  data = cat_imp_svy,
+  statistic = list(all_categorical() ~ c("{n_unweighted} {p}")), # For latter splitting
+  digits = all_categorical() ~ 1,
+  missing = "no") %>% as_flex_table()
+
+unwtd_n <- temp_cat_weighted$table_styling$header$modify_stat_n_unweighted[6:7]
+wtd_n <- temp_cat_weighted$table_styling$header$modify_stat_n[6:7]
+
+table1_cat_weighted <- temp_cat_weighted %>% as_tibble() %>%
+  set_colnames(c("Characteristic", "adult_edu", "no_adult_edu")) %>%
+  filter(row_number() <= n() - 1) %>% # remove the last row in the table of median IQR for weights.
+  separate(adult_edu, c("adltedu_count", "adltedu_prop"), sep = " ") %>%
+  separate(no_adult_edu, c("no_adltedu_count", "no_adltedu_prop"), sep = " ") %>%
+  dplyr::mutate(across(contains("count"),
+                       function(x) round(as.numeric(gsub(",", "", x))/n_imp))) %>%
+  mutate(`Adulthood education` = paste0(adltedu_count, " (", adltedu_prop, ")"),
+         `No adulthood education` = paste0(no_adltedu_count, " (", no_adltedu_prop, ")")) %>%
+  dplyr::select(-contains("_")) %>%
+  set_colnames(c(
+    "Characteristic", 
+    paste0("Adulthood education \nN=", round(unwtd_n[1]/n_imp),
+           "\nWeighted N=", round(wtd_n[1]/n_imp)),
+    paste0("No adulthood education \nN=", round(unwtd_n[2]/n_imp),
+           "\nWeighted N=", round(wtd_n[2]/n_imp))))
+table1_cat_weighted[table1_cat_weighted == "NA (NA)"] <- NA
+
+##---- continuous ----
+# Every continuous variable was imputed.
+cont_vars <- c("n1_agey_v3", "chldstate_30", "n1_cesd10_cleaned",
+               "n1_imrc", "n1_dlrc")
+
+charls_imp_svy <- labelled_data %>%
+  survey::svydesign(~ 1, data = ., weights = ~n1_wtrespb_rscl)
+charls_imp_svy_adltedu <- subset(charls_imp_svy, 
+                                 continuing_edu_2cat == "Yes")
+charls_imp_svy_no_adltedu <-subset(charls_imp_svy, 
+                                   continuing_edu_2cat == "No")
+temp_cont_mean <- svymean(reformulate(cont_vars), charls_imp_svy_adltedu, na.rm = T) %>% 
+  as.data.frame() %>% select(-SE) %>% set_colnames("adlt_edu_mean") %>%
+  cbind(svymean(reformulate(cont_vars), charls_imp_svy_no_adltedu, na.rm = T) %>% 
+          as.data.frame() %>% select(-SE) %>% set_colnames("no_adlt_edu_mean"))
+
+temp_cont_tib <- data.frame()
+for (i in 1:n_imp){
+  temp_cont_svy <- labelled_data %>%
+    filter(imp == i) %>%
+    select(all_of(cont_vars), continuing_edu_2cat, n1_wtrespb_rscl) %>%
+    survey::svydesign(~1, data = ., weights = ~n1_wtrespb_rscl)
+  temp_cont_svy_adltedu <- subset(temp_cont_svy, 
+                                  continuing_edu_2cat == "Yes")
+  temp_cont_svy_no_adltedu <-subset(temp_cont_svy, 
+                                    continuing_edu_2cat == "No")
+  temp_svyvar <- 
+    svyvar(reformulate(cont_vars), temp_cont_svy_adltedu, na.rm = T) %>% 
+    as.data.frame() %>%
+    select(-SE) %>% unique() %>% as.matrix() %>% diag() %>% t() %>% as_tibble() %>%
+    set_colnames(cont_vars) %>% mutate(adlt_edu = "Adult edu") %>%
+    rbind(svyvar(reformulate(cont_vars), temp_cont_svy_no_adltedu, na.rm = T) %>% 
+            as.data.frame() %>%
+            select(-SE) %>% unique() %>% as.matrix() %>% diag() %>% t() %>% as_tibble() %>%
+            set_colnames(cont_vars) %>% mutate(adlt_edu = "No adult edu"))
+  
+  temp_cont_tib %<>% rbind(temp_svyvar %>%
+                             mutate(imp = i))
+}
+
+temp_cont_var <- temp_cont_tib %>%
+  group_by(adlt_edu) %>%
+  dplyr::summarize_all(mean) %>% as.data.frame()
+
+table1_cont_weighted <- temp_cont_mean %>%
+  cbind(t(temp_cont_var %>% select(-imp, -adlt_edu )) %>%
+          set_colnames(paste0(c("adlt_edu", "no_adlt_edu"), "_var"))) %>%
+  mutate(Characteristic = var_label(labelled_data[, cont_vars]) %>% unlist(), 
+         across(contains("var"), ~ sqrt(.x), 
+                .names = "{str_replace(.col, '_var', '_sd')}"),
+         adult_edu_mean_sd = paste0(sprintf(adlt_edu_mean, fmt = '%#.1f'), " (", 
+                                    sprintf(adlt_edu_sd, fmt = '%#.1f'), ")"),
+         no_adult_edu_mean_sd = paste0(sprintf(no_adlt_edu_mean, fmt = '%#.1f'), " (", 
+                                       sprintf(no_adlt_edu_sd, fmt = '%#.1f'), ")")) %>%
+  select(Characteristic, contains("mean_sd")) %>%
+  as_tibble() %>%
+  set_colnames(c(
+    "Characteristic", 
+    paste0("Adulthood education \nN=", round(unwtd_n[1]/n_imp),
+           "\nWeighted N=", round(wtd_n[1]/n_imp)),
+    paste0("No adulthood education \nN=", round(unwtd_n[2]/n_imp),
+           "\nWeighted N=", round(wtd_n[2]/n_imp))))
+
+##---- Full table 1 ----
+table1_weighted <- rbind(table1_cont_weighted[1, ], # Baseline age
+                         table1_cat_weighted[1:47, ], # early-life and early-adulthood cat covariates
+                         table1_cont_weighted[2, ], # chldstate_30
+                         table1_cat_weighted[48:53, ], # baseline health cat covariates
+                         table1_cont_weighted[3:5, ]# CESD, imrc, dlrc
+) 
+
+##---- Save the output ----
+writexl::write_xlsx(table1_weighted, 
+                    here::here("output", "tables", "table1_imp_weighted_stratified.xlsx"))
+
+#---- unstratified Table 1 ----
+n_imp = 20
+##---- categorical ----
+cat_imp_svy <- labelled_data %>%
+  select(# Early life predictors
+    female,
+    edu_cat,
+    first_child_v2, 
+    rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c, 
+    childhood_1st_region, rarural_child, 
+    first_hukou, 
+    # Early-adulthood predictors
+    occupation_30_5cat, marital_30, hukou_30, rural_30,
+    n1_iadl_2cat, n1_hibpe, n1_stroke, n1_hearte, n1_cancre, n1_diabe,
+    # baseline weights
+    n1_wtrespb_rscl) %>%
+  survey::svydesign(~ 1, data = ., weights = ~n1_wtrespb_rscl)
 
 temp_cat_weighted <- tbl_svysummary(
   data = cat_imp_svy,
@@ -151,75 +282,66 @@ table1_cat_weighted <- temp_cat_weighted %>% as_tibble() %>%
   filter(row_number() <= n() - 1) %>% # remove the last row in the table of median IQR for weights.
   separate(total, c("total_count", "total_prop"), sep = " ") %>%
   dplyr::mutate(across(contains("count"),
-                function(x) round(as.numeric(gsub(",", "", x))/n_imp))) %>%
+                       function(x) round(as.numeric(gsub(",", "", x))/n_imp))) %>%
   mutate(`total` = paste0(total_count, " (", total_prop, ")")) %>%
   dplyr::select(-contains("_")) %>%
   set_colnames(c("Characteristic", 
-                 paste0("N=", round(temp_cat_weighted$N/n_imp),
+                 paste0("N=", round(temp_cat_weighted$table_styling$header$modify_stat_N_unweighted[1]/n_imp),
                         "\n Weighted N=", 
                         round(temp_cat_weighted$table_styling$header$modify_stat_N[1]/n_imp))))
 table1_cat_weighted[table1_cat_weighted == "NA (NA)"] <- NA
 
 ##---- continuous ----
 # Every continuous variable was imputed.
+cont_vars <- c("n1_agey_v3", "chldstate_30", "n1_cesd10_cleaned",
+               "n1_imrc", "n1_dlrc")
+
 charls_imp_svy <- labelled_data %>%
-  survey::svydesign(~ 1, data = ., weights = ~r1wtrespb)
+  survey::svydesign(~ 1, data = ., weights = ~n1_wtrespb_rscl)
+temp_cont_mean <- svymean(reformulate(cont_vars), charls_imp_svy, na.rm = T) %>% 
+  as.data.frame() %>% select(-SE)
+
 temp_cont_tib <- data.frame()
 for (i in 1:n_imp){
   temp_cont_svy <- labelled_data %>%
     filter(imp == i) %>%
-    select(r1agey_v3, chldstate_30, r1imrc, r1dlrc, r1wtrespb) %>%
-    survey::svydesign(~1, data = ., weights = ~r1wtrespb)
+    select(all_of(cont_vars), n1_wtrespb_rscl) %>%
+    survey::svydesign(~1, data = ., weights = ~n1_wtrespb_rscl)
   
-  temp_cont_tib %<>% rbind(cbind(
-    as.data.frame(svyvar(~r1agey_v3, temp_cont_svy, na.rm = T)["r1agey_v3"]),
-    as.data.frame(svyvar(~chldstate_30, temp_cont_svy, na.rm = T)["chldstate_30"]),
-    as.data.frame(svyvar(~r1imrc, temp_cont_svy, na.rm = T)["r1imrc"]),
-    as.data.frame(svyvar(~r1dlrc, temp_cont_svy, na.rm = T)["r1dlrc"])) %>%
-      mutate(imp = i))
+  temp_svyvar <- 
+    svyvar(reformulate(cont_vars), temp_cont_svy, na.rm = T) %>% as.data.frame() %>%
+    select(-SE) %>% unique() %>% as.matrix() %>% diag() %>% t() %>% as_tibble() %>%
+    set_colnames(cont_vars)
+  
+  temp_cont_tib %<>% rbind(temp_svyvar %>%
+                             mutate(imp = i))
 }
 
 temp_cont_var <- temp_cont_tib %>%
-  set_colnames(c("r1agey_v3", "chldstate_30", "r1imrc", "r1dlrc", "imp")) %>%
-  dplyr::summarize(var_r1agey_v3 = mean(r1agey_v3),
-                   var_chldstate_30 = mean(chldstate_30),
-                   var_r1imrc = mean(r1imrc),
-                   var_r1dlrc = mean(r1dlrc)) %>%
-  as.data.frame()
+  dplyr::summarize_all(mean) %>% as.data.frame()
 
-r1agey_v3_svyvar <- temp_cont_var %>% select(var_r1agey_v3) %>% pull()
-r1agey_v3_svymean <- svymean(~r1agey_v3, charls_imp_svy)[["r1agey_v3"]]
-chldstate_30_svyvar <- temp_cont_var %>% select(var_chldstate_30) %>% pull()
-chldstate_30_svymean <- svymean(~chldstate_30, charls_imp_svy)[["chldstate_30"]]
-r1imrc_svyvar <- temp_cont_var %>% select(var_r1imrc) %>% pull()
-r1imrc_svymean <- svymean(~r1imrc, charls_imp_svy, na.rm = T)[["r1imrc"]]
-r1dlrc_svyvar <- temp_cont_var %>% select(var_r1dlrc) %>% pull()
-r1dlrc_svymean <- svymean(~r1dlrc, charls_imp_svy, na.rm = T)[["r1dlrc"]]
-
-table1_cont_weighted <- tibble() %>%
-  rbind(c(var_label(labelled_data$r1agey_v3),
-          paste0(round(r1agey_v3_svymean, 1), " (", 
-                 round(sqrt(r1agey_v3_svyvar), 1), ")")),
-        c(var_label(labelled_data$chldstate_30),
-          paste0(round(chldstate_30_svymean, 1), " (", 
-                 round(sqrt(chldstate_30_svyvar), 1), ")")),
-        c(var_label(labelled_data$r1imrc),
-          paste0(round(r1imrc_svymean, 1), " (",
-                 round(sqrt(r1imrc_svyvar), 1), ")")),
-        c(var_label(labelled_data$r1dlrc),
-          paste0(round(r1dlrc_svymean, 1), " (",
-                 round(sqrt(r1dlrc_svyvar), 1), ")"))) %>%
+table1_cont_weighted <- temp_cont_mean %>%
+  cbind(t(temp_cont_var %>% select(-imp))) %>%
+  set_colnames(c("mean", "var")) %>%
+  mutate(Characteristic = var_label(labelled_data[, cont_vars]) %>% unlist(), 
+         sd = sqrt(var),
+         fmt_mean_sd = paste0(sprintf(mean, fmt = '%#.1f'), " (", 
+                              sprintf(sd, fmt = '%#.1f'), ")")) %>%
+  select(Characteristic, fmt_mean_sd) %>%
+  as_tibble() %>%
   set_colnames(c("Characteristic", 
-                 paste0("N=", round(temp_cat_weighted$N/n_imp),
+                 paste0("N=", round(temp_cat_weighted$table_styling$header$modify_stat_N_unweighted[1]/n_imp),
                         "\n Weighted N=", 
                         round(temp_cat_weighted$table_styling$header$modify_stat_N[1]/n_imp))))
 
 ##---- Full table 1 ----
-table1_weighted <- rbind(table1_cont_weighted[1, ], # r1age
-                         table1_cat_weighted,
-                         table1_cont_weighted[2:4, ]# chldstate, # r1imrc, r1dlrc
-                        ) 
+table1_weighted <- rbind(table1_cont_weighted[1, ], # Baseline age
+                         table1_cat_weighted[1:51, ], # early-life and early-adulthood cat covariates
+                         table1_cont_weighted[2, ], # chldstate_30
+                         table1_cat_weighted[52:57, ], # baseline health cat covariates
+                         table1_cont_weighted[3:5, ]# CESD, imrc, dlrc
+) 
 
-#---- Save the output ----
+##---- Save the output ----
 writexl::write_xlsx(table1_weighted, 
                     here::here("output", "tables", "table1_imp_weighted.xlsx"))
