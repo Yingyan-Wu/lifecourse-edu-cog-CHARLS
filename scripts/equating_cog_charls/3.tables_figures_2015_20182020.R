@@ -593,28 +593,18 @@ covbal_toplot %>%
 ggsave(filename = here::here("output", "figures", "charls_equating", "figure3_covbal_plot_pre_unwtd.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
-covbal_toplot %>%
-  ggplot(aes(x = std.eff.sz, y = label)) +
-  geom_point(aes(shape = IOW, color = IOW), size = 3) +
+covbal_comp_plot(w4b_test$covbal_data, unw_test$covbal_data,
+                 "2015", "2018/2020")  +
+  xlab("Standardized mean difference") +
   scale_shape_manual(name = element_blank(),
                      values = c(21, 16), labels = c("Unweighted", "Weighted")) +
-  scale_color_manual(name = element_blank(),
-                     values = c("#0072B2", "#0072B2"), 
-                     labels = c("Unweighted", "Weighted")) +
-  geom_vline(xintercept = 0) +
-  xlab("Standardized mean difference") +
-  theme_bw() +
-  # geom_vline(xintercept = c(-0.2, 0.2), linetype = "dashed",
-  #            color = "dark grey") +
-  theme(aspect.ratio = 5/3,
-        panel.grid.minor.x = element_blank(),
-        axis.title.y = element_blank(),
-        legend.position = "bottom", legend.direction = "horizontal",
+  scale_x_continuous(breaks = seq(-0.4, 0.4, by = 0.1)) +
+  theme(legend.position = "bottom", legend.direction = "horizontal",
         legend.title.align = 0.5,
         legend.text = element_text(size = 12),
         text = element_text(size = 12, color = "black"), 
         axis.text.x = element_text(size = 12, color = "black"), 
-        axis.text.y = element_text(size = 12, color = "black", face = "bold"))
+        axis.text.y = element_text(size = 12, color = "black"))
 ggsave(filename = here::here("output", "figures", "charls_equating", "figure3_covbal_plot_pre.png"),
        device = "png", dpi = 300, width = 7, height = 5, units = "in")
 
