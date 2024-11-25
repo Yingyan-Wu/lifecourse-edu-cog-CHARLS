@@ -25,6 +25,7 @@ library(tidyverse)
 library(magrittr)
 library(survey)
 library(geepack)
+library(splines)
 # No scientific notation
 options(scipen = 999)
 # Needed if plyr was loaded

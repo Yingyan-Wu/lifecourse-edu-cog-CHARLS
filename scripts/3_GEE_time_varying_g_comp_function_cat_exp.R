@@ -10,6 +10,11 @@
 # svy_wt = "n1_wtrespb_rscl"
 
 #---- function ----
+ns_1knot <- function(x){
+  temp <- quantile(x, c(.05, .5, .95))
+  splines::ns(x, Boundary.knots = temp[c(1, 3)], knots= temp[2])
+}
+
 # x0, x1 to be categorical (factored already)
 joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   set.seed(i_boot)
@@ -169,11 +174,6 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   
   #---- Step 3: Fit a model for Y given X0, X1, C0 and C1 (Q model, betas) ----
   # geepack::geeglm and geese produce the same coefficients (tested in another project)
-  ns_1knot <- function(x){
-    temp <- quantile(x, c(.05, .5, .95))
-    splines::ns(x, Boundary.knots = temp[c(1,3)], knots= temp[2])
-  }
-  
   q_start <- Sys.time()
   tryCatch({
     qmodel_gee <<- geepack::geeglm(
