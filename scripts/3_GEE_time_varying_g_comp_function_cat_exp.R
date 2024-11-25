@@ -5,8 +5,9 @@
 # #---- Test ----
 # dataset <- imp_pmm_stacked
 # dataset_long <- imp_pmm_long
-# i_boot = 1
+# i_boot = 0
 # bootstrap = i_boot != 0
+# svy_wt = "n1_wtrespb_rscl"
 
 #---- function ----
 # x0, x1 to be categorical (factored already)
@@ -167,12 +168,16 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
     filter(!is.na(!!sym(y)))
   
   #---- Step 3: Fit a model for Y given X0, X1, C0 and C1 (Q model, betas) ----
-  # check fu_yr for each participant to see if they have the same fu_yr
-  # 
+  # geepack::geeglm and geese produce the same coefficients (tested in another project)
+  ns_1knot <- function(x){
+    temp <- quantile(x, c(.05, .5, .95))
+    splines::ns(x, Boundary.knots = temp[c(1,3)], knots= temp[2])
+  }
+  
   q_start <- Sys.time()
   tryCatch({
     qmodel_gee <<- geepack::geeglm(
-      as.formula(paste0(y, " ~ ", x0, " * fu_time * ", x1, " + ", 
+      as.formula(paste0(y, " ~ ", x0, " * ns_1knot(fu_time) * ", x1, " + ", 
                         paste0("first_", y), " + ",
                         paste(c0, collapse = "+"), " + ", 
                         paste(c1, collapse = "+"))),
@@ -186,7 +191,7 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
     w_qmodel <<- c(w_qmodel, 1)
     w_qmodel_msg <<- c(w_qmodel_msg, attr(warnings(), "name"))
     qmodel_gee <<- geepack::geeglm(
-      as.formula(paste0(y, " ~ ", x0, " * fu_time * ", x1, " + ", 
+      as.formula(paste0(y, " ~ ", x0, " * ns_1knot(fu_time) * ", x1, " + ", 
                         paste0("first_", y), " + ",
                         paste(c0, collapse = "+"), " + ", 
                         paste(c1, collapse = "+"))),
@@ -247,7 +252,7 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   # Create a balanced long dataset
   cloned_data_long <- data_boot %>%
     select(newid, imp) %>%
-    expand_grid(n_fu = 1:5) %>%
+    expand_grid(n_fu = 1:5) %>% 
     mutate(fu_time = case_when(n_fu == 1 ~ 0, # 2011
                                n_fu == 2 ~ 2, # 2013
                                n_fu == 3 ~ 4, # 2015
@@ -283,7 +288,7 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   msm_start <- Sys.time()
   tryCatch({
     msm_gee <<- geepack::geeglm(as.formula(paste0(
-      "Y_doX0_doX1 ~ fu_time + doX0 * doX1 * fu_time + ", "first_", y)),
+      "Y_doX0_doX1 ~ doX0 * doX1 * ns_1knot(fu_time) + ", "first_", y)),
       data = cloned_data_long, 
       id = newid, waves = n_fu, family = gaussian)
     w_msm <<- c(w_msm, 0)
@@ -293,7 +298,7 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
     w_msm <<- c(w_msm, 1)
     w_msm_msg <<- c(w_msm_msg, attr(warnings(), "name"))
     msm_gee <<- geepack::geeglm(as.formula(paste0(
-      "Y_doX0_doX1 ~ fu_time + doX0 * doX1 * fu_time + ", "first_", y)),
+      "Y_doX0_doX1 ~ doX0 * doX1 * ns_1knot(fu_time) + ", "first_", y)),
       data = cloned_data_long, 
       id = newid, waves = n_fu, family = gaussian)
   })
@@ -303,6 +308,38 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   colnames(coef_tib) <- gsub("(doX)([0-9])([0-9])", "\\1\\2_\\3", colnames(coef_tib))
   end_time <- Sys.time()
   
+  # Predict gee
+  pred_long <- data_boot %>%
+    select(newid, imp) %>%
+    expand_grid(n_fu = 1:10) %>% 
+    mutate(fu_time = n_fu - 1) %>%
+    left_join(data_boot %>% select(newid, all_of(c0), 
+                                   contains(c("doX0", "doX1"))),
+              by = "newid") %>%
+    mutate(!!paste0("first_", y) := case_when(n_fu == 1 ~ 1,
+                                              TRUE ~ 0))
+  
+  # Predict potential outcomes
+  pred_long %<>%
+    mutate(
+      Y_pred_MSM_noPE = predict(msm_gee, 
+                                newdata = pred_long %>% 
+                                  mutate(!!sym(paste0("first_", y)) := 0),
+                                type = "response"),
+      Y_pred_MSM_PE = predict(msm_gee, 
+                              newdata = pred_long,
+                              type = "response"))
+  
+  pred_long_mean <- pred_long %>%
+    select(newid, doX0, doX1, fu_time, Y_pred_MSM_noPE, Y_pred_MSM_PE) %>%
+    group_by(fu_time, doX0, doX1) %>%
+    summarise(mean_predMSM_noPE = mean(Y_pred_MSM_noPE, na.rm = TRUE),
+              mean_predMSM_PE = mean(Y_pred_MSM_PE, na.rm = TRUE)) %>%
+    ungroup() %>%
+    pivot_wider(names_from = c("doX0", "doX1", "fu_time"), 
+                values_from = c("mean_predMSM_noPE", "mean_predMSM_PE"),
+                names_glue = "{.value}_{doX0}{doX1}_yr{fu_time}")
+  
   results_tib <- tibble(
     n_imp = num_imp,
     i_boot = i_boot,
@@ -311,7 +348,8 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
     q_model_time_sec = difftime(q_end, q_start, units = "secs"),
     msm_model_time_sec = difftime(msm_end, msm_start, units = "secs")) %>%
     cbind(coef_tib) %>%
-    cbind(mean_pred)
+    cbind(mean_pred) %>%
+    cbind(pred_long_mean)
   
   return(results_tib)
 }
