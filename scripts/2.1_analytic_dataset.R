@@ -249,6 +249,65 @@ save(imp_pmm_stacked, imp_pmm_long,
 save(imp_pmm_2011, imp_pmm_long_2011,
      file = here::here("data", "analysis_data", "imp_pmm_20_wide_long_2011.RData"))
 
+#---- Check the distribution of memory score stratified by edu ----
+load(here::here("data", "analysis_data", "imp_pmm_20_wide_long.RData"))
+
+imp_pmm_empirical <- imp_pmm_long %>%
+  filter(imp == 1) %>%
+  select(n_fu, imrc, dlrc) %>%
+  na.omit() %>%
+  group_by(n_fu) %>%
+  summarise_at(vars(imrc, dlrc),
+               list(~length(!is.na(.)), ~mean(., na.rm = T), ~sd(., na.rm = T))) %>%
+  mutate(imrc_se = imrc_sd/sqrt(imrc_length),
+         dlrc_se = dlrc_sd/sqrt(dlrc_length),
+         Category = "Overall",
+         comp = "Overall")  %>%
+  ungroup() %>%
+  rbind(imp_pmm_long %>%
+          filter(imp == 1) %>%
+          group_by(n_fu, childhood_edu, continuing_edu_2cat) %>%
+          summarise_at(vars(imrc, dlrc),
+                       list(~length(!is.na(.)), ~mean(., na.rm = T), ~sd(., na.rm = T))) %>%
+          mutate(imrc_se = imrc_sd/sqrt(imrc_length),
+                 dlrc_se = dlrc_sd/sqrt(dlrc_length),
+                 Category = case_when(
+                   childhood_edu == 0 & continuing_edu_2cat == 0 ~ "No formal edu at all",
+                   childhood_edu == 0 & continuing_edu_2cat == 1 ~ "Only adulthood edu",
+                   childhood_edu == 1 & continuing_edu_2cat == 0 ~ "Elementary school or less",
+                   childhood_edu == 1 & continuing_edu_2cat == 1 ~ "Elementary school & adulthood edu",
+                   childhood_edu == 2 & continuing_edu_2cat == 0 ~ "Middle school",
+                   childhood_edu == 2 & continuing_edu_2cat == 1 ~ "Middle school & adulthood edu",
+                   childhood_edu == 3 & continuing_edu_2cat == 0 ~ "College & above",
+                   childhood_edu == 3 & continuing_edu_2cat == 1 ~ "College & adulthood edu"),
+                 comp = case_when(childhood_edu == 0 ~ "No early life formal education",
+                                  childhood_edu == 1 ~ "Elementary school or less",
+                                  childhood_edu == 2 ~ "Middle school level",
+                                  childhood_edu == 3 ~ "College and above")) %>%
+          ungroup() %>%
+          select(-childhood_edu, -continuing_edu_2cat))
+
+color_palette <- c("#E9C4A6", "#99806c", "#54B663", "#3B7F46",
+                   "#5698c3", "#3271ae", "#9B4BDD", "#65318E")
+imp_pmm_empirical %>%
+  filter(Category != "Overall") %>%
+  mutate(Category = factor(Category, levels = unique(imp_pmm_empirical$Category)),
+         comp = factor(comp, levels = unique(imp_pmm_empirical$comp))) %>%
+  ggplot(aes(x = n_fu, y = imrc_mean, color = Category)) +
+  geom_point(position = position_dodge((width = 1))) +
+  geom_errorbar(aes(ymin = imrc_mean - 2 * imrc_se, ymax = imrc_mean + 2 * imrc_se), 
+                position = position_dodge((width = 1)), width = 0.8) +
+  geom_line(position = position_dodge((width = 1))) +
+  scale_color_manual(name = NULL, values = color_palette) +
+  theme_bw() +
+  facet_grid(cols = vars(comp))
+  # scale_x_continuous(breaks = seq(4, 14, by = 1)) +
+  # labs(x = "Wave",
+  #      y = "CESD",
+  #      title = paste0("Average CESD +/- 2 SE at different waves: ", 
+  #                     "\nstratified by education level"),
+  #      color = "Edu level")
+
 #---- OLD ----
 # mutate(r1wtrespb_rescaled = r1wtrespb/mean(r1wtrespb)) %>%
 #   # Rescale to have mean of 1 to make the survey weighted mixed model faster
