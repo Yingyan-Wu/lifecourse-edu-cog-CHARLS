@@ -377,7 +377,7 @@ charls %<>%
   left_join(age_w5 %>% select(ID, r5agey), by = "ID")
 
 charls %>% select(contains("agey")) %>%
-  apply(., 2, proc_sum)
+  apply(., 2, proc_summ)
 
 ##---- age v2 ----
 # Using birth year, birth month and interview dates to calculate age 
@@ -411,7 +411,7 @@ colSums(is.na(charls %>% filter(is.na(r2agey)) %>%
                 select(contains(c("iwd_v2", "rabdate_v2")))))
 
 charls %>% select(contains("agey_v2")) %>%
-  apply(., 2, proc_sum, more = T)
+  apply(., 2, proc_summ, more = T)
 charls %>% select(contains("iwd_v2")) %>%
   apply(., 2, table, useNA = "ifany")
 
@@ -426,7 +426,7 @@ charls[, paste0("r", 1:5, "agey_v3")] <- age_y
 rm(age_y)
 
 charls %>% select(contains("agey_v3")) %>%
-  apply(., 2, proc_sum, more = T)
+  apply(., 2, proc_summ, more = T)
 
 # check the birth date and the interview dates
 with(charls %>% filter(is.na(r1agey_v3)),
@@ -565,7 +565,7 @@ charls %<>%
 # charls %>%
 #   filter(!is.na(adult_edu_dplm)) %>%
 #   select(contains("bd010")) %>%
-#   apply(., 2, proc_sum, more = T)
+#   apply(., 2, proc_summ, more = T)
 # 
 # table(charls$adult_edu_dplm, useNA = "ifany")
 # 

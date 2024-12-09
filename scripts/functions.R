@@ -8,38 +8,37 @@ require("ggpubr")
 
 #---- proc sum descriptive ----
 # modified from Dr. Nianogo's code
-proc_sum <- function(variable, more = F){
+proc_summ <- function(variable, more = F){
   if (more){
     var_naomit <- na.omit(variable) # remove missing values
-    summ <- data.frame() # create vector to save info
-    summ[1,1] <- length(var_naomit) # N
-    summ[1,2] <- mean(var_naomit) # mean
-    summ[1,3] <- sd(var_naomit) # standard deviation
-    summ[1,4] <- min(var_naomit) # minimum
-    summ[1,5] <- unname(quantile(var_naomit, probs = 0.1)) #P10
-    summ[1,6] <- unname(quantile(var_naomit, probs = 0.25)) #P25
-    summ[1,7] <- median(var_naomit) #median
-    summ[1,8] <- unname(quantile(var_naomit, probs = 0.75)) #P75
-    summ[1,9] <- unname(quantile(var_naomit, probs = 0.90)) #P90
-    summ[1,10] <- max(var_naomit) # maximum
-    summ[1,11] <- sum(is.na(variable)) # number of missing values
-    names(summ) <- c("N", "Mean", "Std", 
-                     "Min", "P10", "P25", "Median", "P75", "P90", "Max", 
-                     "N_missing")
-  } else{
+    summ <- tibble(
+      N = length(var_naomit), 
+      mean = mean(var_naomit), 
+      sd = sd(var_naomit), 
+      min = min(var_naomit), 
+      P1 = quantile(var_naomit, probs = 0.01),
+      P10 = quantile(var_naomit, probs = 0.1), 
+      P25 = quantile(var_naomit, probs = 0.25), 
+      median = median(var_naomit), 
+      P75 = quantile(var_naomit, probs = 0.75), 
+      P90 = quantile(var_naomit, probs = 0.90), 
+      P99 = quantile(var_naomit, probs = 0.99),
+      max = max(var_naomit),
+      N_missing = sum(is.na(variable)))
+  } else {
     var_naomit <- na.omit(variable) # remove missing values
-    summ <- data.frame() # create vector to save info
-    summ[1,1] <- length(var_naomit) # N
-    summ[1,2] <- mean(var_naomit) # mean
-    summ[1,3] <- median(var_naomit) #median
-    summ[1,4] <- sd(var_naomit) # standard deviation
-    summ[1,5] <- min(var_naomit) # minimum
-    summ[1,6] <- max(var_naomit) # maximum
-    summ[1,7] <- sum(is.na(variable)) # number of missing values
-    names(summ) <- c("N", "Mean", "Median", "Std", 
-                     "Min", "Max", "N_missing") 
+    summ <- tibble(
+      N = length(var_naomit), 
+      mean = mean(var_naomit), 
+      sd = sd(var_naomit), 
+      min = min(var_naomit), 
+      P25 = quantile(var_naomit, probs = 0.25), 
+      median = median(var_naomit), 
+      P75 = quantile(var_naomit, probs = 0.75),
+      max = max(var_naomit),
+      N_missing = sum(is.na(variable)))
   }
-  return(round(summ, 4))
+  return(summ)
 }
 
 #---- proc freq descriptive ----
