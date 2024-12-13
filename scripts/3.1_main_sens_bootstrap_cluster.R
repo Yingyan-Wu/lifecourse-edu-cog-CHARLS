@@ -148,7 +148,7 @@ for (svy_wt in svy_weights){
       duration = difftime(end, start, units = 'sec'),
       w_qmodel = sum(w_qmodel),
       w_msm = sum(w_msm),
-      w_qmodel_msg = paste(w_qmodel_msg,collapse="\n"),
+      w_qmodel_msg = paste(w_qmodel_msg, collapse="\n"),
       w_msm_msg = paste(w_msm_msg, collapse="\n")) %>%
       bind_cols(as_tibble(do.call(rbind, lapply(w_c1s, sum)) %>% t()))
     # bind_cols(as_tibble(lapply(mget(paste0("w_", c1)), sum))) # c1 model warnings
