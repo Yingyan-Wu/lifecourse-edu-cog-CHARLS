@@ -38,7 +38,7 @@ missing_summary <- DataExplorer::profile_missing(charls_forimp) %>%
 writexl::write_xlsx(missing_summary, 
                     here::here("output", "tables", "missing_summary.xlsx"))
 
-ordered_var_list <- c(paste0(missing_summary$feature))
+ordered_var_list <- paste0(missing_summary$feature)
 
 #---- Data prep ----
 # Running single imputation
