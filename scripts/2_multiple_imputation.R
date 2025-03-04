@@ -113,7 +113,7 @@ tictoc::toc()
 # 60 iterations 10 imp: 13min
 # 80 iterations 10 imp: 17min
 # 100 iterations 10 imp: 23min
-# 60 iterations 20 imp: 87.6 miun
+# 60 iterations 20 imp: 87.6 min
 
 imp_pmm_20$loggedEvents # null
 plot(imp_pmm_20)
