@@ -33,6 +33,45 @@ DataExplorer::plot_missing(charls_forimp)
 missing_summary <- DataExplorer::profile_missing(charls_forimp) %>%
   mutate(pct_missing = pct_missing*100) %>%
   arrange(pct_missing) %>%
+  mutate(num_pct_missing = paste0(num_missing, " (", round(pct_missing, 1), "%)")) %>%
+  mutate(feature_label = 
+           case_when(feature == "n1_agey_v3" ~ "Baseline age (first participated wave) in years",
+                     feature == "continuing_edu" ~ "Adulthood education level",
+                     feature == "childhood_edu" ~ "Early-life education",
+                     feature == "female" ~ "Female",
+                     feature == "first_child_v2" ~ "Birth order: first child",
+                     feature == "rameduc_c" ~ "Mother's education level", 
+                     feature == "rafeduc_c" ~ "Father's education level", 
+                     feature == "ramoccup_c" ~ "Mother's occupation before age 17", 
+                     feature == "rafoccup_c" ~ "Father's occupation before age 17",
+                     feature == "childhood_1st_region" ~ "Childhood first region",
+                     feature == "rarural_child" ~ "Childhood rural residence",
+                     feature == "first_hukou" ~ "First hukou status", 
+                     feature == "occupation_30" ~ "Occupation at age 30",
+                     feature == "marital_30" ~ "Marital status at age 30",
+                     feature == "rural_30" ~ "Rural residence at age 30",
+                     feature == "hukou_30" ~ "Hukou status at age 30",
+                     feature == "chldstate_30" ~ "Number of Children at age 30",
+                     feature == "n1_wtrespb" ~ "Survey weight",
+                     # Baseline health vars
+                     feature == "n1_housewka" ~ "IADL: Doing work around the house or garden",
+                     feature == "n1_mealsa" ~ "IADL: Meal preparation",
+                     feature == "n1_medsa" ~ "IADL: Mediacation taking",
+                     feature == "n1_shopa" ~ "IADL: Shopping for groceries",
+                     feature == "n1_shopa" ~ "IADL: Shopping for groceries",
+                     feature == "n1_moneya" ~ "IADL: Finance management",
+                     feature == "n1_cesd10_cleaned" ~ "CESD-10 score",
+                     feature == "n1_hibpe" ~ "Self-reported hypertension",
+                     feature == "n1_stroke" ~ "Self-reported stroke",
+                     feature == "n1_hearte" ~ "Self-reported heart disease",
+                     feature == "n1_cancre" ~ "Self-reported cancer",
+                     feature == "n1_diabe" ~ "Self-reported diabetes",
+                     feature == "n1_shlta" ~ "Self-rated health",
+                     feature == "n1_socwk" ~ "Social activities",
+                     # Baseline cognitive vars
+                     feature == "n1_imrc" ~ "Baseline Immediate word recall",
+                     feature == "n1_dlrc" ~ "Baseline delayed word recall")) %>%
+  select(feature, feature_label, num_pct_missing) %>%
   print(n = Inf)
 
 writexl::write_xlsx(missing_summary, 
