@@ -1,6 +1,7 @@
 # Time-varying g comp (GEE)
 # Created by: Yingyan Wu
 # Date: Aug.19.2024
+# Add n_fu to see if that helps with the 2018-2020 trend
 
 # #---- Test ----
 # dataset <- imp_pmm_stacked

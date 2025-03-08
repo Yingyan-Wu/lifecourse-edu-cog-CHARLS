@@ -1,6 +1,7 @@
 # Bootstrap for main analysis and sensitivity analysis -- cluster
 # Created by: Yingyan Wu
 # Date: Nov.3.2024
+# Add n_fu to see if that helps with the 2018-2020 trend
 
 #---- Package loading + option specifications ----
 library(tidyverse)
