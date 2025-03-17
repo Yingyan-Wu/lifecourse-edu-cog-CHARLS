@@ -92,13 +92,63 @@ load(here::here("data", "model_results", "sens2_results_imrc_dlrc.RData"))
 for (anlys in c("main", "sens", "sens2")){
   for (y in c("imrc", "dlrc")){
     temp <- get(paste0(y, "_results_", anlys)) %>%
-      select(-scenario_num, -ends_with("_sec"), -starts_with("mean_"))
+      select(-scenario_num, -ends_with("_sec"), -starts_with("mean_")) 
     
     temp_mean_PO <- get(paste0(y, "_results_", anlys)) %>%
       select(n_imp, i_boot, starts_with("mean_PO"))
     
     temp_mean_predMSM <- get(paste0(y, "_results_", anlys)) %>%
-      select(n_imp, i_boot, starts_with("mean_predMSM"))
+      select(n_imp, i_boot, starts_with("mean_predMSM")) 
+    
+    # Adding change from baseline for predMSM
+    for (yr in c(2, 4, 7, 9)){
+      for (itvn in c("00", "01", "10", "11", "20", "21", "30", "31")){
+        temp_mean_predMSM %<>%
+          mutate(!!paste0("mean_predMSM_noPE_", itvn, "_yr", yr, "_0") :=
+                   !!sym(paste0("mean_predMSM_noPE_", itvn, "_yr", yr)) -
+                   !!sym(paste0("mean_predMSM_noPE_", itvn, "_yr0")))
+      }
+    }
+    
+    # Contrasts
+    for (yr in c("0", "2_0", "4_0", "7_0", "9_0")){
+      temp_mean_predMSM %<>%
+        mutate(
+          # Only continuing education vs. No formal education at all
+          !!paste0("mean_predMSM_noPE_01_00_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_01_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_00_yr", yr)),
+          # Both education vs. No formal education at all
+          !!paste0("mean_predMSM_noPE_11_00_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_11_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_00_yr", yr)),
+          !!paste0("mean_predMSM_noPE_21_00_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_21_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_00_yr", yr)),
+          !!paste0("mean_predMSM_noPE_31_00_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_31_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_00_yr", yr)),
+          # Both education vs. No continuing education with the same early life edu intervention
+          !!paste0("mean_predMSM_noPE_11_10_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_11_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_10_yr", yr)),
+          !!paste0("mean_predMSM_noPE_21_20_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_21_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_20_yr", yr)),
+          !!paste0("mean_predMSM_noPE_31_30_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_31_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_30_yr", yr)),
+          # Only early life education (no continuing education) vs. No formal education at all
+          !!paste0("mean_predMSM_noPE_10_00_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_10_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_00_yr", yr)),
+          !!paste0("mean_predMSM_noPE_20_00_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_20_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_00_yr", yr)),
+          !!paste0("mean_predMSM_noPE_30_00_yr", yr) :=
+            !!sym(paste0("mean_predMSM_noPE_30_yr", yr)) -
+            !!sym(paste0("mean_predMSM_noPE_00_yr", yr)))
+    }
     
     assign(paste0(y, "_MSM_coef_", anlys), temp)
     assign(paste0(y, "_predMSM_", anlys), temp_mean_predMSM)
@@ -114,6 +164,7 @@ imrc_dlrc_predMSM_CI <- tibble()
 imrc_dlrc_mean_PO_CI <- tibble()
 for (anlys in c("main", "sens", "sens2")){
   for (y in c("imrc", "dlrc")){
+    # coefficients
     # 2.5th and 97.5th
     temp <- get(paste0(y, "_MSM_coef_", anlys)) %>%
       filter(i_boot != 0) %>%
@@ -134,6 +185,7 @@ for (anlys in c("main", "sens", "sens2")){
       select(estimate, outcome, analysis, everything())
     imrc_dlrc_coef_CI <- bind_rows(imrc_dlrc_coef_CI, temp2, temp)
     
+    # Prediction MSM and Change from Prediction MSM
     # 2.5th and 97.5 th
     temp_predMSM <- get(paste0(y, "_predMSM_", anlys)) %>%
       filter(i_boot != 0) %>%
@@ -154,6 +206,7 @@ for (anlys in c("main", "sens", "sens2")){
       select(estimate, outcome, analysis, everything())
     imrc_dlrc_predMSM_CI <- bind_rows(imrc_dlrc_predMSM_CI, temp_predMSM2, temp_predMSM)
     
+    # Mean Potential outcomes
     # 2.5th and 97.5 th
     temp_mean_PO <- get(paste0(y, "_mean_PO_", anlys)) %>%
       filter(i_boot != 0) %>%
@@ -178,12 +231,39 @@ for (anlys in c("main", "sens", "sens2")){
 
 rm(list = ls()[str_detect(ls(), "temp")])
 
+# # Sanity check
+# imrc_dlrc_predMSM_CI %>%
+#   filter(outcome == "imrc", analysis == "main") %>%
+#   select(estimate, starts_with("mean_predMSM_noPE_")) %>% 
+#   select(estimate, ends_with("yr0")) %>%
+#   view()
+
 # imrc_dlrc_coef_CI %>% view()
 imrc_dlrc_predMSM_CI_long <- imrc_dlrc_predMSM_CI %>% 
+  select(-ends_with("_0"), -ends_with("0_00_yr0"), -ends_with("1_00_yr0"),
+         -ends_with("0_10_yr0"), -ends_with("1_10_yr0"),
+         -ends_with("1_20_yr0"),
+         -ends_with("1_30_yr0")) %>%
   pivot_longer(cols = -c(analysis, estimate, outcome),
                names_to = c("PE", "intervention", "fu_time_yrs"),
                names_pattern = "mean_predMSM_(.*)_(.*)_yr(.)",
                values_to = "rc") %>%
+  mutate(fu_time_yrs = as.numeric(fu_time_yrs))
+
+imrc_dlrc_predMSM_noPE_contrasts_long <- imrc_dlrc_predMSM_CI %>% 
+  select(analysis, estimate, outcome, ends_with("_0")) %>%
+  select(analysis, estimate, outcome, contains("noPE")) %>%
+  pivot_longer(cols = -c(analysis, estimate, outcome),
+               names_to = c("intervention_contrasts", "fu_time_yrs"),
+               names_pattern = "mean_predMSM_noPE_(.*)_yr(.)_0",
+               values_to = "rc_change") %>%
+  rbind(imrc_dlrc_predMSM_CI %>% 
+          select(analysis, estimate, outcome, ends_with("0_yr0"), ends_with("1_yr0")) %>%
+          select(analysis, estimate, outcome, contains("noPE")) %>%
+          pivot_longer(cols = -c(analysis, estimate, outcome),
+                       names_to = c("intervention_contrasts"),
+                       names_pattern = "mean_predMSM_noPE_(.*)_yr0",
+                       values_to = "rc_change") %>% mutate(fu_time_yrs = 0)) %>%
   mutate(fu_time_yrs = as.numeric(fu_time_yrs))
 
 imrc_dlrc_mean_PO_CI_long <- imrc_dlrc_mean_PO_CI %>% 
@@ -221,8 +301,13 @@ for (dat in c("predMSM", "mean_PO")){
                             levels = c("00", "01", "10", "11", "20", "21", "30", "31"))) %>%
     arrange(outcome, fu_time_yrs, intervention)
   
+  label_order <- temp %>%
+    mutate(intervention = factor(intervention, 
+                                 levels = c("01", "00", "11", "10", "21", "20", "31", "30"))) %>%
+    arrange(intervention) %>% pull(label) %>% unique() %>% as.vector()
+  
   temp %<>%
-    mutate(label = factor(label, levels = unique(temp$label)),
+    mutate(label = factor(label, levels = label_order),
            label_adult = factor(label_adult, levels = unique(temp$label_adult)),
            comp_adult_childhood = factor(
              comp_adult_childhood, levels = unique(temp$comp_adult_childhood))) %>%
@@ -235,33 +320,37 @@ for (dat in c("predMSM", "mean_PO")){
 rm(temp)
 
 #---- Predicted outcomes trajectory plot ----
-color_palette <- c("#E9C4A6", "#99806c", "#54B663", "#3B7F46",
-                   "#5698c3", "#3271ae", "#9B4BDD", "#65318E")
+color_palette <- c("#AA812F", "#F8BC44", "#4B7F3D", "#8BED71", 
+                   "#3271ae","#48A4FF", "#65318E", "#B657FF")
+# color_palette <- c("#99806c", "#FFD5B3", "#3B7F46", "#76FF8D", 
+#                    "#3271ae","#48A4FF", "#65318E", "#B657FF")
+linetype_palette <- rep(c("solid", "dashed"), 4)
 ##---- Mean PO traj plot ----
 for (anlys in c("main", "sens", "sens2")){
   p <- mean_PO_forplot_traj %>%
     filter(analysis == anlys) %>%
     ggplot(aes(x = fu_time_yrs, y = pe, 
-               color = label, group = label)) +
+               color = label, group = label, linetype = label)) +
     geom_point(position = position_dodge((width = 1))) +
     geom_errorbar(aes(ymin = p2.5th, ymax = p97.5th), 
                   position = position_dodge((width = 1)), width = 0.8) +
-    geom_line(position = position_dodge((width = 1))) + 
+    geom_line(position = position_dodge((width = 1))) +
     facet_grid(rows = vars(outcome), 
                cols = vars(comp_adult_childhood)) +
     scale_color_manual(name = NULL, values = color_palette) +
+    scale_linetype_manual(name = NULL, values = linetype_palette) +
     # labels = label_adult) +
     scale_x_continuous(breaks = c(0, 2, 4, 7, 9)) +
     scale_y_continuous(breaks = 1:6) +
     labs(x = "Follow-up time (years)", y = "Word recall scores") +
     theme_bw() +
     theme(legend.position = "bottom",
-          text = element_text(size = 10, color = "black"), 
-          strip.text.x = element_text(size = 10, color = "black"),
-          strip.text.y = element_text(size = 10, color = "black"),
-          axis.text.x = element_text(size = 10, color = "black"), 
-          axis.text.y = element_text(size = 10, color = "black"),
-          legend.text = element_text(size = 10, color = "black"))
+          text = element_text(size = 12, color = "black"), 
+          strip.text.x = element_text(size = 12, color = "black"),
+          strip.text.y = element_text(size = 12, color = "black"),
+          axis.text.x = element_text(size = 12, color = "black"), 
+          axis.text.y = element_text(size = 12, color = "black"),
+          legend.text = element_text(size = 11, color = "black"))
   ggsave(p, file = here::here("output", "figures", 
                               paste0(anlys, "_PO_fu_CI_imrc_dlrc_GEE.png")), 
          device = "png", width = 12, height = 7, units = "in", dpi = 300)
@@ -273,31 +362,39 @@ p_PO_sens # Unweighted
 p_PO_sens2 # 2011 only
 
 ##---- MSM GEE pred traj plot ----
-color_palette <- c("#E9C4A6", "#99806c", "#54B663", "#3B7F46",
-                   "#5698c3", "#3271ae", "#9B4BDD", "#65318E")
-##---- Figures ----
+color_palette <- c("#AA812F", "#F8BC44", "#4B7F3D", "#8BED71", 
+                   "#3271ae","#48A4FF", "#65318E", "#B657FF")
+# color_palette <- c("#99806c", "#FFD5B3", "#3B7F46", "#76FF8D", 
+#                    "#3271ae","#48A4FF", "#65318E", "#B657FF")
+# color_palette <- c("#E9C4A6", "#99806c", "#54B663", "#3B7F46",
+#                    "#5698c3", "#3271ae", "#9B4BDD", "#65318E")
+linetype_palette <- rep(c("solid", "dashed"), 4)
+# linetype_palette <- rep(c("dashed", "solid"), 4)
+
+###---- Figures ----
 for (anlys in c("main", "sens", "sens2")){
   p <- predMSM_forplot_traj %>%
     filter(analysis == anlys, PE == "noPE") %>%
     ggplot(aes(x = fu_time_yrs, y = pe, group = label)) +
-    geom_line(aes(color = label)) + 
-    geom_ribbon(aes(ymin = p2.5th, ymax = p97.5th, fill = label), alpha = 0.2) +
-    facet_grid(rows = vars(outcome), 
+    geom_line(aes(color = label, linetype = label)) + 
+    geom_ribbon(aes(ymin = p2.5th, ymax = p97.5th, fill = label), alpha = 0.4) +
+    facet_grid(rows = vars(outcome),
                cols = vars(comp_adult_childhood)) +
     scale_color_manual(name = NULL, values = color_palette) +
     scale_fill_manual(name = NULL, values = color_palette) +
+    scale_linetype_manual(name = NULL, values = linetype_palette) +
     # labels = label_adult) +
     scale_x_continuous(breaks = c(0, 2, 4, 7, 9)) +
     scale_y_continuous(breaks = 1:6) +
     labs(x = "Follow-up time (years)", y = "Word recall scores") +
     theme_bw() +
     theme(legend.position = "bottom",
-          text = element_text(size = 10, color = "black"), 
-          strip.text.x = element_text(size = 10, color = "black"),
-          strip.text.y = element_text(size = 10, color = "black"),
-          axis.text.x = element_text(size = 10, color = "black"), 
-          axis.text.y = element_text(size = 10, color = "black"),
-          legend.text = element_text(size = 10, color = "black"))
+          text = element_text(size = 12, color = "black"), 
+          strip.text.x = element_text(size = 12, color = "black"),
+          strip.text.y = element_text(size = 12, color = "black"),
+          axis.text.x = element_text(size = 12, color = "black"), 
+          axis.text.y = element_text(size = 12, color = "black"),
+          legend.text = element_text(size = 11, color = "black"))
   ggsave(p, file = here::here("output", "figures", 
                               paste0(anlys, "_predMSM_imrc_dlrc_GEE.png")), 
          device = "png", width = 12, height = 7, units = "in", dpi = 300)
@@ -308,9 +405,54 @@ p_main
 p_sens # Unweighted
 p_sens2 # 2011 only
 
-##---- Figures for MELODEM pre ----
-color_palette <- c("#E9C4A6", "#99806c", "#54B663", "#3B7F46",
-                   "#5698c3", "#3271ae", "#9B4BDD", "#65318E")
+#---- Tables ----
+# mean change from baseline and contrasts between intervention
+temp <- imrc_dlrc_predMSM_noPE_contrasts_long %>%
+  pivot_wider(names_from = c(intervention_contrasts, estimate), 
+              values_from = rc_change, 
+              names_glue = "{estimate}_{intervention_contrasts}") %>%
+  mutate(outcome = factor(outcome, levels = c("imrc", "dlrc"))) %>%
+  arrange(outcome, fu_time_yrs)
+imrc_dlrc_predMSM_noPE_contrasts_fmt <- temp %>%
+  # build PE (p2.5th, p97.5th) for each contrast
+  mutate(across(starts_with("pe"),
+                ~sprintf("%.2f \n(%.2f, %.2f)", .x, 
+                         temp[[gsub("pe_", "p2.5th_", cur_column())]], 
+                         temp[[gsub("pe_", "p97.5th_", cur_column())]]), 
+                .names = "pe_ci_{str_replace(.col, 'pe_', '')}")) %>%
+  select(analysis, outcome, fu_time_yrs, starts_with("pe_ci_")) %>%
+  set_colnames(c("analysis", "outcome", "fu_time_yrs", 
+                 "No formal education at all",
+                 "Only adulthood education",
+                 "Elementary school or less & No adulthood edu",
+                 "Elementary school or less & adulthood edu",
+                 "Middle school level & No adulthood edu",
+                 "Middle school level & Adulthood edu",
+                 "College and above & No adulthood edu",
+                 "College and above & Adulthood edu",
+                 # Both edu vs. No
+                 "Only adulthood edu vs.\nNo formal education at all",
+                 "Elementary school or less & Adulthood edu vs.\nNo formal education at all",
+                 "Middle school level & Adulthood edu vs.\nNo formal education at all",
+                 "College and above & Adulthood edu vs.\nNo formal education at all",
+                 # adulthood vs no in the same early life intervention group
+                 "Elementary school or less & Adulthood edu vs.\nElementary school or less & No adulthood edu",
+                 "Middle school level & Adulthood edu vs.\nMiddle school level & No adulthood edu",
+                 "College and above & Adulthood edu vs.\nCollege and above & No adulthood edu",
+                 # Only early life edu vs. No
+                 "Elementary school or less & No adulthood edu vs.\nNo formal education at all",
+                 "Middle school level & No adulthood edu vs.\nNo formal education at all",
+                 "College and above & No adulthood edu vs.\nNo formal education at all"
+  ))
+writexl::write_xlsx(list(
+  "main" = imrc_dlrc_predMSM_noPE_contrasts_fmt %>% filter(analysis == "main") %>% select(-analysis), 
+  "sens" = imrc_dlrc_predMSM_noPE_contrasts_fmt %>% filter(analysis == "sens") %>% select(-analysis),
+  "sens2" = imrc_dlrc_predMSM_noPE_contrasts_fmt %>% filter(analysis == "sens2") %>% select(-analysis)),
+  here::here("output", "tables", "imrc_dlrc_predMSM_noPE_contrasts.xlsx"))
+
+#---- Figures for MELODEM pre ----
+color_palette <- c("#FFD5B3", "#99806c", "#76FF8D", "#3B7F46",
+                   "#48A4FF", "#3271ae", "#B657FF", "#65318E")
 comp_vec <- unique(pred_CI_forplot$comp_adult_childhood)
 
 for (i in 1:length(comp_vec)){
@@ -319,7 +461,7 @@ for (i in 1:length(comp_vec)){
                          rep("#00000000", length(color_palette) - 2*i))
   p <- pred_CI_forplot %>%
     filter(analysis == "main") %>%
-    ggplot(aes(x = fu_time_yrs, y = pe, 
+    ggplot(aes(x = fu_time_yrs, y = pe,
                color = label, group = label)) +
     geom_point(position = position_dodge((width = 1))) +
     geom_errorbar(aes(ymin = p2.5th, ymax = p97.5th), width = 0.8,
@@ -334,22 +476,48 @@ for (i in 1:length(comp_vec)){
     labs(x = "Follow-up time (years)", y = "Word recall scores") +
     theme_bw() +
     theme(legend.position = "none",
-          text = element_text(size = 10, color = "black"), 
+          text = element_text(size = 10, color = "black"),
           strip.text.x = element_text(size = 10, color = "black"),
           strip.text.y = element_text(size = 10, color = "black"),
-          axis.text.x = element_text(size = 10, color = "black"), 
+          axis.text.x = element_text(size = 10, color = "black"),
           axis.text.y = element_text(size = 10, color = "black"),
           legend.text = element_text(size = 10, color = "black"))
-  ggsave(file = here::here("output", "figures", 
-                           paste0("MELODEM_pred_fu_CI_imrc_dlrc_GEE_", i, ".png")), 
+  ggsave(file = here::here("output", "figures", "MELODEM_pre",
+                           paste0("MELODEM_pred_fu_CI_imrc_dlrc_GEE_", i, ".png")),
          device = "png", width = 7, height = 5, units = "in", dpi = 300)
 }
 rm(p)
 
-
-
-
 #---- OLD ----
+# # Memory scores at different time points. 
+# temp <- imrc_dlrc_predMSM_CI_long %>%
+#   filter(PE == "noPE", fu_time_yrs %in% c(0, 2, 4, 7, 9)) %>%
+#   select(-PE) %>%
+#   pivot_wider(names_from = c(intervention, estimate), 
+#               values_from = rc, 
+#               names_glue = "{estimate}_{intervention}")
+# imrc_dlrc_predMSM_noPE_fmt <- temp %>%
+#   # build PE (p2.5th, p97.5th) for each contrast
+#   mutate(across(starts_with("pe_"),
+#                 ~sprintf("%.2f (%.2f, %.2f)", .x, 
+#                          temp[[gsub("pe_", "p2.5th_", cur_column())]], 
+#                          temp[[gsub("pe_", "p97.5th_", cur_column())]]), 
+#                 .names = "pe_ci_{str_replace(.col, 'pe_', '')}")) %>%
+#   select(analysis, outcome, fu_time_yrs, starts_with("pe_ci_")) %>%
+#   set_colnames(c("analysis", "outcome", "fu_time_yrs", 
+#                  "No formal education at all",
+#                  "Only adulthood education",
+#                  "Elementary school or less & No adulthood edu",
+#                  "Elementary school or less & adulthood edu",
+#                  "Middle school level & No adulthood edu",
+#                  "Middle school level & Adulthood edu",
+#                  "College and above & No adulthood edu",
+#                  "College and above & Adulthood edu"))
+# writexl::write_xlsx(list(
+#   "main" = imrc_dlrc_predMSM_noPE_fmt %>% filter(analysis == "main") %>% select(-analysis), 
+#   "sens" = imrc_dlrc_predMSM_noPE_fmt %>% filter(analysis == "sens") %>% select(-analysis),
+#   "sens2" = imrc_dlrc_predMSM_noPE_fmt %>% filter(analysis == "sens2") %>% select(-analysis)),
+#   here::here("output", "tables", "imrc_dlrc_predMSM_noPE.xlsx"))
 # #---- Calculate estimands ----
 # for (anlys in c("main", "sens", "sens2")){
 #   for (y in c("imrc", "dlrc")){
@@ -493,6 +661,21 @@ rm(p)
 # 
 # ggsave(file = here::here("output", "figures", "sens2_slope_CI_imrc_dlrc_GEE.png"), 
 #        device = "png", width = 7, height = 5, units = "in", dpi = 300)
+# #---- warnings ----
+# for (y in c("imrc", "dlrc")){
+#   warnings <- tibble()
+#   # for (m in 1:10){
+#   for (b in 0:1000){
+#     warnings <- bind_rows(
+#       warnings, readRDS(here::here("data", "hoffman2", "warnings",
+#                                    paste0("warnings_", y, "_", b, ".RDS"))))
+#     # paste0("warnings_", y, 
+#     #        "_imp_", m,"_boot_", b, ".RDS")))
+#   }
+#   assign(paste0(y, "_warnings"), warnings)
+#   # }
+# }
+# rm(warnings)
 # #---- warnings ----
 # for (y in c("imrc", "dlrc")){
 #   warnings <- tibble()
