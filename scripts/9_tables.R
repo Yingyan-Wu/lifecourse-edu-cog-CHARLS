@@ -120,7 +120,8 @@ labelled_data <- imp_pmm_stacked %>%
     n1_diabe = "Self-reported diabetes (%)",
     # Baseline cognitive vars
     n1_imrc = "Baseline Immediate word recall",
-    n1_dlrc = "Baseline delayed word recall")
+    n1_dlrc = "Baseline delayed word recall",
+    max_fu_time = "Follow-up time (years)")
 
 #---- Stratified table 1 ----
 n_imp = 20
@@ -184,7 +185,7 @@ table1_cat_weighted[table1_cat_weighted == "NA (NA)"] <- NA
 ##---- continuous ----
 # Every continuous variable was imputed.
 cont_vars <- c("n1_agey_v3", "chldstate_30", "n1_cesd10_cleaned",
-               "n1_imrc", "n1_dlrc")
+               "n1_imrc", "n1_dlrc", "max_fu_time")
 
 charls_imp_svy <- labelled_data %>%
   survey::svydesign(~ 1, data = ., weights = ~n1_wtrespb_rscl)
@@ -249,10 +250,10 @@ table1_cont_weighted <- temp_cont_mean %>%
 
 ##---- Full table 1 ----
 table1_weighted <- rbind(table1_cont_weighted[1, ], # Baseline age
-                         table1_cat_weighted[1:47, ], # early-life and early-adulthood cat covariates
+                         table1_cat_weighted[1:46, ], # early-life and early-adulthood cat covariates
                          table1_cont_weighted[2, ], # chldstate_30
-                         table1_cat_weighted[48:51, ], # baseline health cat covariates
-                         table1_cont_weighted[3:5, ]# CESD, imrc, dlrc
+                         table1_cat_weighted[47:51, ], # baseline health cat covariates
+                         table1_cont_weighted[3:6, ]# CESD, imrc, dlrc, f/u time
 ) 
 
 ##---- Save the output ----

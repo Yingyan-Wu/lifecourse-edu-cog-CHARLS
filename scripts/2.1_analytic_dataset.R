@@ -82,6 +82,8 @@ imp_pmm_stacked %<>%
       rowSums(across(paste0("n1_", c("moneya", "medsa", "shopa", "mealsa", "housewka")))),
     n1_iadl_2cat = case_when(n1_iadl == 0 ~ 0,
                              n1_iadl > 0 ~ 1),
+    # Max actual follow up time
+    max_fu_time = pmax(n1_fu_time, n2_fu_time, n3_fu_time, n4_fu_time, n5_fu_time, na.rm = TRUE),
     # impute fu_time for missing follow up people (imputing indicator variable: nx_inw)
     # Follow the actual FU time median
     n2_fu_time = case_when(is.na(n2_fu_time) ~ n1_fu_time + 2,
@@ -106,6 +108,8 @@ imp_pmm_stacked %<>%
 # imp_pmm_stacked %>%
 #   select(contains(c("moneya", "medsa", "shopa", "mealsa", "housewka", "iadl"))) %>%
 #   apply(., 2, table, useNA = "ifany")
+# imp_pmm_stacked %>% select(max_fu_time, imp) %>% split(.$imp) %>% map(summary)
+# imp_pmm_stacked %>% select(contains("fu_time")) %>% apply(., 2, summary)
 
 #---- Check survey weight ----
 imp_pmm_1 <- imp_pmm_stacked %>%
