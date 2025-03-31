@@ -10,7 +10,7 @@ rm(list = ls())
 if (!require("pacman")){
   install.packages("pacman", repos = 'http://cran.us.r-project.org')
 }
-p_load("haven", "magrittr", "plyr", "tidyverse", "mice", "DataExplorer")
+p_load("haven", "magrittr", "tidyverse", "mice", "DataExplorer")
 
 #---- function ----
 source(here::here("scripts", "functions.R"))
@@ -211,7 +211,8 @@ for (n_fu in 1:5){
 #---- Analytic dataset ----
 # Long only on outcome variables and follow up time
 imp_pmm_long <- imp_pmm_stacked %>%
-  pivot_longer(cols = contains(c("imrc", "dlrc", "fu_time")),
+  pivot_longer(cols = contains(c("imrc", "dlrc", 
+                                 paste0("n", 1:5, "_fu_time"))),
                # starts_with(paste0("n", 1:5)), 
                names_to = c("n_fu", ".value"),
                names_pattern = "n(.)_(.*)") %>%
@@ -232,7 +233,8 @@ imp_pmm_2011 <- imp_pmm_stacked %>%
   filter(n1_wave == 1)
 
 imp_pmm_long_2011 <- imp_pmm_2011 %>%
-  pivot_longer(cols = contains(c("imrc", "dlrc", "fu_time")),
+  pivot_longer(cols = contains(c("imrc", "dlrc", 
+                                 paste0("n", 1:5, "_fu_time"))),
                # starts_with(paste0("n", 1:5)), 
                names_to = c("n_fu", ".value"),
                names_pattern = "n(.)_(.*)") %>%
@@ -305,12 +307,12 @@ imp_pmm_empirical %>%
   scale_color_manual(name = NULL, values = color_palette) +
   theme_bw() +
   facet_grid(cols = vars(comp))
-  # scale_x_continuous(breaks = seq(4, 14, by = 1)) +
-  # labs(x = "Wave",
-  #      y = "CESD",
-  #      title = paste0("Average CESD +/- 2 SE at different waves: ", 
-  #                     "\nstratified by education level"),
-  #      color = "Edu level")
+# scale_x_continuous(breaks = seq(4, 14, by = 1)) +
+# labs(x = "Wave",
+#      y = "CESD",
+#      title = paste0("Average CESD +/- 2 SE at different waves: ", 
+#                     "\nstratified by education level"),
+#      color = "Edu level")
 
 #---- OLD ----
 # mutate(r1wtrespb_rescaled = r1wtrespb/mean(r1wtrespb)) %>%
