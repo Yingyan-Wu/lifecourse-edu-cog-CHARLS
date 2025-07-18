@@ -251,7 +251,7 @@ imrc_dlrc_predMSM_CI_long <- imrc_dlrc_predMSM_CI %>%
   mutate(fu_time_yrs = as.numeric(fu_time_yrs))
 
 imrc_dlrc_predMSM_noPE_contrasts_long <- imrc_dlrc_predMSM_CI %>% 
-  select(analysis, estimate, outcome, ends_with("_0")) %>%
+  # select(analysis, estimate, outcome, ends_with("_0")) %>%
   select(analysis, estimate, outcome, contains("noPE")) %>%
   pivot_longer(cols = -c(analysis, estimate, outcome),
                names_to = c("intervention_contrasts", "fu_time_yrs"),
@@ -278,14 +278,14 @@ for (dat in c("predMSM", "mean_PO")){
   temp <- get(paste0("imrc_dlrc_", dat, "_CI_long")) %>%
     pivot_wider(names_from = estimate, values_from = rc) %>%
     mutate(label = case_when(
-      intervention == "00" ~ "No formal education at all",
-      intervention == "10" ~ "Elementary school or less & No adulthood edu",
-      intervention == "20" ~ "Middle school level & No adulthood edu",
-      intervention == "30" ~ "College and above & No adulthood edu",
+      intervention == "00" ~ "No formal education at all/illiterate",
+      intervention == "10" ~ "Elementary school & No adulthood edu",
+      intervention == "20" ~ "Middle school & No adulthood edu",
+      intervention == "30" ~ "College & No adulthood edu",
       intervention == "01" ~ "Only adulthood edu",
-      intervention == "11" ~ "Elementary school or less & Adulthood edu",
-      intervention == "21" ~ "Middle school level & Adulthood edu",
-      intervention == "31" ~ "College and above & Adulthood edu"),
+      intervention == "11" ~ "Elementary school & Adulthood edu",
+      intervention == "21" ~ "Middle school & Adulthood edu",
+      intervention == "31" ~ "College & Adulthood edu"),
       label_adult = case_when(
         intervention %in% c("00", "10", "20", "30") ~ "No adulthood edu",
         intervention %in% c("01", "11", "21", "31") ~ "Adulthood edu"),
@@ -293,10 +293,10 @@ for (dat in c("predMSM", "mean_PO")){
                                       TRUE ~ 0),
       comp_adult_only = case_when(intervention %in% c("00", "01") ~ 1,
                                   TRUE ~ 0),
-      comp_adult_childhood = case_when(intervention %in% c("00", "01") ~ "No early life formal education",
-                                       intervention %in% c(10, 11) ~ "Elementary school or less",
-                                       intervention %in% c(20, 21) ~ "Middle school level",
-                                       intervention %in% c(30, 31) ~ "College and above"),
+      comp_adult_childhood = case_when(intervention %in% c("00", "01") ~ "No early-life formal education/illiterate",
+                                       intervention %in% c(10, 11) ~ "Elementary school",
+                                       intervention %in% c(20, 21) ~ "Middle school",
+                                       intervention %in% c(30, 31) ~ "College"),
       intervention = factor(intervention, 
                             levels = c("00", "01", "10", "11", "20", "21", "30", "31"))) %>%
     arrange(outcome, fu_time_yrs, intervention)

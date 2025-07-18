@@ -9,7 +9,7 @@ if (!require("pacman")){
   install.packages("pacman", repos='http://cran.us.r-project.org')
 }
 
-p_load("here", "readr", "tidyverse", "magrittr", "plyr", "haven", "glue", 
+p_load("here", "readr", "tidyverse", "magrittr", "haven", "glue", 
        "survey", "labelled", "gtsummary")
 # Do not load "summarytools" as it contains conflicted functions as dplyr
 
@@ -259,6 +259,56 @@ table1_weighted <- rbind(table1_cont_weighted[1, ], # Baseline age
 ##---- Save the output ----
 writexl::write_xlsx(table1_weighted, 
                     here::here("output", "tables", "table1_imp_weighted_stratified.xlsx"))
+
+#---- Education programs for adulthood programs attendees ----
+load(here::here("data", "analysis_data", "charls_cleaned.RData"))
+
+adulthood_edu_type_mat <- charls %>%
+  select(ID, w1_bd007, w2_bd007,
+         # Type of adulthood edu
+         w2_bd007_w2_1, w3_bd007_w2_1, w4_bd007_w2_1) 
+with(adulthood_edu_type_mat, table(w2_bd007, w2_bd007_w2_1, useNA = "ifany"))
+
+imp_pmm_stacked %<>%
+  left_join(adulthood_edu_type_mat, by = "ID")
+
+imp_pmm_stacked %>%
+  filter(imp == 1, childhood_edu == 0, continuing_edu == 1) %>%
+  select(w1_bd007, w2_bd007,
+         # Type of adulthood edu
+         w2_bd007_w2_1, w3_bd007_w2_1, w4_bd007_w2_1) %>%
+  apply(., 2, table, useNA = "ifany")
+
+imp_pmm_stacked %>%
+  filter(imp == 1, childhood_edu == 1, continuing_edu == 1) %>%
+  select(w1_bd007, w2_bd007,
+         # Type of adulthood edu
+         w2_bd007_w2_1, w3_bd007_w2_1, w4_bd007_w2_1) %>%
+  apply(., 2, table, useNA = "ifany")
+
+imp_pmm_stacked %>%
+  filter(imp == 1, childhood_edu == 2) %>%
+  select(w1_bd007, w2_bd007,
+         # Type of adulthood edu
+         w2_bd007_w2_1, w3_bd007_w2_1, w4_bd007_w2_1) %>%
+  apply(., 2, table, useNA = "ifany")
+
+imp_pmm_stacked %>%
+  filter(imp == 1, childhood_edu == 3) %>%
+  select(w1_bd007, w2_bd007,
+         # Type of adulthood edu
+         w2_bd007_w2_1, w3_bd007_w2_1, w4_bd007_w2_1) %>%
+  apply(., 2, table, useNA = "ifany")
+# imp_pmm_stacked$
+  
+  charls %>% dplyr::select(w4_bd007_w2_1_s1, w4_bd007_w2_1_s2,
+                          w4_bd007_w2_1_s3, w4_bd007_w2_1_s4,
+                          w4_bd007_w2_1_s5, w4_bd007_w2_1_s6,
+                          w4_bd007_w2_1_s7, w4_bd007_w2_1_s8) %>%
+  apply(., 2, table)
+  
+  charls %>% dplyr::select(w4_bd007_w2_1) %>%
+    apply(., 2, table)
 
 # #---- OLD ----
 # #---- unstratified Table 1 ----

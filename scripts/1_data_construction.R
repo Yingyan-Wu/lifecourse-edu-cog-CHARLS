@@ -15,6 +15,7 @@ p_load("here", "readr", "plyr", "tidyverse", "magrittr","haven", "survey", "glue
 # Do not load "summarytools" as it contains conflicted functions from dplyr
 options(scipen = 999)
 
+mutate <- dplyr::mutate
 #---- function ----
 source(here::here("scripts", "functions.R"))
 
@@ -512,7 +513,7 @@ with(charls, table(raeduc_c_v2, r5educ_c, useNA = "ifany"))
 
 ##---- Adult Education ----
 charls %<>%
-  mutate_at(vars(starts_with("w4_bd007_w4_1_s")), 
+  mutate_at(vars(contains(c("w4_bd007_w4_1_s", "w4_bd007_w2_1_"))), 
             function(x) ifelse(x == 0, NA, x)) %>%
   mutate(w1_bd007 = coalesce(w1_bd007s1, w1_bd007s2, w1_bd007s3, w1_bd007s4,
                              w1_bd007s5, w1_bd007s6, w1_bd007s7, w1_bd007s8),
@@ -541,6 +542,8 @@ with(charls, table(w1_bd007, w2_bd007_w2_1, useNA = "ifany"))
 with(charls, table(w2_bd007, w2_bd007_w2_1, useNA = "ifany"))
 with(charls, table(w1_bd007s1, w1_bd007s1))
 with(charls, table(w3_bd007_w2_1, useNA = "ifany"))
+with(charls, table(w4_bd007_w2_1, w4_bd007_w2_1_s3, useNA = "ifany"))
+charls %>% select( w2_bd007_w2_1, w3_bd007_w2_1, w4_bd007_w2_1, w4_bd007_w4_1)
 
 charls %<>%
   mutate(adult_edu = case_when(
@@ -560,7 +563,7 @@ charls %<>%
         is.na(w2_bd009_w2_1) & is.na(w2_bd009) & 
         is.na(w1_bd009) ~ NA_real_,
       TRUE ~ 0))
-# 
+
 # # Check the time of getting the diploma
 # charls %>%
 #   filter(!is.na(adult_edu_dplm)) %>%
@@ -752,7 +755,7 @@ with(charls, table(r5dlrc_cleaned, useNA = "ifany"))
 
 ##---- Equated scores ----
 # Same algorithm for equating for r4 and r5
-eqt_table <- readxl::read_xlsx(here::here("output", "tables", 
+eqt_table <- readxl::read_xlsx(here::here("output", "tables", "charls_equating",
                                           "table3_lumping_equating.xlsx")) %>%
   set_colnames(c("test", "original_score", "eqt_score")) %>%
   # set_colnames(c("test", "original_score", "r4", "r5")) %>%
@@ -1247,7 +1250,7 @@ rural_30_mat <- moving_years_mat %>%
   left_join(rural_mat %>% select(ID, contains("lh_t004_")), by = "ID") %>%
   rowwise() %>%
   # Fill the rural_30 variable with the values from the lh_t004 specific variables
-  mutate(rural_30 = pick(everything())[[rural_30_var]]) %>%
+  dplyr::mutate(rural_30 = pick(everything())[[rural_30_var]]) %>%
   ungroup()
 
 rural_mat_filtered <- rural_mat %>%
