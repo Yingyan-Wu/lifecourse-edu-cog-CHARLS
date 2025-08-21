@@ -251,8 +251,8 @@ imrc_dlrc_predMSM_CI_long <- imrc_dlrc_predMSM_CI %>%
   mutate(fu_time_yrs = as.numeric(fu_time_yrs))
 
 imrc_dlrc_predMSM_noPE_contrasts_long <- imrc_dlrc_predMSM_CI %>% 
-  # select(analysis, estimate, outcome, ends_with("_0")) %>%
-  select(analysis, estimate, outcome, contains("noPE")) %>%
+  select(analysis, estimate, outcome, ends_with("_0")) %>%
+  # select(analysis, estimate, outcome, contains("noPE")) %>%
   pivot_longer(cols = -c(analysis, estimate, outcome),
                names_to = c("intervention_contrasts", "fu_time_yrs"),
                names_pattern = "mean_predMSM_noPE_(.*)_yr(.)_0",
@@ -449,6 +449,123 @@ writexl::write_xlsx(list(
   "sens" = imrc_dlrc_predMSM_noPE_contrasts_fmt %>% filter(analysis == "sens") %>% select(-analysis),
   "sens2" = imrc_dlrc_predMSM_noPE_contrasts_fmt %>% filter(analysis == "sens2") %>% select(-analysis)),
   here::here("output", "tables", "imrc_dlrc_predMSM_noPE_contrasts.xlsx"))
+
+#---- Contrasts figure ----
+##---- Contrasts with no formal education ----
+contrasts_main_no_formal <- imrc_dlrc_predMSM_noPE_contrasts_long %>% 
+  filter(analysis == "main", 
+         # fu_time_yrs != 0,
+         str_detect(intervention_contrasts, "_00")) %>%
+  mutate(label = case_when(
+    intervention_contrasts == "01_00" ~ "Only adulthood edu",
+    intervention_contrasts == "10_00" ~ "Elementary school & No adulthood edu",
+    intervention_contrasts == "11_00" ~ "Elementary school & Adulthood edu",
+    intervention_contrasts == "20_00" ~ "Middle school & No adulthood edu",
+    intervention_contrasts == "21_00" ~ "Middle school & Adulthood edu",
+    intervention_contrasts == "30_00" ~ "College & No adulthood edu",
+    intervention_contrasts == "31_00" ~ "College & Adulthood edu")) %>%
+  pivot_wider(names_from = "estimate", 
+              values_from = "rc_change") %>%
+  bind_rows(expand_grid(intervention_contrasts = "00",
+                        label = "Ref: No formal education at all",
+                        analysis = "main",
+                        pe = 0,
+                        fu_time_yrs = c(0, 2, 4, 7, 9),
+                        outcome = c("dlrc", "imrc"))) %>%
+  mutate(label = factor(label, 
+                        levels = c("Ref: No formal education at all",
+                                   "Only adulthood edu",
+                                   "Elementary school & No adulthood edu",
+                                   "Elementary school & Adulthood edu",
+                                   "Middle school & No adulthood edu",
+                                   "Middle school & Adulthood edu",
+                                   "College & No adulthood edu",
+                                   "College & Adulthood edu")),
+         outcome = 
+           factor(case_when(outcome == "imrc" ~ "Immediate word recall",
+                            outcome == "dlrc" ~ "Delayed word recall"),
+                  levels = c("Immediate word recall", "Delayed word recall")),
+         type = case_when(fu_time_yrs == 0 ~ "Baseline",
+                          fu_time_yrs != 0 ~ "Change over follow-up"))
+
+
+contrasts_color_palette <- c("#F8BC44", "#AA812F", "#8BED71", "#4B7F3D", 
+                             "#48A4FF", "#3271ae", "#B657FF", "#65318E")
+
+contrasts_main_no_formal %>%
+  ggplot(aes(x = fu_time_yrs, y = pe, color = label)) +
+  geom_point(position = position_dodge((width = 1))) +
+  # geom_line(position = position_dodge((width = 1))) +
+  geom_errorbar(aes(ymin = p2.5th, ymax = p97.5th),
+                position = position_dodge((width = 1)),
+                width = 0.8) +
+  facet_grid(rows = vars(outcome), cols = vars(type), 
+             scale = "free_x", space = "free_x") +
+  scale_color_manual(name = NULL, values = contrasts_color_palette) +
+  # scale_color_manual(values = c("#8BED71", "#48A4FF", "#B657FF")) +
+  scale_x_continuous(breaks = c(0, 2, 4, 7, 9)) +
+  scale_y_continuous(breaks = seq(-1.5, 2.5, 0.5)) +
+  labs(x = "Follow-up time (years)", y = "Word recall scores") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        text = element_text(size = 12, color = "black"), 
+        strip.text.x = element_text(size = 12, color = "black"),
+        strip.text.y = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"), 
+        axis.text.y = element_text(size = 12, color = "black"),
+        legend.text = element_text(size = 11, color = "black"))
+ggsave(here::here("output", "figures", 
+                  "contrasts_main_no_formal_imrc_dlrc_GEE.png"), 
+       device = "png", width = 12, height = 7, units = "in", dpi = 300)
+
+##---- Contrasts same childhood ----
+contrasts_main_same_childhood <- imrc_dlrc_predMSM_noPE_contrasts_long %>% 
+  filter(analysis == "main", 
+         # fu_time_yrs != 0,
+         intervention_contrasts %in% c("01_00", "11_10", "21_20", "31_30")) %>%
+  mutate(label = case_when(
+    intervention_contrasts == "01_00" ~ "Only adulthood edu vs. \nNo formal education",
+    intervention_contrasts == "11_10" ~ "Elementary school & Adulthood edu vs. \nElementary school & No adulthood edu",
+    intervention_contrasts == "21_20" ~ "Middle school & Adulthood edu vs. \nMiddle school & No adulthood edu",
+    intervention_contrasts == "31_30" ~ "College & Adulthood edu vs. \nCollege & No adulthood edu")) %>%
+  mutate(label = factor(label, 
+                        levels = c("Only adulthood edu vs. \nNo formal education",
+                                   "Elementary school & Adulthood edu vs. \nElementary school & No adulthood edu",
+                                   "Middle school & Adulthood edu vs. \nMiddle school & No adulthood edu",
+                                   "College & Adulthood edu vs. \nCollege & No adulthood edu")),
+         outcome = 
+           factor(case_when(outcome == "imrc" ~ "Immediate word recall",
+                            outcome == "dlrc" ~ "Delayed word recall")),
+         type = case_when(fu_time_yrs == 0 ~ "Baseline",
+                          fu_time_yrs != 0 ~ "Change over follow-up")) %>%
+  pivot_wider(names_from = "estimate", 
+              values_from = "rc_change")
+
+contrasts_main_same_childhood %>%
+  ggplot(aes(x = fu_time_yrs, y = pe, color = label)) +
+  geom_point(position = position_dodge((width = 1))) +
+  # geom_line(position = position_dodge((width = 1))) +
+  geom_errorbar(aes(ymin = p2.5th, ymax = p97.5th),
+                position = position_dodge((width = 1)),
+                width = 0.8) +
+  facet_grid(rows = vars(outcome), cols = vars(type), 
+             scale = "free_x", space = "free_x") +
+  scale_color_manual(name = NULL, values = c("#99806c", "#3B7F46", "#3271ae", "#65318E")) +
+  scale_x_continuous(breaks = c(0, 2, 4, 7, 9)) +
+  scale_y_continuous(breaks = seq(-1.5, 1.5, 0.5)) +
+  labs(x = "Follow-up time (years)", y = "Word recall scores") +
+  theme_bw() +
+  theme(legend.position = "bottom",
+        text = element_text(size = 12, color = "black"), 
+        strip.text.x = element_text(size = 12, color = "black"),
+        strip.text.y = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"), 
+        axis.text.y = element_text(size = 12, color = "black"),
+        legend.text = element_text(size = 11, color = "black"))
+ggsave(here::here("output", "figures", 
+                  "contrasts_main_same_childhood_imrc_dlrc_GEE.png"),
+       device = "png", width = 12, height = 7, units = "in", dpi = 300)
+
 
 #---- Figures for MELODEM pre ----
 color_palette <- c("#FFD5B3", "#99806c", "#76FF8D", "#3B7F46",
