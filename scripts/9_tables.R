@@ -35,6 +35,16 @@ imp_pmm_stacked %<>%
            childhood_edu == 3 & continuing_edu_2cat == 0 ~ 6,
            childhood_edu == 3 & continuing_edu_2cat == 1 ~ 7))
 
+#---- Check birth year ----
+load(here::here("data", "analysis_data", "charls_cleaned.RData"))
+ID_select <- imp_pmm_stacked %>% pull(ID) %>% unique()
+birth_year_check <- charls %>% filter(ID %in% ID_select) %>% select(ID, rabyear_v2)
+proc_summ(birth_year_check$rabyear_v2)
+
+with(birth_year_check, table(imp))
+
+
+
 #---- Labelled data for Table 1 ----
 labelled_data <- imp_pmm_stacked %>%
   dplyr::mutate(across(c("female", "first_child_v2", "rarural_child",

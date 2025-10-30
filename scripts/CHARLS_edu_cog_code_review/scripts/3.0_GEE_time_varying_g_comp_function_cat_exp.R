@@ -1,7 +1,6 @@
 # Time-varying g comp (GEE)
 # Created by: Yingyan Wu
 # Date: Aug.19.2024
-# Add n_fu to see if that helps with the 2018-2020 trend
 
 # #---- Test ----
 # dataset <- imp_pmm_stacked
@@ -179,7 +178,6 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   tryCatch({
     qmodel_gee <<- geepack::geeglm(
       as.formula(paste0(y, " ~ ", x0, " * ns_1knot(fu_time) * ", x1, " + ", 
-                        "n_fu + ",
                         paste0("first_", y), " + ",
                         paste(c0, collapse = "+"), " + ", 
                         paste(c1, collapse = "+"))),
@@ -290,7 +288,7 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   msm_start <- Sys.time()
   tryCatch({
     msm_gee <<- geepack::geeglm(as.formula(paste0(
-      "Y_doX0_doX1 ~ doX0 * doX1 * ns_1knot(fu_time) + ", "n_fu + ", "first_", y)),
+      "Y_doX0_doX1 ~ doX0 * doX1 * ns_1knot(fu_time) + ", "first_", y)),
       data = cloned_data_long, 
       id = newid, waves = n_fu, family = gaussian)
     w_msm <<- c(w_msm, 0)

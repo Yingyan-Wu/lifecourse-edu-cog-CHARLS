@@ -34,12 +34,12 @@ options(scipen = 999)
 #---- Load the data ----
 # Paths (local)
 # load(here::here("data", "analysis_data", "imp_pmm_20_wide_long_2011.RData"))
-# source(here::here("scripts", "3_GEE_time_varying_g_comp_function_cat_exp.R"))
+# source(here::here("scripts", "3.0_GEE_time_varying_g_comp_function_cat_exp.R"))
 
 # # Paths cluster
 project_folder <- paste0("/u/home/y/yingyanw/edu_cog_CHARLS/")
 load(paste0(project_folder, "data/imp_pmm_20_wide_long_2011.RData"))
-source(paste0(project_folder, "scripts/3_GEE_time_varying_g_comp_function_cat_exp.R"))
+source(paste0(project_folder, "scripts/3.0_GEE_time_varying_g_comp_function_cat_exp.R"))
 
 #---- Scenario tibble ----
 n_imp = 20

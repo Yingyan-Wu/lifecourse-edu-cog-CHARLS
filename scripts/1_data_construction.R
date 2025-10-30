@@ -1,6 +1,5 @@
 # CHARLS_data_construction
 # Created by: Yingyan Wu
-# Some code adapted from Crystal Shaw's and Mingfei Dong's Data construction scripts
 # Dec.25.2022
 
 #---- Package loading + options ----
@@ -101,10 +100,6 @@ table(harmonized$province_eng,useNA = "ifany")
 
 #---- Reading core data ----
 ##---- main datasets ----
-# Adapted from Mingfei Dong's data reading script, 
-# Crystal's reading result snippet from make_figures.R in exposure_trajectories
-# and the IDRE website
-# https://stats.idre.ucla.edu/r/codefragments/read_multiple/
 getwd()
 folders <- list.files(path = here::here("data", "raw_data"), full.names = TRUE)
 datasets <- c("demographic_background", "health_status_and_functioning", 

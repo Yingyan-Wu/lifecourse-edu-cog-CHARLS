@@ -11,9 +11,12 @@ output/
 manuscript/
 Abstract/
 scripts/sample_code/
+scripts/prelim_analyses_testing/
 scripts/cont_edu_participants_character
 scripts/equating_cog_charls
+scripts/CHARLS_edu_cog_code_review/
 hoffman2/
+
 
 # files
 CHARLS_Dataset_construction_codebook.xlsx

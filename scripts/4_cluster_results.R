@@ -325,41 +325,41 @@ color_palette <- c("#AA812F", "#F8BC44", "#4B7F3D", "#8BED71",
 # color_palette <- c("#99806c", "#FFD5B3", "#3B7F46", "#76FF8D", 
 #                    "#3271ae","#48A4FF", "#65318E", "#B657FF")
 linetype_palette <- rep(c("solid", "dashed"), 4)
-##---- Mean PO traj plot ----
-for (anlys in c("main", "sens", "sens2")){
-  p <- mean_PO_forplot_traj %>%
-    filter(analysis == anlys) %>%
-    ggplot(aes(x = fu_time_yrs, y = pe, 
-               color = label, group = label, linetype = label)) +
-    geom_point(position = position_dodge((width = 1))) +
-    geom_errorbar(aes(ymin = p2.5th, ymax = p97.5th), 
-                  position = position_dodge((width = 1)), width = 0.8) +
-    geom_line(position = position_dodge((width = 1))) +
-    facet_grid(rows = vars(outcome), 
-               cols = vars(comp_adult_childhood)) +
-    scale_color_manual(name = NULL, values = color_palette) +
-    scale_linetype_manual(name = NULL, values = linetype_palette) +
-    # labels = label_adult) +
-    scale_x_continuous(breaks = c(0, 2, 4, 7, 9)) +
-    scale_y_continuous(breaks = 1:6) +
-    labs(x = "Follow-up time (years)", y = "Word recall scores") +
-    theme_bw() +
-    theme(legend.position = "bottom",
-          text = element_text(size = 12, color = "black"), 
-          strip.text.x = element_text(size = 12, color = "black"),
-          strip.text.y = element_text(size = 12, color = "black"),
-          axis.text.x = element_text(size = 12, color = "black"), 
-          axis.text.y = element_text(size = 12, color = "black"),
-          legend.text = element_text(size = 11, color = "black"))
-  ggsave(p, file = here::here("output", "figures", 
-                              paste0(anlys, "_PO_fu_CI_imrc_dlrc_GEE.png")), 
-         device = "png", width = 12, height = 7, units = "in", dpi = 300)
-  assign(paste0("p_PO_", anlys), p)
-}
-rm(p)
-p_PO_main
-p_PO_sens # Unweighted
-p_PO_sens2 # 2011 only
+# ##---- Mean PO traj plot ----
+# for (anlys in c("main", "sens", "sens2")){
+#   p <- mean_PO_forplot_traj %>%
+#     filter(analysis == anlys) %>%
+#     ggplot(aes(x = fu_time_yrs, y = pe, 
+#                color = label, group = label, linetype = label)) +
+#     geom_point(position = position_dodge((width = 1))) +
+#     geom_errorbar(aes(ymin = p2.5th, ymax = p97.5th), 
+#                   position = position_dodge((width = 1)), width = 0.8) +
+#     geom_line(position = position_dodge((width = 1))) +
+#     facet_grid(rows = vars(outcome), 
+#                cols = vars(comp_adult_childhood)) +
+#     scale_color_manual(name = NULL, values = color_palette) +
+#     scale_linetype_manual(name = NULL, values = linetype_palette) +
+#     # labels = label_adult) +
+#     scale_x_continuous(breaks = c(0, 2, 4, 7, 9)) +
+#     scale_y_continuous(breaks = 1:6) +
+#     labs(x = "Follow-up time (years)", y = "Word recall scores") +
+#     theme_bw() +
+#     theme(legend.position = "bottom",
+#           text = element_text(size = 12, color = "black"), 
+#           strip.text.x = element_text(size = 12, color = "black"),
+#           strip.text.y = element_text(size = 12, color = "black"),
+#           axis.text.x = element_text(size = 12, color = "black"), 
+#           axis.text.y = element_text(size = 12, color = "black"),
+#           legend.text = element_text(size = 11, color = "black"))
+#   ggsave(p, file = here::here("output", "figures", 
+#                               paste0(anlys, "_PO_fu_CI_imrc_dlrc_GEE.png")), 
+#          device = "png", width = 12, height = 7, units = "in", dpi = 300)
+#   assign(paste0("p_PO_", anlys), p)
+# }
+# rm(p)
+# p_PO_main
+# p_PO_sens # Unweighted
+# p_PO_sens2 # 2011 only
 
 ##---- MSM GEE pred traj plot ----
 color_palette <- c("#AA812F", "#F8BC44", "#4B7F3D", "#8BED71", 
@@ -397,7 +397,7 @@ for (anlys in c("main", "sens", "sens2")){
           legend.text = element_text(size = 11, color = "black"))
   ggsave(p, file = here::here("output", "figures", 
                               paste0(anlys, "_predMSM_imrc_dlrc_GEE.png")), 
-         device = "png", width = 12, height = 7, units = "in", dpi = 300)
+         device = "png", width = 14, height = 7, units = "in", dpi = 300)
   assign(paste0("p_", anlys), p)
 }
 rm(p)
@@ -567,44 +567,44 @@ ggsave(here::here("output", "figures",
                   "contrasts_main_same_childhood_imrc_dlrc_GEE.png"),
        device = "png", width = 12, height = 7, units = "in", dpi = 300)
 
-#---- Figures for Dissertation defense ----
-color_palette <- c("#AA812F", "#F8BC44", "#4B7F3D", "#8BED71", 
-                   "#3271ae","#48A4FF", "#65318E", "#B657FF")
-comp_vec <- unique(predMSM_forplot_traj$comp_adult_childhood)
-
-for (i in 1:length(comp_vec)){
-  new_color_palette <- c(color_palette[1:(2*i)],
-                         # Make the rest of comparison transparent
-                         rep("#00000000", length(color_palette) - 2*i))
-
-  p <- predMSM_forplot_traj %>%
-    filter(analysis == "main", PE == "noPE",
-           comp_adult_childhood %in% comp_vec[1:i]) %>%
-    ggplot(aes(x = fu_time_yrs, y = pe, group = label)) +
-    geom_line(aes(color = label, linetype = label)) + 
-    geom_ribbon(aes(ymin = p2.5th, ymax = p97.5th, fill = label), alpha = 0.4) +
-    facet_grid(rows = vars(outcome)) +
-               # cols = vars(comp_adult_childhood)) +
-    scale_color_manual(name = NULL, values = new_color_palette) +
-    scale_fill_manual(name = NULL, values = new_color_palette) +
-    scale_linetype_manual(name = NULL, values = linetype_palette) +
-    # labels = label_adult) +
-    scale_x_continuous(breaks = c(0, 2, 4, 7, 9)) +
-    scale_y_continuous(limits = c(1, 6.3), breaks = 1:6) +
-    labs(x = "Follow-up time (years)", y = "Word recall scores") +
-    theme_bw() +
-    theme(legend.position = "none",
-          text = element_text(size = 12, color = "black"), 
-          strip.text.x = element_text(size = 12, color = "black"),
-          strip.text.y = element_text(size = 12, color = "black"),
-          axis.text.x = element_text(size = 12, color = "black"), 
-          axis.text.y = element_text(size = 12, color = "black"),
-          legend.text = element_text(size = 11, color = "black"))
-  ggsave(file = here::here("output", "figures", "defense",
-                           paste0("MELODEM_pred_fu_CI_imrc_dlrc_GEE_", i, ".png")),
-         device = "png", width = 7, height = 5, units = "in", dpi = 300)
-}
-rm(p)
+# #---- Figures for Dissertation defense ----
+# color_palette <- c("#AA812F", "#F8BC44", "#4B7F3D", "#8BED71", 
+#                    "#3271ae","#48A4FF", "#65318E", "#B657FF")
+# comp_vec <- unique(predMSM_forplot_traj$comp_adult_childhood)
+# 
+# for (i in 1:length(comp_vec)){
+#   new_color_palette <- c(color_palette[1:(2*i)],
+#                          # Make the rest of comparison transparent
+#                          rep("#00000000", length(color_palette) - 2*i))
+# 
+#   p <- predMSM_forplot_traj %>%
+#     filter(analysis == "main", PE == "noPE",
+#            comp_adult_childhood %in% comp_vec[1:i]) %>%
+#     ggplot(aes(x = fu_time_yrs, y = pe, group = label)) +
+#     geom_line(aes(color = label, linetype = label)) + 
+#     geom_ribbon(aes(ymin = p2.5th, ymax = p97.5th, fill = label), alpha = 0.4) +
+#     facet_grid(rows = vars(outcome)) +
+#                # cols = vars(comp_adult_childhood)) +
+#     scale_color_manual(name = NULL, values = new_color_palette) +
+#     scale_fill_manual(name = NULL, values = new_color_palette) +
+#     scale_linetype_manual(name = NULL, values = linetype_palette) +
+#     # labels = label_adult) +
+#     scale_x_continuous(breaks = c(0, 2, 4, 7, 9)) +
+#     scale_y_continuous(limits = c(1, 6.3), breaks = 1:6) +
+#     labs(x = "Follow-up time (years)", y = "Word recall scores") +
+#     theme_bw() +
+#     theme(legend.position = "none",
+#           text = element_text(size = 12, color = "black"), 
+#           strip.text.x = element_text(size = 12, color = "black"),
+#           strip.text.y = element_text(size = 12, color = "black"),
+#           axis.text.x = element_text(size = 12, color = "black"), 
+#           axis.text.y = element_text(size = 12, color = "black"),
+#           legend.text = element_text(size = 11, color = "black"))
+#   ggsave(file = here::here("output", "figures", "defense",
+#                            paste0("MELODEM_pred_fu_CI_imrc_dlrc_GEE_", i, ".png")),
+#          device = "png", width = 7, height = 5, units = "in", dpi = 300)
+# }
+# rm(p)
 
 # #---- Figures for MELODEM pre ----
 # color_palette <- c("#FFD5B3", "#99806c", "#76FF8D", "#3B7F46",
