@@ -36,28 +36,27 @@ missing_summary <- DataExplorer::profile_missing(charls_forimp) %>%
   mutate(num_pct_missing = paste0(num_missing, " (", round(pct_missing, 1), "%)")) %>%
   mutate(feature_label = 
            case_when(feature == "n1_agey_v3" ~ "Baseline age (first participated wave) in years",
-                     feature == "continuing_edu" ~ "Adulthood education level",
+                     feature == "continuing_edu" ~ "Adulthood education",
                      feature == "childhood_edu" ~ "Early-life education",
-                     feature == "female" ~ "Female",
+                     feature == "female" ~ "Women",
                      feature == "first_child_v2" ~ "Birth order: first child",
-                     feature == "rameduc_c" ~ "Mother's education level", 
-                     feature == "rafeduc_c" ~ "Father's education level", 
-                     feature == "ramoccup_c" ~ "Mother's occupation before age 17", 
-                     feature == "rafoccup_c" ~ "Father's occupation before age 17",
+                     feature == "rameduc_c" ~ "Mother's education attainment", 
+                     feature == "rafeduc_c" ~ "Father's education attainment", 
+                     feature == "ramoccup_c" ~ "Mother's occupation", 
+                     feature == "rafoccup_c" ~ "Father's occupation",
                      feature == "childhood_1st_region" ~ "Childhood first region",
                      feature == "rarural_child" ~ "Childhood rural residence",
                      feature == "first_hukou" ~ "First hukou status", 
-                     feature == "occupation_30" ~ "Occupation at age 30",
-                     feature == "marital_30" ~ "Marital status at age 30",
-                     feature == "rural_30" ~ "Rural residence at age 30",
-                     feature == "hukou_30" ~ "Hukou status at age 30",
-                     feature == "chldstate_30" ~ "Number of Children at age 30",
+                     feature == "occupation_30" ~ "Occupation around age 30",
+                     feature == "marital_30" ~ "Marital status around age 30",
+                     feature == "rural_30" ~ "Rural residence around age 30",
+                     feature == "hukou_30" ~ "Hukou status around age 30",
+                     feature == "chldstate_30" ~ "Number of Children around age 30",
                      feature == "n1_wtrespb" ~ "Survey weight",
                      # Baseline health vars
                      feature == "n1_housewka" ~ "IADL: Doing work around the house or garden",
                      feature == "n1_mealsa" ~ "IADL: Meal preparation",
                      feature == "n1_medsa" ~ "IADL: Mediacation taking",
-                     feature == "n1_shopa" ~ "IADL: Shopping for groceries",
                      feature == "n1_shopa" ~ "IADL: Shopping for groceries",
                      feature == "n1_moneya" ~ "IADL: Finance management",
                      feature == "n1_cesd10_cleaned" ~ "CESD-10 score",
@@ -69,7 +68,7 @@ missing_summary <- DataExplorer::profile_missing(charls_forimp) %>%
                      feature == "n1_shlta" ~ "Self-rated health",
                      feature == "n1_socwk" ~ "Social activities",
                      # Baseline cognitive vars
-                     feature == "n1_imrc" ~ "Baseline Immediate word recall",
+                     feature == "n1_imrc" ~ "Baseline immediate word recall",
                      feature == "n1_dlrc" ~ "Baseline delayed word recall")) %>%
   select(feature, feature_label, num_pct_missing) %>%
   print(n = Inf)
@@ -109,10 +108,6 @@ cat_vars <- c("hukou_30", "occupation_30", "childhood_1st_region",
 
 (cont_vars <- variable_length_mat %>%
     filter(!Var %in% c(binary_vars, ordinal_vars, cat_vars)) %>% pull(Var))
-
-# Check
-length(c(cont_vars, binary_vars, ordinal_vars, cat_vars))
-sum(duplicated(c(cont_vars, binary_vars, ordinal_vars, cat_vars)))
 
 # Check
 length(c(cont_vars, binary_vars, cat_vars, ordinal_vars))
@@ -157,7 +152,7 @@ tictoc::toc()
 imp_pmm_20$loggedEvents # null
 plot(imp_pmm_20)
 # Compared to 40 imputation version (30 iterations). It did not make too much difference.
-# stick with 10 imputations 80 iterations.
+# stick with 20 imputations 60 iterations.
 densityplot(imp_pmm_20)
 
 save(imp_pmm_20, file = here::here("data", "analysis_data", "imp_pmm_20_refradt.RData"))

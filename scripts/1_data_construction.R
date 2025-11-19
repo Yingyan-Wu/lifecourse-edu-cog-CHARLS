@@ -110,71 +110,9 @@ folder_index <- c(1:length(folders))[-c(1, 3, 5, 9)] # main waves only
 
 # Read in function
 read_charls <- function(paths){
-  if (str_detect(paths, "2011") & str_detect(paths, "weights")) {
-    haven::read_dta(paths)
-  } else if (str_detect(paths, "2011")) {
-    haven::read_dta(paths) %>%
-      select(-c("proxy")) 
-  } else if (str_detect(paths, "Health_Status_and_Functioning") &
-             str_detect(paths, "2015")){
-    haven::read_dta(paths) %>%
-      select(-c("xrtype", "versionID", "proxy"))
-  } else if (str_detect(paths, "Family_Information|Weights|Sample_Infor") &
-             str_detect(paths, "2013|2015")){
-    haven::read_dta(paths) %>%
-      select(-c("versionID"))
-    # } else if (str_detect(paths, "2015|2018") &
-    #            str_detect(paths, "Sample_Infor")){
-    #   haven::read_dta(paths) %>%
-    #     select(-c("versionID"))
-  } else if (str_detect(paths, "2013|2015")){
-    haven::read_dta(paths) %>%
-      select(-c("xrtype", "versionID"))
-  } else if (str_detect(paths, "Family_Information") &
-             str_detect(paths, "2018")){
-    haven::read_dta(paths) %>%
-      select(-c("versionID"))
-  } else if (str_detect(paths, "2018|2020") &
-             str_detect(paths, "Weights|Sample_Infor")){
-    haven::read_dta(paths) %>%
-      select(-c("versionID"))
-  } else if (str_detect(paths, "2018") &
-             str_detect(paths, "Health_Status_and_Functioning")){
-    haven::read_dta(paths) %>%
-      select(-c("versionID", "xrtype",
-                "xrgender", "ziwtime"))
-  } else if (str_detect(paths, "2018") &
-             str_detect(paths, "Work_Retirement")){
-    haven::read_dta(paths) %>%
-      select(-c("versionID", "xrtype"))
-  } else if (str_detect(paths, "2018") &
-             str_detect(paths, "Cognition")){
-    haven::read_dta(paths) %>%
-      select(-c("versionID"))
-  } else if (str_detect(paths, "2018")){
-    haven::read_dta(paths) %>%
-      select(-c("versionID",
-                "xrgender", "ziwtime"))
-  } else if (str_detect(paths, "2020") &
-             str_detect(paths, "Health_Status_and_Functioning")){
-    haven::read_dta(paths) %>%
-      select(-c("xrage", "xrtype", "ziwtime", "versionID"))
-  } else if (str_detect(paths, "2020") &
-             str_detect(paths, "Work_Retirement")){
-    haven::read_dta(paths) %>%
-      select(-c("xrage", "ziwtime", "versionID"))
-  } else if (str_detect(paths, "2020") &
-             str_detect(paths, "Family_Information")){
-    haven::read_dta(paths) %>%
-      select(-c("zchildnum", "versionID"))
-  } else {
-    haven::read_dta(paths)
-  }
-  
-  # rename_with(.cols = "proxy",
-  #            function(x){paste0(gsub(".*/(.*)\\..*", "\\1", files),
-  #                               "_", x)})
-  # Add section name to proxy variable name
+  haven::read_dta(paths) %>%
+    select(-any_of(c("versionID", "xrtype", "xrgender", "ziwtime",
+                     "xrage", "zchildnum", "proxy")))
 }
 
 for (i in folder_index){
@@ -310,6 +248,7 @@ rm(list = paste0("charls_", c(paste0("w", 1:5), "lh")))
 
 charls %<>% remove_labels()
 gc()
+
 # proc_freq(harmonized, raeduc_c)
 
 # # Sanity check
@@ -674,7 +613,7 @@ colnames(w5rc_mat)
 w5rc_mat[w5rc_mat != 0 & !is.na(w5rc_mat)] <- 1
 w5rc_mat %<>%
   mutate(across(ends_with("s11"), ~ case_when(.x == 0 ~ NA_real_,
-                                              .x == 11 ~ 0)))
+                                              .x == 1 ~ 0)))
 
 charls %<>%
   mutate(r5imrc_cleaned = case_when(
@@ -825,14 +764,16 @@ charls %<>%
 # with(charls, table(is.na(lh_t002_psu_1_short), is.na(lh_t002_psu_5_short)))
 
 charls %<>%
-  mutate(childhood_1st_resi = lh_t002_province_1_,
-         childhood_1st_region = case_when(
-           str_detect(childhood_1st_resi, "Beijing|Tianjin|Hebei|Shanghai|Jiangsu|Zhejiang|
-               Fujian|Shandong|Guangdong|Hainan") ~ 1, # East
-           str_detect(childhood_1st_resi, "Shanxi|Anhui|Jiangxi|Henan|Hubei|Hunan") ~ 2, # Middle
-           str_detect(childhood_1st_resi, "Mongolia|Guangxi|Chongqing|Sichuan|Guizhou|Yunnan|
-               Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3, # West
-           str_detect(childhood_1st_resi,"Liaoning|Jilin|Heilongjiang") ~ 4)) # Northeast
+  mutate(
+    childhood_1st_resi = lh_t002_province_1_,
+    childhood_1st_region = case_when(
+      str_detect(childhood_1st_resi, "Beijing|Tianjin|Hebei|Shanghai|Jiangsu|Zhejiang|Fujian|Shandong|Guangdong|Hainan") ~ 1, # East
+      str_detect(childhood_1st_resi, "Shanxi|Anhui|Jiangxi|Henan|Hubei|Hunan") ~ 2, # Middle
+      str_detect(childhood_1st_resi, "Mongolia|Guangxi|Chongqing|Sichuan|Guizhou|Yunnan|Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3, # West
+      str_detect(childhood_1st_resi,"Liaoning|Jilin|Heilongjiang") ~ 4)) # Northeast
+
+# Sanity check
+charls %>% with(table(childhood_1st_resi, childhood_1st_region, useNA = "ifany"))
 
 #---- Childhood Rural/urban residence: rarural_child ----
 colnames(charls %>% select(contains("bb006")))
@@ -1161,16 +1102,16 @@ proc_freq(charls, marital_30)
 
 ##---- wave 1 Marital status ----
 charls %<>%
-  mutate(r1mstat_c = case_when(r1mstat %in% c(1, 2) ~ 1,
+  mutate(r1mstat_c = case_when(r1mstat %in% c(1, 3) ~ 1,
                                r1mstat %in% c(4, 5) ~ 2,
                                r1mstat == 7 ~ 3,
                                r1mstat == 8 ~ 4),
-         r1mstat_c_v2 = case_when(r1mstat %in% c(1, 2) ~ 1,
+         r1mstat_c_v2 = case_when(r1mstat %in% c(1, 3) ~ 1,
                                   r1mstat %in% c(4, 5, 8) ~ 2,
                                   r1mstat == 7 ~ 3))
-
-proc_freq(charls, r1mstat_c)
-proc_freq(charls, r1mstat_c_v2)
+# Sanity check
+charls %>% with(table(r1mstat, r1mstat_c, useNA = "ifany"))
+charls %>% with(table(r1mstat, r1mstat_c_v2, useNA = "ifany"))
 
 #---- Residence in adulthood: hrural_v2 ----
 ##---- Wave 1 Rural v.s.urban ----
@@ -1202,16 +1143,14 @@ with(charls %>% filter(is.na(h1rural) & !is.na(h4rural)),
 proc_freq(charls, province_eng) %>% print(n = Inf)
 charls %<>% mutate(
   region_eng = case_when(
-    str_detect(province_eng, "Beijing|Tianjin|Hebei|Shanghai|Jiangsu|Zhejiang|
-               Fujian|Shandong|Guangdong|Hainan") ~ 1, # East
+    str_detect(province_eng, "Beijing|Tianjin|Hebei|Shanghai|Jiangsu|Zhejiang|Fujian|Shandong|Guangdong|Hainan") ~ 1, # East
     str_detect(province_eng, "Shanxi|Anhui|Jiangxi|Henan|Hubei|Hunan") ~ 2, # Central
-    str_detect(province_eng, "Mongolia|Guangxi|Chongqing|Sichuan|Guizhou|Yunnan|
-               Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3, # West
+    str_detect(province_eng, "Mongolia|Guangxi|Chongqing|Sichuan|Guizhou|Yunnan|Tibet|Shaanxi|Gansu|Qinghai|Ningxia|Xinjiang") ~ 3, # West
     str_detect(province_eng,"Liaoning|Jilin|Heilongjiang") ~ 4)) # North East
 
 # Sanity check
 proc_freq(charls, region_eng)
-with(charls, table(region_eng, province_eng, useNA = "ifany"))
+with(charls, table(province_eng, region_eng, useNA = "ifany"))
 
 ##---- Rural/urban residence 30: rural_30 ----
 rural_mat <- charls %>% select(ID, contains(c("lh_t001b_", "lh_t004_", "rural"))) %>%
@@ -1834,6 +1773,69 @@ save(charls_reframe_filtered, charls_selected,
      file = here::here("data", "analysis_data", "charls_selected.RData"))
 
 #---- OLD ----
+# read_charls original function
+# read_charls <- function(paths){
+#   if (str_detect(paths, "2011") & str_detect(paths, "weights")) {
+#     haven::read_dta(paths)
+#   } else if (str_detect(paths, "2011")) {
+#     haven::read_dta(paths) %>%
+#       select(-c("proxy")) 
+#   } else if (str_detect(paths, "Health_Status_and_Functioning") &
+#              str_detect(paths, "2015")){
+#     haven::read_dta(paths) %>%
+#       select(-c("xrtype", "versionID", "proxy"))
+#   } else if (str_detect(paths, "Family_Information|Weights|Sample_Infor") &
+#              str_detect(paths, "2013|2015")){
+#     haven::read_dta(paths) %>%
+#       select(-c("versionID"))
+#     # } else if (str_detect(paths, "2015|2018") &
+#     #            str_detect(paths, "Sample_Infor")){
+#     #   haven::read_dta(paths) %>%
+#     #     select(-c("versionID"))
+#   } else if (str_detect(paths, "2013|2015")){
+#     haven::read_dta(paths) %>%
+#       select(-c("xrtype", "versionID"))
+#   } else if (str_detect(paths, "Family_Information") &
+#              str_detect(paths, "2018")){
+#     haven::read_dta(paths) %>%
+#       select(-c("versionID"))
+#   } else if (str_detect(paths, "2018|2020") &
+#              str_detect(paths, "Weights|Sample_Infor")){
+#     haven::read_dta(paths) %>%
+#       select(-c("versionID"))
+#   } else if (str_detect(paths, "2018") &
+#              str_detect(paths, "Health_Status_and_Functioning")){
+#     haven::read_dta(paths) %>%
+#       select(-c("versionID", "xrtype",
+#                 "xrgender", "ziwtime"))
+#   } else if (str_detect(paths, "2018") &
+#              str_detect(paths, "Work_Retirement")){
+#     haven::read_dta(paths) %>%
+#       select(-c("versionID", "xrtype"))
+#   } else if (str_detect(paths, "2018") &
+#              str_detect(paths, "Cognition")){
+#     haven::read_dta(paths) %>%
+#       select(-c("versionID"))
+#   } else if (str_detect(paths, "2018")){
+#     haven::read_dta(paths) %>%
+#       select(-c("versionID",
+#                 "xrgender", "ziwtime"))
+#   } else if (str_detect(paths, "2020") &
+#              str_detect(paths, "Health_Status_and_Functioning")){
+#     haven::read_dta(paths) %>%
+#       select(-c("xrage", "xrtype", "ziwtime", "versionID"))
+#   } else if (str_detect(paths, "2020") &
+#              str_detect(paths, "Work_Retirement")){
+#     haven::read_dta(paths) %>%
+#       select(-c("xrage", "ziwtime", "versionID"))
+#   } else if (str_detect(paths, "2020") &
+#              str_detect(paths, "Family_Information")){
+#     haven::read_dta(paths) %>%
+#       select(-c("zchildnum", "versionID"))
+#   } else {
+#     haven::read_dta(paths)
+#   }
+# }
 # # ---- Rural/urban residence 30 ----
 # residence_mat <- charls %>%
 #   select(ID, rayear_30, lh_t001b_1_1_, lh_t001b_1_2_, lh_t001b_1_3_, lh_t001b_1_4_,

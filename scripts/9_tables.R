@@ -41,10 +41,6 @@ ID_select <- imp_pmm_stacked %>% pull(ID) %>% unique()
 birth_year_check <- charls %>% filter(ID %in% ID_select) %>% select(ID, rabyear_v2)
 proc_summ(birth_year_check$rabyear_v2)
 
-with(birth_year_check, table(imp))
-
-
-
 #---- Labelled data for Table 1 ----
 labelled_data <- imp_pmm_stacked %>%
   dplyr::mutate(across(c("female", "first_child_v2", "rarural_child",
