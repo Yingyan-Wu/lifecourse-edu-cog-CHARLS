@@ -33,7 +33,8 @@ DataExplorer::plot_missing(charls_forimp)
 missing_summary <- DataExplorer::profile_missing(charls_forimp) %>%
   mutate(pct_missing = pct_missing*100) %>%
   arrange(pct_missing) %>%
-  mutate(num_pct_missing = paste0(num_missing, " (", round(pct_missing, 1), "%)")) %>%
+  mutate(num_pct_missing = paste0(num_missing, " (", 
+                                  sprintf(pct_missing, fmt = '%#.1f'), "%)")) %>%
   mutate(feature_label = 
            case_when(feature == "n1_agey_v3" ~ "Baseline age (first participated wave) in years",
                      feature == "continuing_edu" ~ "Adulthood education",
