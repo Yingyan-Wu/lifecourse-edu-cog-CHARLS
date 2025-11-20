@@ -5,7 +5,7 @@ Wu Y, Zhou Y, Rojas-Saunero LP, Chen R, Gross AL, Nianogo R, Ritz BR, Mayeda ER.
 
 ## Table of contents
 1. [Project Descriptions](#proj_desc)
-2. [Scripts description](#script_desc)
+2. [Scripts Descriptions](#script_desc)
 
 ## Project Descriptions <a name="proj_desc"></a>
 Limited research exists regarding education in different life stage and late-life cognitive health. Existing evidence and theroy suggest that completing as much education as possible early in life rather than adulthood may shape cognitive outcomes differently. We used nationally representative data and a target trial framework to investigate the joint effect of early life educational level and participation in adulthood education programs on memory function and change among Chinese middle-aged and older adults.
