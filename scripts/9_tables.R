@@ -36,10 +36,42 @@ imp_pmm_stacked %<>%
            childhood_edu == 3 & continuing_edu_2cat == 1 ~ 7))
 
 #---- Check birth year ----
+imp_pmm_stacked %>%
+  filter(imp == 1) %>%
+  select(ID, n1_wtrespb_rscl)  %>%
+  with(summary(n1_wtrespb_rscl))
+
+imp_pmm_stacked %>%
+  filter(imp == 2) %>%
+  select(ID, n1_wtrespb_rscl)  %>%
+  with(summary(n1_wtrespb_rscl))
+
 load(here::here("data", "analysis_data", "charls_cleaned.RData"))
-ID_select <- imp_pmm_stacked %>% pull(ID) %>% unique()
-birth_year_check <- charls %>% filter(ID %in% ID_select) %>% select(ID, rabyear_v2)
-proc_summ(birth_year_check$rabyear_v2)
+birthyear_check <- charls %>% select(ID, rabyear_v2) %>%
+  right_join(imp_pmm_stacked %>% select(ID, imp, n1_wtrespb_rscl, 
+                                        continuing_edu_2cat), by = "ID")
+birthyear_svy <- survey::svydesign(~ 1, data = birthyear_check, 
+                                   weights = ~n1_wtrespb_rscl)
+birth_year_stats <- svyby(~rabyear_v2, ~imp, birthyear_svy, svyquantile,
+                          quantiles = c(0.25, 0.5, 0.75), ci = FALSE,
+                          keep.var = FALSE,
+                          vartype = NULL) %>%
+  set_colnames(c("imp", "q1_birthyear", "median_birthyear", "q3_birthyear")) %>%
+  summarize(q1_rabyear = mean(q1_birthyear),
+            median_rabyear = mean(median_birthyear),
+            q3_rabyear = mean(q3_birthyear)) %>% print()
+
+birth_year_strat <- svyby(~rabyear_v2, ~continuing_edu_2cat + imp, 
+                          birthyear_svy, svyquantile,
+                          quantiles = c(0.25, 0.5, 0.75), ci = FALSE,
+                          keep.var = FALSE,
+                          vartype = NULL) %>%
+  set_colnames(c("continuing_edu_2cat", "imp", "q1_birthyear", 
+                 "median_birthyear", "q3_birthyear")) %>%
+  group_by(continuing_edu_2cat) %>%
+  summarize(q1_birthyear = mean(q1_birthyear),
+            median_birthyear = mean(median_birthyear),
+            q3_birthyear = mean(q3_birthyear)) %>% print()
 
 #---- Labelled data for Table 1 ----
 labelled_data <- imp_pmm_stacked %>%
@@ -99,7 +131,6 @@ labelled_data <- imp_pmm_stacked %>%
     n1_agey_v3 = "Baseline age (first participated wave) in years",
     continuing_edu_2cat = "Adulthood education",
     edu_cat = "Education level (%)",
-    # rabyear_v2 = "Birth year",
     female = "Female (%)",
     first_child_v2 = "Birth order: first child (%)",
     rameduc_c = "Mother's education level (%)", 
@@ -306,15 +337,15 @@ imp_pmm_stacked %>%
          w2_bd007_w2_1, w3_bd007_w2_1, w4_bd007_w2_1) %>%
   apply(., 2, table, useNA = "ifany")
 # imp_pmm_stacked$
-  
-  charls %>% dplyr::select(w4_bd007_w2_1_s1, w4_bd007_w2_1_s2,
-                          w4_bd007_w2_1_s3, w4_bd007_w2_1_s4,
-                          w4_bd007_w2_1_s5, w4_bd007_w2_1_s6,
-                          w4_bd007_w2_1_s7, w4_bd007_w2_1_s8) %>%
+
+charls %>% dplyr::select(w4_bd007_w2_1_s1, w4_bd007_w2_1_s2,
+                         w4_bd007_w2_1_s3, w4_bd007_w2_1_s4,
+                         w4_bd007_w2_1_s5, w4_bd007_w2_1_s6,
+                         w4_bd007_w2_1_s7, w4_bd007_w2_1_s8) %>%
   apply(., 2, table)
-  
-  charls %>% dplyr::select(w4_bd007_w2_1) %>%
-    apply(., 2, table)
+
+charls %>% dplyr::select(w4_bd007_w2_1) %>%
+  apply(., 2, table)
 
 # #---- OLD ----
 # #---- unstratified Table 1 ----
