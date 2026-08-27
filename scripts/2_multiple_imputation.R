@@ -158,6 +158,65 @@ densityplot(imp_pmm_20)
 
 save(imp_pmm_20, file = here::here("data", "analysis_data", "imp_pmm_20_refradt.RData"))
 
+# ggplot version of trace plot and density plots
+trace_plot_vars <- setdiff(c(binary_vars, cat_vars, ordinal_vars), "female")
+var_labels <- c(
+  n1_housewka = "IADL: House/garden work",
+  n1_mealsa = "IADL: Meal preparation",
+  n1_medsa = "IADL: Medication management",
+  n1_shopa = "IADL: Grocery shopping",
+  n1_moneya = "IADL: Finance management",
+  n1_socwk = "Social activities",
+  first_child_v2 = "Birth order: First child",
+  n1_hibpe = "Self-reported hypertension",
+  n1_stroke = "Self-reported stroke",
+  n1_hearte = "Self-reported heart disease",
+  n1_cancre = "Self-reported cancer",
+  n1_diabe = "Self-reported diabetes",
+  rarural_child = "Childhood rural residence",
+  rural_30 = "Rural residence at age 30",
+  marital_30  = "Marital status at age 30",
+  rafoccup_c = "Father's occupation",
+  ramoccup_c = "Mother's occupation",
+  hukou_30 = "Hukou status at age 30",
+  occupation_30 = "Occupation at age 30",
+  childhood_1st_region = "Childhood first region",
+  first_hukou = "First hukou status",
+  childhood_edu = "Early-life education",
+  continuing_edu = "Adult education",
+  rameduc_c = "Mother's education",
+  rafeduc_c = "Father's education",
+  n1_shlta = "Self-rated health")
+
+p_load("ggmice")
+g <- ceiling(seq_along(trace_plot_vars) / 5)
+# fold a small last group into the one before it
+if (max(g) > 1 && sum(g == max(g)) < 3) g[g == max(g)] <- max(g) - 1
+trace_plot_groups <- split(trace_plot_vars, g)
+trace_plot_groups 
+
+trace_plots <- lapply(seq_along(trace_plot_groups), function(i) {
+  
+  vars <- trace_plot_groups[[i]]
+  
+  p <- plot_trace(imp_pmm_20, vrb = !!vars)
+  # Replace variable names with descriptive labels
+  p$data$vrb <- factor(p$data$vrb, levels = vars, labels = var_labels[vars])
+  
+  # Put variable labels on top
+  p <- p + facet_grid(.ms ~ vrb, scales = "free_y",
+                      labeller = labeller(.ms  = c(mean = "Mean", sd = "SD"),
+                                          vrb  = label_wrap_gen(width = 20))) +
+    theme_bw() +
+    theme(legend.position = "none",
+          strip.text.x = element_text(size = 9, lineheight = 1.1),
+          strip.placement = "outside")
+  
+  ggsave(plot = p, filename = here::here("output", "figures", "trace_plots", 
+                    paste0("trace_plot_", i, ".png")), width = 9, height = 7)
+})
+
+
 #---- Stack imputed dataset ----
 load(here::here("data", "analysis_data", "imp_pmm_20_refradt.RData"))
 imp_num = 20

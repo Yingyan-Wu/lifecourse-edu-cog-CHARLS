@@ -279,23 +279,23 @@ for (dat in c("predMSM", "mean_PO")){
     pivot_wider(names_from = estimate, values_from = rc) %>%
     mutate(label = case_when(
       intervention == "00" ~ "No formal education/illiterate",
-      intervention == "10" ~ "Elementary school & No adult edu",
-      intervention == "20" ~ "Middle school & No adult edu",
-      intervention == "30" ~ "College & No adult edu",
+      intervention == "10" ~ "Primary school & no adult edu",
+      intervention == "20" ~ "Secondary school & no adult edu",
+      intervention == "30" ~ "College & no adult edu",
       intervention == "01" ~ "Only adult edu",
-      intervention == "11" ~ "Elementary school & adult edu",
-      intervention == "21" ~ "Middle school & adult edu",
+      intervention == "11" ~ "Primary school & adult edu",
+      intervention == "21" ~ "Secondary school & adult edu",
       intervention == "31" ~ "College & adult edu"),
       label_adult = case_when(
-        intervention %in% c("00", "10", "20", "30") ~ "No adult edu",
+        intervention %in% c("00", "10", "20", "30") ~ "no adult edu",
         intervention %in% c("01", "11", "21", "31") ~ "adult edu"),
       comp_childhood_only = case_when(intervention %in% c(00, 10, 20, 30) ~ 1,
                                       TRUE ~ 0),
       comp_adult_only = case_when(intervention %in% c("00", "01") ~ 1,
                                   TRUE ~ 0),
       comp_adult_childhood = case_when(intervention %in% c("00", "01") ~ "No early-life formal education/illiterate",
-                                       intervention %in% c(10, 11) ~ "Elementary school",
-                                       intervention %in% c(20, 21) ~ "Middle school",
+                                       intervention %in% c(10, 11) ~ "Primary school",
+                                       intervention %in% c(20, 21) ~ "Secondary school",
                                        intervention %in% c(30, 31) ~ "College"),
       intervention = factor(intervention, 
                             levels = c("00", "01", "10", "11", "20", "21", "30", "31"))) %>%
@@ -391,7 +391,10 @@ for (anlys in c("main", "sens", "sens2")){
           legend.text = element_text(size = 11, color = "black"))
   ggsave(p, file = here::here("output", "figures", 
                               paste0(anlys, "_predMSM_imrc_dlrc_GEE.png")), 
-         device = "png", width = 14, height = 7, units = "in", dpi = 300)
+         device = "png", width = 14, height = 7, units = "in", dpi = 600)
+  ggsave(p, file = here::here("output", "figures", 
+                              paste0(anlys, "_predMSM_imrc_dlrc_GEE.pdf")), 
+         device = "pdf", width = 14, height = 7, units = "in", dpi = 600)
   assign(paste0("p_", anlys), p)
 }
 rm(p)
@@ -418,25 +421,25 @@ imrc_dlrc_predMSM_noPE_contrasts_fmt <- temp %>%
   set_colnames(c("analysis", "outcome", "fu_time_yrs", 
                  "No formal education",
                  "Only adult education",
-                 "Elementary school or less & No adult edu",
-                 "Elementary school or less & adult edu",
-                 "Middle school level & No adult edu",
-                 "Middle school level & adult edu",
-                 "College and above & No adult edu",
+                 "Primary school or less & no adult edu",
+                 "Primary school or less & adult edu",
+                 "Secondary school level & no adult edu",
+                 "Secondary school level & adult edu",
+                 "College and above & no adult edu",
                  "College and above & adult edu",
                  # Both edu vs. No
                  "Only adult edu vs.\nNo formal education",
-                 "Elementary school or less & adult edu vs.\nNo formal education",
-                 "Middle school level & adult edu vs.\nNo formal education",
+                 "Primary school or less & adult edu vs.\nNo formal education",
+                 "Secondary school level & adult edu vs.\nNo formal education",
                  "College and above & adult edu vs.\nNo formal education",
                  # adult vs no in the same early life intervention group
-                 "Elementary school or less & adult edu vs.\nElementary school or less & No adult edu",
-                 "Middle school level & adult edu vs.\nMiddle school level & No adult edu",
-                 "College and above & adult edu vs.\nCollege and above & No adult edu",
+                 "Primary school or less & adult edu vs.\nPrimary school or less & no adult edu",
+                 "Secondary school level & adult edu vs.\nSecondary school level & no adult edu",
+                 "College and above & adult edu vs.\nCollege and above & no adult edu",
                  # Only early life edu vs. No
-                 "Elementary school or less & No adult edu vs.\nNo formal education",
-                 "Middle school level & No adult edu vs.\nNo formal education",
-                 "College and above & No adult edu vs.\nNo formal education"
+                 "Primary school or less & no adult edu vs.\nNo formal education",
+                 "Secondary school level & no adult edu vs.\nNo formal education",
+                 "College and above & no adult edu vs.\nNo formal education"
   ))
 writexl::write_xlsx(list(
   "main" = imrc_dlrc_predMSM_noPE_contrasts_fmt %>% filter(analysis == "main") %>% select(-analysis), 
@@ -452,11 +455,11 @@ contrasts_main_no_formal <- imrc_dlrc_predMSM_noPE_contrasts_long %>%
          str_detect(intervention_contrasts, "_00")) %>%
   mutate(label = case_when(
     intervention_contrasts == "01_00" ~ "Only adult education",
-    intervention_contrasts == "10_00" ~ "Elementary school & No adult education",
-    intervention_contrasts == "11_00" ~ "Elementary school & adult education",
-    intervention_contrasts == "20_00" ~ "Middle school & No adult education",
-    intervention_contrasts == "21_00" ~ "Middle school & adult education",
-    intervention_contrasts == "30_00" ~ "College & No adult education",
+    intervention_contrasts == "10_00" ~ "Primary school & no adult education",
+    intervention_contrasts == "11_00" ~ "Primary school & adult education",
+    intervention_contrasts == "20_00" ~ "Secondary school & no adult education",
+    intervention_contrasts == "21_00" ~ "Secondary school & adult education",
+    intervention_contrasts == "30_00" ~ "College & no adult education",
     intervention_contrasts == "31_00" ~ "College & adult education")) %>%
   pivot_wider(names_from = "estimate", 
               values_from = "rc_change") %>%
@@ -469,11 +472,11 @@ contrasts_main_no_formal <- imrc_dlrc_predMSM_noPE_contrasts_long %>%
   mutate(label = factor(label, 
                         levels = c("Ref: No formal education/illiterate",
                                    "Only adult education",
-                                   "Elementary school & No adult education",
-                                   "Elementary school & adult education",
-                                   "Middle school & No adult education",
-                                   "Middle school & adult education",
-                                   "College & No adult education",
+                                   "Primary school & no adult education",
+                                   "Primary school & adult education",
+                                   "Secondary school & no adult education",
+                                   "Secondary school & adult education",
+                                   "College & no adult education",
                                    "College & adult education")),
          outcome = 
            factor(case_when(outcome == "imrc" ~ "Immediate word recall",
@@ -510,7 +513,10 @@ contrasts_main_no_formal %>%
         legend.text = element_text(size = 11, color = "black"))
 ggsave(here::here("output", "figures", 
                   "contrasts_main_no_formal_imrc_dlrc_GEE.png"), 
-       device = "png", width = 12, height = 7, units = "in", dpi = 300)
+       device = "png", width = 12, height = 7, units = "in", dpi = 600)
+ggsave(here::here("output", "figures", 
+                  "contrasts_main_no_formal_imrc_dlrc_GEE.pdf"), 
+       device = "pdf", width = 12, height = 7, units = "in", dpi = 600)
 
 ##---- Contrasts same childhood ----
 contrasts_main_same_childhood <- imrc_dlrc_predMSM_noPE_contrasts_long %>% 
@@ -519,14 +525,14 @@ contrasts_main_same_childhood <- imrc_dlrc_predMSM_noPE_contrasts_long %>%
          intervention_contrasts %in% c("01_00", "11_10", "21_20", "31_30")) %>%
   mutate(label = case_when(
     intervention_contrasts == "01_00" ~ "Only adult education vs. \nNo formal education/illiterate",
-    intervention_contrasts == "11_10" ~ "Elementary school & adult education vs. \nElementary school & No adult education",
-    intervention_contrasts == "21_20" ~ "Middle school & adult education vs. \nMiddle school & No adult education",
-    intervention_contrasts == "31_30" ~ "College & adult education vs. \nCollege & No adult education")) %>%
+    intervention_contrasts == "11_10" ~ "Primary school & adult education vs. \nPrimary school & no adult education",
+    intervention_contrasts == "21_20" ~ "Secondary school & adult education vs. \nSecondary school & no adult education",
+    intervention_contrasts == "31_30" ~ "College & adult education vs. \nCollege & no adult education")) %>%
   mutate(label = factor(label, 
                         levels = c("Only adult education vs. \nNo formal education/illiterate",
-                                   "Elementary school & adult education vs. \nElementary school & No adult education",
-                                   "Middle school & adult education vs. \nMiddle school & No adult education",
-                                   "College & adult education vs. \nCollege & No adult education")),
+                                   "Primary school & adult education vs. \nPrimary school & no adult education",
+                                   "Secondary school & adult education vs. \nSecondary school & no adult education",
+                                   "College & adult education vs. \nCollege & no adult education")),
          outcome = 
            factor(case_when(outcome == "imrc" ~ "Immediate word recall",
                             outcome == "dlrc" ~ "Delayed word recall")),
@@ -560,7 +566,10 @@ contrasts_main_same_childhood %>%
         legend.text = element_text(size = 11, color = "black"))
 ggsave(here::here("output", "figures", 
                   "contrasts_main_same_childhood_imrc_dlrc_GEE.png"),
-       device = "png", width = 12, height = 7, units = "in", dpi = 300)
+       device = "png", width = 12, height = 7, units = "in", dpi = 600)
+ggsave(here::here("output", "figures", 
+                  "contrasts_main_same_childhood_imrc_dlrc_GEE.pdf"),
+       device = "pdf", width = 12, height = 7, units = "in", dpi = 600)
 
 # #---- Figures for Dissertation defense ----
 # color_palette <- c("#AA812F", "#F8BC44", "#4B7F3D", "#8BED71", 
@@ -658,11 +667,11 @@ ggsave(here::here("output", "figures",
 #   set_colnames(c("analysis", "outcome", "fu_time_yrs", 
 #                  "No formal education",
 #                  "Only adult education",
-#                  "Elementary school or less & No adult edu",
-#                  "Elementary school or less & adult edu",
-#                  "Middle school level & No adult edu",
-#                  "Middle school level & adult edu",
-#                  "College and above & No adult edu",
+#                  "Primary school or less & no adult edu",
+#                  "Primary school or less & adult edu",
+#                  "Secondary school level & no adult edu",
+#                  "Secondary school level & adult edu",
+#                  "College and above & no adult edu",
 #                  "College and above & adult edu"))
 # writexl::write_xlsx(list(
 #   "main" = imrc_dlrc_predMSM_noPE_fmt %>% filter(analysis == "main") %>% select(-analysis), 
@@ -753,16 +762,16 @@ ggsave(here::here("output", "figures",
 # CI_forplot %<>%
 #   mutate(
 #     label = case_when(
-#       str_detect(term, "11_00") ~ "Elementary school or less & adult edu vs.\nNo formal education",
-#       str_detect(term, "21_00") ~ "Middle school level & adult edu vs.\nNo formal education",
+#       str_detect(term, "11_00") ~ "Primary school or less & adult edu vs.\nNo formal education",
+#       str_detect(term, "21_00") ~ "Secondary school level & adult edu vs.\nNo formal education",
 #       str_detect(term, "31_00") ~ "College and above & adult edu vs.\nNo formal education",
 #       str_detect(term, "01_00") ~ "Only adult edu vs.\nNo formal education",
-#       str_detect(term, "11_10") ~ "Elementary school or less & adult edu vs.\nElementary school or less & No adult edu",
-#       str_detect(term, "21_20") ~ "Middle school level & adult edu vs.\nMiddle school level & No adult edu",
-#       str_detect(term, "31_30") ~ "College and above & adult edu vs.\nCollege and above & No adult edu",
-#       str_detect(term, "10_00") ~ "Elementary school or less & No adult edu vs.\nNo formal education",
-#       str_detect(term, "20_00") ~ "Middle school level & No adult edu vs.\nNo formal education",
-#       str_detect(term, "30_00") ~ "College and above & No adult edu vs.\nNo formal education")) %>%
+#       str_detect(term, "11_10") ~ "Primary school or less & adult edu vs.\nPrimary school or less & no adult edu",
+#       str_detect(term, "21_20") ~ "Secondary school level & adult edu vs.\nSecondary school level & no adult edu",
+#       str_detect(term, "31_30") ~ "College and above & adult edu vs.\nCollege and above & no adult edu",
+#       str_detect(term, "10_00") ~ "Primary school or less & no adult edu vs.\nNo formal education",
+#       str_detect(term, "20_00") ~ "Secondary school level & no adult edu vs.\nNo formal education",
+#       str_detect(term, "30_00") ~ "College and above & no adult edu vs.\nNo formal education")) %>%
 #   arrange(analysis, outcome)
 # 
 # CI_forplot %<>%
