@@ -76,6 +76,7 @@ birth_year_strat <- svyby(~rabyear_v2, ~continuing_edu_2cat + imp,
 #---- Labelled data for Table 1 ----
 labelled_data <- imp_pmm_stacked %>%
   dplyr::mutate(across(c("female", "first_child_v2", "rarural_child",
+                         "ramoccup_c", "rafoccup_c",
                          # "continuing_edu_2cat",
                          "marital_30", "rural_30", 
                          "n1_iadl_2cat",  "n1_hibpe", "n1_stroke", 
@@ -87,18 +88,18 @@ labelled_data <- imp_pmm_stacked %>%
                                  labels = c("Adulthood education", "No adulthood education")),
     rameduc_c = factor(rameduc_c, levels = c(0, 1, 2, 3),
                        labels = c("No formal education (illiterate)",
-                                  "Elementary school or less",
+                                  "Primary school",
                                   "Middle school",
-                                  "College and above")),
+                                  "College")),
     rafeduc_c = factor(rafeduc_c, levels = c(0, 1, 2, 3),
                        labels = c("No formal education (illiterate)",
-                                  "Elementary school or less",
+                                  "Primary school",
                                   "Middle school",
-                                  "College and above")),
-    ramoccup_c = factor(ramoccup_c, levels = c(1, 0),
-                        labels = c("Non-agricultural", "Agricultural")),
-    rafoccup_c = factor(rafoccup_c, levels = c(1, 0),
-                        labels = c("Non-agricultural", "Agricultural")),
+                                  "College")),
+    # ramoccup_c = factor(ramoccup_c, levels = c(1, 0),
+    #                     labels = c("Non-agricultural", "Agricultural")),
+    # rafoccup_c = factor(rafoccup_c, levels = c(1, 0),
+    #                     labels = c("Non-agricultural", "Agricultural")),
     childhood_1st_region = factor(childhood_1st_region, levels = c(1, 2, 3, 4),
                                   labels = c("East", "Middle", "West", "Northeast")),
     first_hukou = factor(first_hukou, levels = c(1, 2, 3),
@@ -106,9 +107,9 @@ labelled_data <- imp_pmm_stacked %>%
                                     "Unified residence hukou")),
     childhood_edu = factor(childhood_edu, levels = c(0, 1, 2, 3),
                            labels = c("No formal education (illiterate)",
-                                      "Elementary school or less",
+                                      "Primary school",
                                       "Middle school",
-                                      "College and above")),
+                                      "College")),
     occupation_30_5cat = factor(occupation_30_5cat, levels = c(1, 2, 3, 4, 5),
                                 labels = c("Agriculture related",
                                            "Non-agriculture related",
@@ -119,14 +120,15 @@ labelled_data <- imp_pmm_stacked %>%
                       labels = c("Agricultural hukou", "Non-agricultural hukou",
                                  "Unified residence hukou")),
     edu_cat = factor(edu_cat, levels = 0:7,
-                     labels = c("No Formal Education (Illiterate)",
+                     labels = c("No formal education/illiterate & no adult education",
                                 "Only adulthood education",
-                                "Elementary school or less only",
-                                "Elementary school or less + adulthood education",
-                                "Middle school level only",
-                                "Middle school level + adulthood education",
-                                "College and above only",
-                                "College and above + adulthood education"))) %>%
+                                "Primary school & no adult education",
+                                "Primary school & adulthood education",
+                                "Secondary school & no adult education",
+                                "Secondary school & adulthood education",
+                                "College & no adult education",
+                                "College & adulthood education"
+                                ))) %>%
   labelled::set_variable_labels(
     n1_agey_v3 = "Baseline age (first participated wave) in years",
     continuing_edu_2cat = "Adulthood education",
@@ -287,15 +289,203 @@ table1_cont_weighted <- temp_cont_mean %>%
 
 ##---- Full table 1 ----
 table1_weighted <- rbind(table1_cont_weighted[1, ], # Baseline age
-                         table1_cat_weighted[1:46, ], # early-life and early-adulthood cat covariates
+                         table1_cat_weighted[1:29, ], # early-life covariates
                          table1_cont_weighted[2, ], # chldstate_30
-                         table1_cat_weighted[47:51, ], # baseline health cat covariates
+                         table1_cat_weighted[30:41, ], # early-adulthood cat covariates
+                         table1_cat_weighted[42:47, ], # baseline health cat covariates
                          table1_cont_weighted[3:6, ]# CESD, imrc, dlrc, f/u time
 ) 
 
 ##---- Save the output ----
 writexl::write_xlsx(table1_weighted, 
                     here::here("output", "tables", "table1_imp_weighted_stratified.xlsx"))
+
+#---- 8 group stratified table 1 ----
+n_imp = 20
+##---- categorical ----
+cat_imp_svy <- labelled_data %>%
+  select(edu_cat,
+         # Early life predictors
+         female,
+         first_child_v2, 
+         rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c, 
+         childhood_1st_region, rarural_child, 
+         first_hukou, 
+         # Early-adulthood predictors
+         occupation_30_5cat, marital_30, hukou_30, rural_30,
+         n1_iadl_2cat, n1_hibpe, n1_stroke, n1_hearte, n1_cancre, n1_diabe,
+         # baseline weights
+         n1_wtrespb_rscl) %>%
+  survey::svydesign(~ 1, data = ., weights = ~n1_wtrespb_rscl)
+
+temp_cat_weighted <- tbl_svysummary(
+  data = cat_imp_svy,
+  statistic = list(all_categorical() ~ c("{n_unweighted} {p}")), # For latter splitting
+  digits = all_categorical() ~ 1,
+  by = "edu_cat",
+  missing = "no") %>%
+  add_overall() %>%
+  bold_labels()
+
+temp_cat_weighted %>% as_flex_table()
+
+stat_cols <- grep("^stat_", temp_cat_weighted$table_styling$header$column)
+unwtd_n <- temp_cat_weighted$table_styling$header$modify_stat_n_unweighted[stat_cols]
+wtd_n   <- temp_cat_weighted$table_styling$header$modify_stat_n[stat_cols]
+
+group_labels <- c("Overall",
+  "No formal education/illiterate & no adult education",
+  "Only adulthood education",
+  "Primary school & no adult education",
+  "Primary school & adulthood education",
+  "Secondary school & no adult education",
+  "Secondary school & adulthood education",
+  "College & no adult education",
+  "College & adulthood education")
+
+table1_headers <- c(
+  "Characteristic",
+  paste0(group_labels,
+         " \nn=", prettyNum(round(as.numeric(unwtd_n) / n_imp), big.mark = ","),
+         "\nWeighted n=", prettyNum(round(as.numeric(wtd_n) / n_imp), big.mark = ","))
+)
+
+fmt_cell <- function(x, n_imp) {
+  parts <- stringr::str_split_fixed(x, " ", 2)# col1 = count, col2 = everything else
+  cnt <- prettyNum(round(as.numeric(gsub(",", "", parts[, 1])) / n_imp), big.mark = ",")
+  out <- paste0(cnt, " (", parts[, 2], ")")
+  out[is.na(x) | trimws(x) == ""] <- NA_character_
+  out
+}
+
+raw_cols <- paste0("grp", seq_along(group_labels))
+
+table1_cat_weighted <- temp_cat_weighted %>%
+  as_tibble() %>%
+  set_colnames(c("Characteristic", raw_cols)) %>%
+  filter(row_number() <= n() - 1) %>% # drop median/IQR-of-weights row
+  mutate(across(all_of(raw_cols), ~ fmt_cell(.x, n_imp))) %>%
+  set_colnames(table1_headers)
+
+table1_cat_weighted[table1_cat_weighted == "NA (NA)"] <- NA
+
+##---- continuous ----
+# Every continuous variable was imputed.
+cont_vars <- c("n1_agey_v3", "chldstate_30", "n1_cesd10_cleaned",
+               "n1_imrc", "n1_dlrc", "max_fu_time")
+strata_var   <- "edu_cat"
+group_levels <- c("No formal education/illiterate & no adult education",
+                  "Only adulthood education",
+                  "Primary school & no adult education",
+                  "Primary school & adulthood education",
+                  "Secondary school & no adult education",
+                  "Secondary school & adulthood education",
+                  "College & no adult education",
+                  "College & adulthood education")
+
+grp_id <- c("overall", paste0("g", seq_along(group_levels)))   # safe internal names
+
+# Overall + one subset per level, in header order
+make_designs <- function(dsn) {
+  out <- c(list(dsn),
+           lapply(group_levels,
+                  function(g) subset(dsn, dsn$variables[[strata_var]] == g)))
+  names(out) <- grp_id
+  out
+}
+
+# Weighted means (pooled data, as before)
+charls_imp_svy <- labelled_data %>%
+  survey::svydesign(~1, data = ., weights = ~n1_wtrespb_rscl)
+
+mean_mat <- lapply(make_designs(charls_imp_svy), function(d)
+  svymean(reformulate(cont_vars), d, na.rm = TRUE) %>%
+    as.data.frame() %>% dplyr::select(-SE)) %>%
+  do.call(cbind, .) %>%
+  set_colnames(paste0(grp_id, "_mean"))
+
+# Weighted variances, averaged across imputations
+temp_cont_tib <- data.frame()
+for (i in 1:n_imp) {
+  d_i <- labelled_data %>%
+    filter(imp == i) %>%
+    dplyr::select(all_of(cont_vars), all_of(strata_var), n1_wtrespb_rscl) %>%
+    survey::svydesign(~1, data = ., weights = ~n1_wtrespb_rscl)
+  
+  var_i <- purrr::imap_dfr(make_designs(d_i), function(d, nm) {
+    svyvar(reformulate(cont_vars), d, na.rm = TRUE) %>%
+      as.data.frame() %>% dplyr::select(-SE) %>% unique() %>%
+      as.matrix() %>% diag() %>% t() %>% as_tibble() %>%
+      set_colnames(cont_vars) %>%
+      mutate(grp = nm)
+  })
+  
+  temp_cont_tib %<>% rbind(var_i %>% mutate(imp = i))
+}
+
+temp_cont_var <- temp_cont_tib %>%
+  mutate(grp = factor(grp, levels = grp_id)) %>%      # keeps column order
+  group_by(grp) %>%
+  dplyr::summarize(across(all_of(cont_vars), mean), .groups = "drop") %>%
+  arrange(grp) %>%
+  as.data.frame()
+
+sd_mat <- t(temp_cont_var %>% dplyr::select(all_of(cont_vars))) %>%
+  sqrt() %>%
+  set_colnames(paste0(grp_id, "_sd"))
+
+# Assemble mean and SD
+cells <- Map(function(m, s) paste0(sprintf("%#.1f", m), " (", sprintf("%#.1f", s), ")"),
+             as.data.frame(mean_mat), as.data.frame(sd_mat))
+
+table1_cont_weighted <- bind_cols(
+  tibble(Characteristic = var_label(labelled_data[, cont_vars]) %>% unlist()),
+  as_tibble(cells)
+) %>%
+  set_colnames(table1_headers)
+
+##---- Full table 1 ----
+table1_weighted_cat8 <- rbind(table1_cont_weighted[1, ], # Baseline age
+                         table1_cat_weighted[1:24, ], # early-life covariates
+                         table1_cont_weighted[2, ], # chldstate_30
+                         table1_cat_weighted[25:36, ], # early-adulthood cat covariates
+                         table1_cat_weighted[37:42, ], # baseline health cat covariates
+                         table1_cont_weighted[3:6, ]# CESD, imrc, dlrc, f/u time
+) 
+
+##---- Save the output ----
+writexl::write_xlsx(table1_weighted_cat8, 
+                    here::here("output", "tables", "table1_imp_weighted_stratified_cat8.xlsx"))
+
+
+##---- 8 group birth year ----
+strata_var   <- "edu_cat"    # <- your 8-level factor
+load(here::here("data", "analysis_data", "charls_cleaned.RData"))
+
+birthyear_check <- charls %>%
+  select(ID, rabyear_v2) %>%
+  right_join(imp_pmm_stacked %>%
+               select(ID, imp, n1_wtrespb_rscl, all_of(strata_var)),
+             by = "ID")
+
+birthyear_svy <- survey::svydesign(~1, data = birthyear_check,
+                                   weights = ~n1_wtrespb_rscl)
+
+## Stratified by the 8 groups
+birth_year_strat <- svyby(~rabyear_v2,
+                          reformulate(c(strata_var, "imp")),
+                          birthyear_svy, svyquantile,
+                          quantiles = c(0.25, 0.5, 0.75), ci = FALSE,
+                          keep.var = FALSE, vartype = NULL) %>%
+  set_colnames(c("edu_cat", "imp", "q1_birthyear",
+                 "median_birthyear", "q3_birthyear")) %>%
+  group_by(edu_cat) %>%
+  summarize(across(ends_with("birthyear"), ~ round(mean(.x))), .groups = "drop") %>%
+  arrange(factor(edu_cat, levels = group_levels)) %>%
+  mutate(fmt = paste0(median_birthyear, " (", q1_birthyear, ", ", q3_birthyear, ")")) %>%
+  print()
+
+birth_year_strat %>% select(fmt) %>% t()
 
 #---- Education programs for adulthood programs attendees ----
 load(here::here("data", "analysis_data", "charls_cleaned.RData"))

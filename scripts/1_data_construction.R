@@ -1733,15 +1733,43 @@ summary(charls_reframe$n1_agey_v3)
 # view(charls_missingage)
 # Will have to drop these people
 
+# n per wave
+charls_reframe$n1_wave %>% table(useNA = "ifany")
+# check id
+id <- charls_reframe %>% filter(is.na(n1_wave)) %>% pull(ID)
+test <- charls %>% filter(ID %in% id)
+test %>% select(ID, contains("inw"))
+table(test$inwlh)
+
 # n =  drop missing age or gender!
+charls_reframe %>%
+  filter(is.na(female)) %>% nrow() # 5
+charls_reframe %>%
+  filter(is.na(female)) %>%
+  with(table(n1_wave, useNA = "ifany"))
+
+charls_reframe %>%
+  filter(!is.na(female)) %>%
+  filter(is.na(n1_agey_v3)) %>% nrow() # 433
+charls_reframe %>%
+  filter(!is.na(female)) %>%
+  filter(is.na(n1_agey_v3)) %>%
+  with(table(n1_wave, useNA = "ifany"))
+
 charls_reframe %>%
   filter(is.na(female) | is.na(n1_agey_v3)) %>% nrow() # 438
 charls_reframe_filtered <- charls_reframe %>%
   filter(!is.na(female) & !is.na(n1_agey_v3)) # n = 25616
 
+table(charls_reframe_filtered$n1_wave, useNA = "ifany")
+
 # bl agey_v3 < 45
 charls_reframe_filtered %>%
   filter(n1_agey_v3 < 45) %>% nrow() # n = 2017
+charls_reframe_filtered %>%
+  filter(n1_agey_v3 < 45) %>%
+  with(table(n1_wave, useNA = "ifany"))
+
 charls_reframe_filtered %<>%
   filter(!n1_agey_v3 < 45) # n = 23599
 
@@ -1751,6 +1779,8 @@ charls_selected %<>%
 # Do not drop these people
 summary(charls_reframe_filtered$n1_imrc)
 summary(charls_reframe_filtered$n1_dlrc)
+
+table(charls_reframe_filtered$n1_wave, useNA = "ifany")
 # < 20% missingness for the imrc and dlrc scores
 ## 2. Dropping those who did not have any word recall scores 
 # # n = 1434 missing all immediate word recall scores or all delayed word recall scores
