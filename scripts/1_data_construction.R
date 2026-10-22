@@ -796,12 +796,10 @@ proc_freq(charls, rarural_child)
 #---- Parental socioeconomic status: rameduc_c, rafeduc_c, ramoccup_c, rafoccup_c ----
 charls %<>% mutate(rameduc_c = case_when(rameduc_c == 1 ~ 0,
                                          rameduc_c %in% c(2, 3, 4) ~ 1,
-                                         rameduc_c %in% c(5, 6, 7) ~ 2,
-                                         rameduc_c %in% c(8, 9, 10, 11) ~ 3),
+                                         rameduc_c %in% 5:11 ~ 2), # secondary school and above
                    rafeduc_c = case_when(rafeduc_c == 1 ~ 0,
                                          rafeduc_c %in% c(2, 3, 4) ~ 1,
-                                         rafeduc_c %in% c(5, 6, 7) ~ 2,
-                                         rafeduc_c %in% c(8, 9, 10, 11) ~ 3),
+                                         rafeduc_c %in% 5:11 ~ 2), # secondary school and above
                    ramoccup_c = ramomoccup_c_v2 - 1,
                    rafoccup_c = radadoccup_c_v2 - 1)
 # Sanity check
@@ -1250,7 +1248,9 @@ hukou_long_mat <- charls %>%
                names_pattern = "hkstate(.*)") %>%
   mutate(Age = as.numeric(Age),
          # Set those reported to not having hukou to be NA
-         hkstate = case_when(hkstate == 4 ~ NA,
+         # Set unified hukou to be NA as unified hukou would not be available for
+         # first hukou and hukou around age 30 (the two covariates used in this study)
+         hkstate = case_when(hkstate %in% c(3, 4) ~ NA,
                              TRUE ~ hkstate)) %>%
   filter(Age <= rLHagey |is.na(rLHagey)) # exclude the records of later age which participants
 # have not reached (assigned NA records)

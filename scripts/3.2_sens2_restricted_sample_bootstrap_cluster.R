@@ -86,14 +86,13 @@ svy_wt = "n1_wtrespb" # Sensitivity analysis for restrcting to 2011 people only
 c0 <- c(
   "n1_agey_v3", # Follow up time as time scale
   "female", "first_child_v2", 
-  "rameduc_2cat", "rafeduc_2cat", "ramoccup_c", "rafoccup_c",
+  "rameduc_c", "rafeduc_c", "ramoccup_c", "rafoccup_c",
   "childhood_1st_region", "rarural_child", 
   "first_hukou_2cat")
 c1_continuous <- c("chldstate_30")
-c1_binary <- c("marital_30", "rural_30", "occupation_30_2cat",
-               "hukou_30_2cat")
-# c1_multinomial <- c("hukou_30")
-c1 <- c(c1_continuous, c1_binary)
+c1_binary <- c("marital_30", "rural_30", "hukou_30_2cat")
+c1_multinomial <- c("occupation_30_3cat")
+c1 <- c(c1_continuous, c1_binary, c1_multinomial)
 # , c1_multinomial)
 
 ipcw_c <- c("n1_agey_v3", "n1_iadl_2cat", "n1_cesd10_cleaned", 

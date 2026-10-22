@@ -20,20 +20,22 @@ source(here::here("scripts", "functions.R"))
 load(here::here("data", "analysis_data", "imp_pmm_20_wide_long.RData"))
 
 imp_pmm_stacked %<>%
-  mutate(occupation_30_5cat = case_when(occupation_30 %in% c(1, 2) ~ 1,
-                                        occupation_30 %in% c(3, 4, 5) ~ 2,
-                                        occupation_30 == 6 ~ 3,
-                                        occupation_30 == 7 ~ 4,
-                                        occupation_30 == 8 ~ 5),
-         edu_cat =  case_when(
-           childhood_edu == 0 & continuing_edu_2cat == 0 ~ 0,
-           childhood_edu == 0 & continuing_edu_2cat == 1 ~ 1,
-           childhood_edu == 1 & continuing_edu_2cat == 0 ~ 2,
-           childhood_edu == 1 & continuing_edu_2cat == 1 ~ 3,
-           childhood_edu == 2 & continuing_edu_2cat == 0 ~ 4,
-           childhood_edu == 2 & continuing_edu_2cat == 1 ~ 5,
-           childhood_edu == 3 & continuing_edu_2cat == 0 ~ 6,
-           childhood_edu == 3 & continuing_edu_2cat == 1 ~ 7))
+  dplyr::mutate(occupation_30_3cat = 
+                  case_when(occupation_30 %in% c(1, 2) ~ 0, # agriculture
+                            occupation_30 %in% c(3:5) ~ 1, # non-agriculture
+                            occupation_30 %in% c(6:8) ~ 2), # not in workforce
+                edu_cat =  case_when(
+                  childhood_edu == 0 & continuing_edu_2cat == 0 ~ 0,
+                  childhood_edu == 0 & continuing_edu_2cat == 1 ~ 1,
+                  childhood_edu == 1 & continuing_edu_2cat == 0 ~ 2,
+                  childhood_edu == 1 & continuing_edu_2cat == 1 ~ 3,
+                  childhood_edu == 2 & continuing_edu_2cat == 0 ~ 4,
+                  childhood_edu == 2 & continuing_edu_2cat == 1 ~ 5,
+                  childhood_edu == 3 & continuing_edu_2cat == 0 ~ 6,
+                  childhood_edu == 3 & continuing_edu_2cat == 1 ~ 7))
+
+# with(imp_pmm_stacked %>% filter(imp == 1), table(hukou_30, rural_30, useNA = "ifany"))
+# with(imp_pmm_stacked %>% filter(imp == 1), table(rarural_child, first_hukou, useNA = "ifany"))
 
 #---- Check birth year ----
 imp_pmm_stacked %>%
@@ -86,39 +88,33 @@ labelled_data <- imp_pmm_stacked %>%
   dplyr::mutate(
     continuing_edu_2cat = factor(continuing_edu_2cat, levels = c(1, 0),
                                  labels = c("Adulthood education", "No adulthood education")),
-    rameduc_c = factor(rameduc_c, levels = c(0, 1, 2, 3),
+    rameduc_c = factor(rameduc_c, levels = c(0, 1, 2),
                        labels = c("No formal education (illiterate)",
                                   "Primary school",
-                                  "Middle school",
-                                  "College")),
-    rafeduc_c = factor(rafeduc_c, levels = c(0, 1, 2, 3),
+                                  "Secondary school and higher")),
+    rafeduc_c = factor(rafeduc_c, levels = c(0, 1, 2),
                        labels = c("No formal education (illiterate)",
                                   "Primary school",
-                                  "Middle school",
-                                  "College")),
+                                  "Secondary school and higher")),
     # ramoccup_c = factor(ramoccup_c, levels = c(1, 0),
     #                     labels = c("Non-agricultural", "Agricultural")),
     # rafoccup_c = factor(rafoccup_c, levels = c(1, 0),
     #                     labels = c("Non-agricultural", "Agricultural")),
     childhood_1st_region = factor(childhood_1st_region, levels = c(1, 2, 3, 4),
                                   labels = c("East", "Middle", "West", "Northeast")),
-    first_hukou = factor(first_hukou, levels = c(1, 2, 3),
-                         labels = c("Agricultural hukou", "Non-agricultural hukou",
-                                    "Unified residence hukou")),
+    first_hukou = factor(first_hukou, levels = c(1, 2),
+                         labels = c("Agricultural hukou", "Non-agricultural hukou")),
     childhood_edu = factor(childhood_edu, levels = c(0, 1, 2, 3),
                            labels = c("No formal education (illiterate)",
                                       "Primary school",
                                       "Middle school",
                                       "College")),
-    occupation_30_5cat = factor(occupation_30_5cat, levels = c(1, 2, 3, 4, 5),
+    occupation_30_3cat = factor(occupation_30_3cat, levels = c(0, 1, 2),
                                 labels = c("Agriculture related",
                                            "Non-agriculture related",
-                                           "Unemployed",
-                                           "Retired",
-                                           "Never work")),
-    hukou_30 = factor(hukou_30, levels = c(1, 2, 3),
-                      labels = c("Agricultural hukou", "Non-agricultural hukou",
-                                 "Unified residence hukou")),
+                                           "Not in workforce")),
+    hukou_30 = factor(hukou_30, levels = c(1, 2),
+                      labels = c("Agricultural hukou", "Non-agricultural hukou")),
     edu_cat = factor(edu_cat, levels = 0:7,
                      labels = c("No formal education/illiterate & no adult education",
                                 "Only adulthood education",
@@ -128,7 +124,7 @@ labelled_data <- imp_pmm_stacked %>%
                                 "Secondary school & adulthood education",
                                 "College & no adult education",
                                 "College & adulthood education"
-                                ))) %>%
+                     ))) %>%
   labelled::set_variable_labels(
     n1_agey_v3 = "Baseline age (first participated wave) in years",
     continuing_edu_2cat = "Adulthood education",
@@ -144,7 +140,7 @@ labelled_data <- imp_pmm_stacked %>%
     first_hukou = "First hukou status (%)", 
     # Early-adulthood predictors
     childhood_edu = "Early life education level (%)",
-    occupation_30_5cat = "Occupation at age 30 (%)",
+    occupation_30_3cat = "Occupation at age 30 (%)",
     marital_30 = "Marital status at age 30 (%)",
     rural_30 = "Rural residence at age 30 (%)",
     hukou_30 = "Hukou status at age 30 (%)",
@@ -175,7 +171,7 @@ cat_imp_svy <- labelled_data %>%
          childhood_1st_region, rarural_child, 
          first_hukou, 
          # Early-adulthood predictors
-         occupation_30_5cat, marital_30, hukou_30, rural_30,
+         occupation_30_3cat, marital_30, hukou_30, rural_30,
          n1_iadl_2cat, n1_hibpe, n1_stroke, n1_hearte, n1_cancre, n1_diabe,
          # baseline weights
          n1_wtrespb_rscl) %>%
@@ -289,10 +285,10 @@ table1_cont_weighted <- temp_cont_mean %>%
 
 ##---- Full table 1 ----
 table1_weighted <- rbind(table1_cont_weighted[1, ], # Baseline age
-                         table1_cat_weighted[1:29, ], # early-life covariates
+                         table1_cat_weighted[1:26, ], # early-life covariates
                          table1_cont_weighted[2, ], # chldstate_30
-                         table1_cat_weighted[30:41, ], # early-adulthood cat covariates
-                         table1_cat_weighted[42:47, ], # baseline health cat covariates
+                         table1_cat_weighted[27:36, ], # early-adulthood cat covariates
+                         table1_cat_weighted[37:41, ], # baseline health cat covariates
                          table1_cont_weighted[3:6, ]# CESD, imrc, dlrc, f/u time
 ) 
 
@@ -312,7 +308,7 @@ cat_imp_svy <- labelled_data %>%
          childhood_1st_region, rarural_child, 
          first_hukou, 
          # Early-adulthood predictors
-         occupation_30_5cat, marital_30, hukou_30, rural_30,
+         occupation_30_3cat, marital_30, hukou_30, rural_30,
          n1_iadl_2cat, n1_hibpe, n1_stroke, n1_hearte, n1_cancre, n1_diabe,
          # baseline weights
          n1_wtrespb_rscl) %>%
@@ -334,14 +330,14 @@ unwtd_n <- temp_cat_weighted$table_styling$header$modify_stat_n_unweighted[stat_
 wtd_n   <- temp_cat_weighted$table_styling$header$modify_stat_n[stat_cols]
 
 group_labels <- c("Overall",
-  "No formal education/illiterate & no adult education",
-  "Only adulthood education",
-  "Primary school & no adult education",
-  "Primary school & adulthood education",
-  "Secondary school & no adult education",
-  "Secondary school & adulthood education",
-  "College & no adult education",
-  "College & adulthood education")
+                  "No formal education/illiterate & no adult education",
+                  "Only adulthood education",
+                  "Primary school & no adult education",
+                  "Primary school & adulthood education",
+                  "Secondary school & no adult education",
+                  "Secondary school & adulthood education",
+                  "College & no adult education",
+                  "College & adulthood education")
 
 table1_headers <- c(
   "Characteristic",
@@ -446,11 +442,11 @@ table1_cont_weighted <- bind_cols(
 
 ##---- Full table 1 ----
 table1_weighted_cat8 <- rbind(table1_cont_weighted[1, ], # Baseline age
-                         table1_cat_weighted[1:24, ], # early-life covariates
-                         table1_cont_weighted[2, ], # chldstate_30
-                         table1_cat_weighted[25:36, ], # early-adulthood cat covariates
-                         table1_cat_weighted[37:42, ], # baseline health cat covariates
-                         table1_cont_weighted[3:6, ]# CESD, imrc, dlrc, f/u time
+                              table1_cat_weighted[1:21, ], # early-life covariates
+                              table1_cont_weighted[2, ], # chldstate_30
+                              table1_cat_weighted[22:30, ], # early-adulthood cat covariates
+                              table1_cat_weighted[31:36, ], # baseline health cat covariates
+                              table1_cont_weighted[3:6, ]# CESD, imrc, dlrc, f/u time
 ) 
 
 ##---- Save the output ----
@@ -550,7 +546,7 @@ charls %>% dplyr::select(w4_bd007_w2_1) %>%
 #     childhood_1st_region, rarural_child, 
 #     first_hukou, 
 #     # Early-adulthood predictors
-#     occupation_30_5cat, marital_30, hukou_30, rural_30,
+#     occupation_30_3cat, marital_30, hukou_30, rural_30,
 #     n1_iadl_2cat, n1_hibpe, n1_stroke, n1_hearte, n1_cancre, n1_diabe,
 #     # baseline weights
 #     n1_wtrespb_rscl) %>%
@@ -632,4 +628,3 @@ charls %>% dplyr::select(w4_bd007_w2_1) %>%
 # 
 # ##---- Save the output ----
 # writexl::write_xlsx(table1_weighted, 
-#                     here::here("output", "tables", "table1_imp_weighted.xlsx"))

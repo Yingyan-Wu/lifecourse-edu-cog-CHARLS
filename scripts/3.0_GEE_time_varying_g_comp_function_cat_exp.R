@@ -100,6 +100,28 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
     assign(paste0("pc1_model_", c1_var), model)
   }
   
+  for (c1_var in c1_multinomial){
+    c1_model_form <- paste0(c1_var, " ~ ", x0, " + ",
+                            paste(c0, collapse = " + "))
+    warning_vec <- w_c1s[[paste0("w_", c1_var)]]
+    tryCatch({
+      model <- nnet::multinom(as.formula(c1_model_form),
+                              data = data_boot,
+                              weights = get(svy_wt),
+                              maxit = 500, trace = FALSE)
+      # multinom reports non-convergence in $convergence, not a warning
+      w_c1s[[paste0("w_", c1_var)]] <<-
+        c(warning_vec, as.numeric(model$convergence != 0))
+    }, warning = function(w) {
+      w_c1s[[paste0("w_", c1_var)]] <<- c(warning_vec, 1)
+      model <<- nnet::multinom(as.formula(c1_model_form),
+                               data = data_boot,
+                               weights = get(svy_wt),
+                               maxit = 500, trace = FALSE)
+    })
+    assign(paste0("pc1_model_", c1_var), model)
+  }
+  
   #---- Step 3: Devlop IPCW ----
   # for each wave of outcome, create IPCW
   # in long dataset
@@ -244,6 +266,18 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
                          newdata = data_boot %>% select(-all_of(x0)) %>%
                            dplyr::rename(!!sym(x0) := "doX0"),
                          type = var_type))
+    } else if (c1_var %in% c1_multinomial){
+      mod <- get(paste0("pc1_model_", c1_var))
+      probs <- predict(mod,
+                       newdata = data_boot %>% select(-all_of(x0)) %>%
+                         dplyr::rename(!!sym(x0) := "doX0"),
+                       type = "probs")
+      # draw one category per person from their predicted probabilities
+      cum_p <- t(apply(probs, 1, cumsum))
+      idx <- 1 + rowSums(runif(n) > cum_p)
+      data_boot %<>%
+        mutate(!!paste0(c1_var, "_doX0") :=
+                 factor(mod$lev[idx], levels = levels(data_boot[[c1_var]])))
     }
   }
   # Round simulated variables "# of children at 30" to integers
@@ -252,18 +286,18 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   # Create a balanced long dataset
   cloned_data_long <- data_boot %>%
     select(newid, imp) %>%
-    expand_grid(n_fu = 1:5) %>% 
-    mutate(fu_time = case_when(n_fu == 1 ~ 0, # 2011
-                               n_fu == 2 ~ 2, # 2013
-                               n_fu == 3 ~ 4, # 2015
-                               n_fu == 4 ~ 7, # 2018
-                               n_fu == 5 ~ 9)) %>% # 2020
-    left_join(data_boot %>% select(newid, all_of(c0), 
-                                   contains(c("doX0", "doX1"))),
+    expand_grid(n_fu = 1:5) %>%
+    mutate(fu_time = case_when(n_fu == 1 ~ 0,
+                               n_fu == 2 ~ 2,
+                               n_fu == 3 ~ 4,
+                               n_fu == 4 ~ 7,
+                               n_fu == 5 ~ 9)) %>%
+    left_join(data_boot %>%
+                select(newid, all_of(c0), contains(c("doX0", "doX1")),
+                       svy_weight = all_of(svy_wt)),
               by = "newid") %>%
     mutate(!!paste0("first_", y) := case_when(n_fu == 1 ~ 1,
                                               TRUE ~ 0))
-  
   # Predict potential outcomes
   cloned_data_long %<>%
     mutate(
@@ -278,9 +312,11 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
   
   ##---- Step 4.1: mean potential outcomes at each time point for each intervention ----
   mean_pred <- cloned_data_long %>%
-    select(newid, doX0, doX1, fu_time, Y_doX0_doX1) %>%
+    select(newid, doX0, doX1, fu_time, Y_doX0_doX1, svy_weight) %>%
     group_by(fu_time, doX0, doX1) %>%
-    summarise(mean_PO = mean(Y_doX0_doX1, na.rm = TRUE)) %>%
+    summarise(mean_PO = weighted.mean(Y_doX0_doX1, w = svy_weight,
+                                      na.rm = TRUE),
+              .groups = "drop") %>%
     pivot_wider(names_from = c("doX0", "doX1", "fu_time"), values_from = mean_PO,
                 names_glue = "mean_PO_{doX0}{doX1}_yr{fu_time}")
   
@@ -290,6 +326,7 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
     msm_gee <<- geepack::geeglm(as.formula(paste0(
       "Y_doX0_doX1 ~ doX0 * doX1 * ns_1knot(fu_time) + ", "first_", y)),
       data = cloned_data_long, 
+      weights = svy_weight,
       id = newid, waves = n_fu, family = gaussian)
     w_msm <<- c(w_msm, 0)
     w_msm_msg <<- c(w_msm_msg, NA_character_)
@@ -300,6 +337,7 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
     msm_gee <<- geepack::geeglm(as.formula(paste0(
       "Y_doX0_doX1 ~ doX0 * doX1 * ns_1knot(fu_time) + ", "first_", y)),
       data = cloned_data_long, 
+      weights = svy_weight,
       id = newid, waves = n_fu, family = gaussian)
   })
   msm_end <- Sys.time()
@@ -314,7 +352,8 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
     expand_grid(n_fu = 1:10) %>% 
     mutate(fu_time = n_fu - 1) %>%
     left_join(data_boot %>% select(newid, all_of(c0), 
-                                   contains(c("doX0", "doX1"))),
+                                   contains(c("doX0", "doX1")),
+              svy_weight = all_of(svy_wt)),
               by = "newid") %>%
     mutate(!!paste0("first_", y) := case_when(n_fu == 1 ~ 1,
                                               TRUE ~ 0))
@@ -331,11 +370,11 @@ joint_effect_g_comp <- function(dataset, dataset_long, bootstrap = TRUE){
                               type = "response"))
   
   pred_long_mean <- pred_long %>%
-    select(newid, doX0, doX1, fu_time, Y_pred_MSM_noPE, Y_pred_MSM_PE) %>%
+    select(newid, doX0, doX1, fu_time, Y_pred_MSM_noPE, Y_pred_MSM_PE, svy_weight) %>%
     group_by(fu_time, doX0, doX1) %>%
-    summarise(mean_predMSM_noPE = mean(Y_pred_MSM_noPE, na.rm = TRUE),
-              mean_predMSM_PE = mean(Y_pred_MSM_PE, na.rm = TRUE)) %>%
-    ungroup() %>%
+    summarise(mean_predMSM_noPE = weighted.mean(Y_pred_MSM_noPE, w = svy_weight, na.rm = TRUE),
+              mean_predMSM_PE = weighted.mean(Y_pred_MSM_PE, w = svy_weight, na.rm = TRUE),
+              .groups = "drop") %>%
     pivot_wider(names_from = c("doX0", "doX1", "fu_time"), 
                 values_from = c("mean_predMSM_noPE", "mean_predMSM_PE"),
                 names_glue = "{.value}_{doX0}{doX1}_yr{fu_time}")

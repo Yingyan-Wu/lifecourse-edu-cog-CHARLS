@@ -60,22 +60,25 @@ imp_pmm_stacked %<>%
     continuing_edu = factor(as.character(continuing_edu)), # drop order
     continuing_edu_2cat = factor(case_when(continuing_edu == 0 ~ 0,
                                            continuing_edu %in% c(1, 2) ~ 1)),
+    across(c("marital_30", "rural_30"), ~as.factor(.x)),
     occupation_30_5cat =
       as.factor(case_when(occupation_30 %in% c(1, 2) ~ 1,
                           occupation_30 %in% c(3, 4, 5) ~ 2,
                           occupation_30 == 6 ~ 3,
                           occupation_30 == 7 ~ 4,
                           occupation_30 == 8 ~ 5)),
-    occupation_30_2cat = as.factor(case_when(occupation_30 %in% c(1, 2) ~ 0, # agriculture
-                                             occupation_30 %in% c(3:8) ~ 1)), # non-agriculture
+    occupation_30_3cat = as.factor(case_when(occupation_30 %in% c(1, 2) ~ 0, # agriculture
+                                             occupation_30 %in% c(3:5) ~ 1, # non-agriculture
+                                             occupation_30 %in% 6:8 ~ 2 # not in workforce
+                                             )), 
     rameduc_2cat = as.factor(case_when(rameduc_c %in% 1:3 ~ 1, # with formal edu
                                        rameduc_c == 0 ~ 0)),# no formal edu
     rafeduc_2cat = as.factor(case_when(rafeduc_c %in% 1:3 ~ 1, 
                                        rafeduc_c == 0 ~ 0)),
     first_hukou_2cat = as.factor(case_when(first_hukou == 1 ~ 0, # agricultural hukou
-                                           first_hukou %in% 2:3 ~ 1)), # non agricultural hukou
+                                           first_hukou %in% 2 ~ 1)), # non agricultural hukou
     hukou_30_2cat = as.factor(case_when(hukou_30 == 1 ~ 0,
-                                        hukou_30 %in% 2:3 ~ 1)),
+                                        hukou_30 %in% 2 ~ 1)),
     across(paste0("n1_", c("moneya", "medsa", "shopa", "mealsa", "housewka")), 
            ~as.numeric(as.character(.))),
     n1_iadl = 
@@ -109,7 +112,8 @@ imp_pmm_stacked %<>%
 #   select(contains(c("moneya", "medsa", "shopa", "mealsa", "housewka", "iadl"))) %>%
 #   apply(., 2, table, useNA = "ifany")
 # imp_pmm_stacked %>% select(max_fu_time, imp) %>% split(.$imp) %>% map(summary)
-# imp_pmm_stacked %>% select(contains("fu_time")) %>% apply(., 2, summary)
+imp_pmm_stacked %>% select(contains("fu_time")) %>% apply(., 2, summary)
+imp_pmm_stacked %>% with(table(occupation_30_5cat, occupation_30_3cat, useNA = "ifany"))/20
 
 #---- Check survey weight ----
 imp_pmm_1 <- imp_pmm_stacked %>%
