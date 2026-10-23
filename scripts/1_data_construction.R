@@ -1743,22 +1743,27 @@ table(test$inwlh)
 
 # n =  drop missing age or gender!
 charls_reframe %>%
+  filter(!ID %in% id) %>%
   filter(is.na(female)) %>% nrow() # 5
 charls_reframe %>%
+  filter(!ID %in% id) %>%
   filter(is.na(female)) %>%
   with(table(n1_wave, useNA = "ifany"))
 
 charls_reframe %>%
+  filter(!ID %in% id) %>%
   filter(!is.na(female)) %>%
-  filter(is.na(n1_agey_v3)) %>% nrow() # 433
+  filter(is.na(n1_agey_v3)) %>% nrow() # 246
 charls_reframe %>%
-  filter(!is.na(female)) %>%
+  filter(!ID %in% id) %>%
   filter(is.na(n1_agey_v3)) %>%
-  with(table(n1_wave, useNA = "ifany"))
+  with(table(n1_wave, useNA = "ifany")) # 251
 
 charls_reframe %>%
-  filter(is.na(female) | is.na(n1_agey_v3)) %>% nrow() # 438
+  filter(!ID %in% id) %>%
+  filter(is.na(female) | is.na(n1_agey_v3)) %>% nrow() # 451
 charls_reframe_filtered <- charls_reframe %>%
+  filter(!ID %in% id) %>%
   filter(!is.na(female) & !is.na(n1_agey_v3)) # n = 25616
 
 table(charls_reframe_filtered$n1_wave, useNA = "ifany")
