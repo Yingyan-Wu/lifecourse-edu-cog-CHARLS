@@ -278,7 +278,7 @@ for (dat in c("predMSM", "mean_PO")){
   temp <- get(paste0("imrc_dlrc_", dat, "_CI_long")) %>%
     pivot_wider(names_from = estimate, values_from = rc) %>%
     mutate(label = case_when(
-      intervention == "00" ~ "No formal education/illiterate & no adult education",
+      intervention == "00" ~ "No formal education & no adult education",
       intervention == "10" ~ "Primary school & no adult edu",
       intervention == "20" ~ "Secondary school & no adult edu",
       intervention == "30" ~ "College & no adult edu",
@@ -464,13 +464,13 @@ contrasts_main_no_formal <- imrc_dlrc_predMSM_noPE_contrasts_long %>%
   pivot_wider(names_from = "estimate", 
               values_from = "rc_change") %>%
   bind_rows(expand_grid(intervention_contrasts = "00",
-                        label = "Ref: No formal education/illiterate & no adult education",
+                        label = "Ref: No formal education & no adult education",
                         analysis = "main",
                         pe = 0,
                         fu_time_yrs = c(0, 2, 4, 7, 9),
                         outcome = c("dlrc", "imrc"))) %>%
   mutate(label = factor(label, 
-                        levels = c("Ref: No formal education/illiterate & no adult education",
+                        levels = c("Ref: No formal education & no adult education",
                                    "Only adult education",
                                    "Primary school & no adult education",
                                    "Primary school & adult education",
@@ -524,12 +524,12 @@ contrasts_main_same_childhood <- imrc_dlrc_predMSM_noPE_contrasts_long %>%
          # fu_time_yrs != 0,
          intervention_contrasts %in% c("01_00", "11_10", "21_20", "31_30")) %>%
   mutate(label = case_when(
-    intervention_contrasts == "01_00" ~ "Only adult education vs. \nNo formal education/illiterate & no adult education",
+    intervention_contrasts == "01_00" ~ "Only adult education vs. \nNo formal education & no adult education",
     intervention_contrasts == "11_10" ~ "Primary school & adult education vs. \nPrimary school & no adult education",
     intervention_contrasts == "21_20" ~ "Secondary school & adult education vs. \nSecondary school & no adult education",
     intervention_contrasts == "31_30" ~ "College & adult education vs. \nCollege & no adult education")) %>%
   mutate(label = factor(label, 
-                        levels = c("Only adult education vs. \nNo formal education/illiterate & no adult education",
+                        levels = c("Only adult education vs. \nNo formal education & no adult education",
                                    "Primary school & adult education vs. \nPrimary school & no adult education",
                                    "Secondary school & adult education vs. \nSecondary school & no adult education",
                                    "College & adult education vs. \nCollege & no adult education")),
