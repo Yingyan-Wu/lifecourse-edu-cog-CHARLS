@@ -186,9 +186,14 @@ var_labels <- c(
   continuing_edu = "Adult education",
   rameduc_c = "Mother's education",
   rafeduc_c = "Father's education",
-  n1_shlta = "Self-rated health")
+  n1_shlta = "Self-rated health",
+  n1_wtrespb = "Survey weight",
+  n1_cesd10_cleaned = "CESD-10 score",
+  n1_imrc = "Baseline immediate word recall",
+  n1_dlrc = "Baseline delayed word recall",
+  chldstate_30 = "Number of children at age 30")
 
-p_load("ggmice")
+p_load("ggmice", "patchwork")
 g <- ceiling(seq_along(trace_plot_vars) / 5)
 # fold a small last group into the one before it
 if (max(g) > 1 && sum(g == max(g)) < 3) g[g == max(g)] <- max(g) - 1
@@ -216,6 +221,17 @@ trace_plots <- lapply(seq_along(trace_plot_groups), function(i) {
                     paste0("trace_plot_", i, ".png")), width = 9, height = 7)
 })
 
+dens_vars <- cont_vars[imp_pmm_20$method[cont_vars] != ""] # plot imputed continuous vars
+dens_plots <- lapply(dens_vars, function(v) {
+  ggmice(imp_pmm_20, aes(x = !!sym(v), group = .imp)) +
+    geom_density() +
+    labs(x = var_labels[v], y = "Density") +
+    theme_bw() +
+    theme(legend.position = "none")
+})
+p <- wrap_plots(dens_plots, ncol = 3)
+ggsave(plot = p, filename = here::here("output", "figures",
+                                       "density_plots.png"), width = 9, height = 7)
 
 #---- Stack imputed dataset ----
 load(here::here("data", "analysis_data", "imp_pmm_20_refradt.RData"))
